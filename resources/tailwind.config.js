@@ -1,0 +1,81 @@
+module.exports = {
+  content: [
+    './src/**/*',
+  ],
+  safelist: [
+    'max-w-screen-sm',
+    'max-w-[18rem]',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        'primary': '#343a40',
+        'primary-shade': '#2f343a',
+        'primary-tint': '#484e53',
+        'primary-tint-2': '#5d6166',
+        'primary-dark': 'black',
+        'accent': '#009b50',
+        'accent-dark': '#008a3f',
+        'secondary': '#85898c',
+        'secondary-dark': '#5d6166',
+
+        'tealv-50': '#F0FCF9',
+        'tealv-100': '#C6F7E9',
+        'tealv-200': '#8EEDD1',
+        'tealv-300': '#5FE3C0',
+        'tealv-400': '#2DCCA7',
+        'tealv-500': '#17B897',
+        'tealv-600': '#079A82',
+        'tealv-700': '#048271',
+        'tealv-800': '#016457',
+        'tealv-900': '#004440',
+
+        'neut-900': '#222222',
+        'neut-800': '#3B3B3B',
+        'neut-700': '#515151',
+        'neut-600': '#626262',
+        'neut-500': '#7E7E7E',
+        'neut-400': '#9E9E9E',
+        'neut-300': '#B1B1B1',
+        'neut-200': '#CFCFCF',
+        'neut-100': '#E1E1E1',
+        'neut-75': '#E7E7E7',
+        'neut-50': '#F7F7F7',
+
+        'yellv-900': '#8D2B0B',
+        'yellv-800': '#B44D12',
+        'yellv-700': '#CB6E17',
+        'yellv-600': '#DE911D',
+        'yellv-500': '#F0B429',
+        'yellv-400': '#F7C948',
+        'yellv-300': '#FADB5F',
+        'yellv-200': '#FCE588',
+        'yellv-100': '#FFF3C4',
+        'yellv-50': '#FFFBEA',
+
+        'redv-900': '#610316',
+        'redv-800': '#8A041A',
+        'redv-700': '#AB091E',
+        'redv-600': '#CF1124',
+        'redv-500': '#E12D39',
+        'redv-400': '#EF4E4E',
+        'redv-300': '#F86A6A',
+        'redv-200': '#FF9B9B',
+        'redv-100': '#FFBDBD',
+        'redv-50': '#FFE3E3',
+      },
+      typography: {
+        quoteless: {
+          css: {
+            'blockquote p:first-of-type::before': { content: 'none' },
+            'blockquote p:first-of-type::after': { content: 'none' },
+          },
+        },
+      },
+    },
+  },
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
+}

@@ -1,0 +1,28 @@
+{:biff.beholder/enabled #profile {:dev true :default false}
+ :biff.beholder/paths ["src" "resources" "test"]
+ :biff.middleware/cookie-secret #biff/secret COOKIE_SECRET
+ :biff.middleware/secure #profile {:dev false :default true}
+ :biff.nrepl/args ["--port"
+                   #ref [:biff.nrepl/port]
+                   "--middleware"
+                   "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]"]
+ :biff.nrepl/port #or [#biff/env NREPL_PORT "7888"]
+ :biff.system-properties/clojure.tools.logging.factory "clojure.tools.logging.impl/slf4j-factory"
+ :biff.system-properties/user.timezone "UTC"
+ :biff.tasks/css-output "target/resources/public/css/main.css"
+ :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]
+ :biff.tasks/deploy-untracked-files [#ref [:biff.tasks/css-output] "config.env"]
+ :biff.tasks/generate-assets-fn com.yakread/generate-assets!
+ :biff.tasks/main-ns com.yakread
+ :biff.tasks/on-soft-deploy "\"(com.yakread/on-save @com.yakread/system)\""
+ :biff.tasks/server #biff/env DOMAIN
+ :biff.xtdb.jdbc/jdbcUrl #biff/secret "XTDB_JDBC_URL"
+ :biff.xtdb/dir "storage/xtdb"
+ :biff.xtdb/topology #keyword #or [#profile {:prod #biff/env "PROD_XTDB_TOPOLOGY" :default #biff/env "XTDB_TOPOLOGY"}
+                                   "standalone"]
+ :biff/base-url #profile {:prod #join ["https://" #biff/env DOMAIN] :default "http://localhost:8080"}
+ :biff/host #profile {:dev "0.0.0.0" :default "localhost"}
+ :biff/jwt-secret #biff/secret JWT_SECRET
+ :biff/port 8080
+ :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
+ :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY}

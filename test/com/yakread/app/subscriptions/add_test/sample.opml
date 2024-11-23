@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+    <head>
+        <title>Sample OPML file</title>
+    </head>
+    <body>
+        <outline title="Tech" text="Tech">
+            <outline text="Thomas Heller" type="rss" xmlUrl="https://code.thheller.com/feed.xml"/>
+            <outline text="Timothy Pratley" type="rss" xmlUrl="http://timothypratley.blogspot.com/feeds/posts/default"/>
+            <outline text="Clojurists Together" type="rss" xmlUrl="https://www.clojuriststogether.org/index.xml"/>
+        </outline>
+    </body>
+</opml>

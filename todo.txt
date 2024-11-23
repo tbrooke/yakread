@@ -1,0 +1,14 @@
+- fetch rss feed contents periodically
+- finish :app.subscription.view/page
+- redo schema
+
+- email subscriptions
+- favorites
+- read later
+- settings
+- for you
+- home page/auth
+- email digests
+- ads
+- premium plan
+- admin page

@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  p {
+    @apply mb-3;
+  }
+
+  ul {
+    @apply list-disc;
+  }
+
+  ol {
+    @apply list-decimal;
+  }
+
+  ul, ol {
+    @apply my-3 pl-10;
+  }
+
+  .htmx-indicator .htmx-request {
+    @apply inline;
+  }
+
+  .htmx-indicator.htmx-request {
+    @apply inline;
+  }
+
+  .nav-icon > svg {
+    @apply flex-shrink-0 inline text-white;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .nav-icon {
+    @apply flex;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply bg-primary hover:bg-primary-dark text-center py-2 px-4 rounded disabled:opacity-50 text-white;
+  }
+  .btn-accent {
+    @apply btn bg-accent hover:bg-accent-dark;
+  }
+  .btn-secondary {
+    @apply btn bg-secondary hover:bg-secondary-dark py-1 px-3;
+  }
+  .box {
+    @apply bg-white w-full lg:rounded;
+  }
+}
+
+@layer utilities {
+  .link {
+    @apply text-blue-600 hover:underline;
+  }
+  .contain-content {
+    contain: content;
+  }
+  .brandon {
+    font-weight: 700;
+  }
+  .proximanova-bold {
+    font-family: 'proximanova-bold', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
+  }
+  .inter {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
+  }
+
+  .sidebar-visible {
+    left: 0;
+  }
+
+  .shadow-uniform {
+    box-shadow: 0 0 5px 1px #0000004d;
+  }
+}
+
+.grecaptcha-badge { visibility: hidden; }
+
+@font-face {
+  font-family: BrandonGrotesque;
+  font-weight: bold;
+  src: url("/fonts/brandon-grotesque-bold.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'proximanova-bold';
+  src: url('/fonts/proximanova-bold-webfont.woff2') format('woff2'),
+       url('/fonts/proximanova-bold-webfont.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+#post-content pre {
+  white-space: break-spaces;
+  word-break: break-all;
+}
+
+#post-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+
+  -ms-word-break: break-all;
+  word-break: break-word;
+
+  -ms-hyphens: auto;
+  -moz-hyphens: auto;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
