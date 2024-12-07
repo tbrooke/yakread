@@ -300,35 +300,3 @@
     (str "function " fn-name "(token) { "
          "document.getElementById('" form-id "').submit();"
          "}"))])
-
-(defn new-user-tx* [{:keys [biff/db
-                           params
-                           headers
-                           session]
-                    :as sys}
-                    email]
-  (let [event-id (random-uuid)
-        user-id (or (biff/lookup-id db :user/email email)
-                    (random-uuid))]
-    (concat
-     [(biff/assoc-some
-       {:db/doc-type :user
-        :db/op :merge
-        :xt/id user-id
-        :user/email [:db/unique email]
-        :user/joined-at :db/now
-        :user/subscribed-days (set util/all-days)
-        :user/last-sent :db/now
-        :user/signup-event event-id
-        :user/onboarding-state :active}
-       :user/signup-href (:href params))
-      (merge
-       (biff/assoc-some
-        {:db/doc-type :event
-         :xt/id event-id
-         :event/type :signup
-         :event/timestamp :db/now}
-        :event/user (get session :uid))
-       (-> params
-           (dissoc :__anti-forgery-token :g-recaptcha-response)
-           (update-keys #(keyword "event.params" (name %)))))])))

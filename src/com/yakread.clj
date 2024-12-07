@@ -27,9 +27,11 @@
             [com.yakread.model.item :as model.item]
             [com.yakread.model.subscription :as model.sub]
             [com.yakread.model.user :as model.user]
-            [com.yakread.schema :as schema]
+            [com.yakread.model.schema :as model.schema]
             [com.yakread.util.biff-staging :as biffs]
-            [malli.core :as malc]
+            [malli.core :as malli]
+            [malli.experimental.time :as malli.t]
+            [malli.util :as malli.u]
             [malli.registry :as malr]
             [nrepl.cmdline :as nrepl-cmd]
             [reitit.ring :as reitit-ring])
@@ -50,12 +52,9 @@
    model.item/module
    model.sub/module
    model.user/module
-   schema/module
+   model.schema/module
    (app.auth/module
     #:biff.auth{:app-path "/"
-                :single-opt-in true
-                :new-user-tx app.auth/new-user-tx*
-                :check-state false
                 :email-validator app.auth/email-valid?
                 :link-expire-minutes (* 60 24 7)
                 ;; TODO use router or something
@@ -92,10 +91,11 @@
   (log/info :done))
 
 (def malli-opts
-  {:registry (malr/composite-registry
-              malc/default-registry
-              (apply biff/safe-merge
-                     (keep :schema modules)))})
+  {:registry (apply malr/composite-registry
+                    (malli/default-schemas)
+                    (malli.t/schemas)
+                    (malli.u/schemas)
+                    (keep :schema modules))})
 
 (def pathom-env (pci/register (conj (mapcat :resolvers modules)
                                     (biffs/pull-resolver malli-opts))))
