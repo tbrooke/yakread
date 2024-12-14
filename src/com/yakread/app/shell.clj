@@ -21,8 +21,8 @@
     (str "/css/main.css?t=" last-modified)
     "/css/main.css"))
 
-(defresolver pages [{:keys [biff/router uri]} {{:keys [user/admin]} :user/current}]
-  #::pco{:input [{(? :user/current) [:user/admin]}]}
+(defresolver pages [{:keys [biff/router uri]} {{:keys [user/roles]} :user/current}]
+  #::pco{:input [{(? :user/current) [:user/roles]}]}
   {:app.shell/pages
    (->> (cond-> [#:app.shell.page{:route-name :app.for-you/page
                                   :title "For you"
@@ -39,9 +39,9 @@
                  #:app.shell.page{:route-name :app.settings/page
                                   :title "Settings"
                                   :icon "gear"}]
-          admin (conj #:app.shell.page{:route-name :app.admin/page
-                                       :title "Admin"
-                                       :icon "lock"}))
+          (contains? roles :admin) (conj #:app.shell.page{:route-name :app.admin/page
+                                                          :title "Admin"
+                                                          :icon "lock"}))
         (mapv (fn [{:keys [app.shell.page/route-name] :as page}]
                 (let [href (lib.route/path router route-name {})]
                   (merge page #:app.shell.page{:href href

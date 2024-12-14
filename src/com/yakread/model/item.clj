@@ -64,7 +64,7 @@
       {:params/item (assoc item :item/conn conn)})))
 
 (def module
-  {:resolvers [rec
-               unread
-               image
-               item-from-params]})
+  {:resolvers [#_rec
+               #_unread
+               #_image
+               #_item-from-params]})

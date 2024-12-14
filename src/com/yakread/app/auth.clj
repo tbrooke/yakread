@@ -239,9 +239,9 @@
 ;;; ----------------------------------------------------------------------------
 
 (defn new-user-tx [ctx email]
-  [{:db/doc-type :user
-    :db.op/upsert {:user/email email}
-    :user/joined-at :db/now}])
+  [{:db/doc-type    :user
+    :db.op/upsert   {:user/email email}
+    :user/joined-at (java.time.Instant/now)}])
 
 (defn get-user-id [db email]
   (biff/lookup-id db :user/email email))

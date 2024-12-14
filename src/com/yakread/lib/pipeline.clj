@@ -1,11 +1,13 @@
 (ns com.yakread.lib.pipeline
   (:require [clj-http.client :as http]
+            [clojure.walk :as walk]
             [com.biffweb :as biff]
             [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.route :as lib.route]
             [clojure.tools.logging :as log]))
 
+;; TODO include db basis in exception data
 (defn make [& {:as id->handler}]
   (fn execute
     ([ctx handler-id]
@@ -35,13 +37,22 @@
                                   (lib.error/request-ex-data ctx*)
                                   (apply dissoc ctx (keys ctx*)))))))))))))))
 
+;; TODO move into Biff with option
+(defn- replace-db-now [tx]
+  (let [now (java.time.Instant/now)]
+    (walk/postwalk (fn [x]
+                     (if (= x :db/now)
+                       now
+                       x))
+                   tx)))
+
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
                                                            (assoc :url (:url input))
                                                            (dissoc :http-client))))
    :biff.pipe/tx (fn [{:keys [biff.pipe.tx/input] :as ctx}]
-                   (assoc ctx :biff.pipe.tx/output (biff/submit-tx ctx input)))
+                   (assoc ctx :biff.pipe.tx/output (biff/submit-tx ctx (replace-db-now input))))
    :biff.pipe/pathom (fn [{:biff.pipe.pathom/keys [entity query] :as ctx}]
                        (assoc ctx
                               :biff.pipe.pathom/output

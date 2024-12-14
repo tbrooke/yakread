@@ -10,26 +10,6 @@
   (when (:uid session)
     {:user/current {:xt/id (:uid session)}}))
 
-(defresolver admin [{:keys [user/roles]}]
-  {:user/admin (contains? roles :admin)})
-
-(defresolver roles [_ {:keys [user/email]}]
-  {:user/roles (cond-> #{}
-                 (= email "jacob@thesample.ai") (conj :admin))})
-
-(defresolver email-username [{:keys [biff/db]} {user-id :xt/id :user/keys [email-username*]}]
-  #::pco{:input [:xt/id (? :user/email-username*)]
-         :output [:user/email-username]}
-  (some->> (or email-username*
-               (first
-                (q db
-                   '{:find username
-                     :in [user]
-                     :where [[conn :conn/user user]
-                             [conn :conn.email/username username]]}
-                   user-id)))
-           (hash-map :user/email-username)))
-
 (defresolver suggested-email-username [{:keys [biff/db]} {:user/keys [email email-username]}]
   #::pco{:input [:user/email (? :user/email-username)]
          :output [:user/suggested-email-username]}
@@ -44,7 +24,4 @@
         {:user/suggested-email-username suggested}))))
 
 (def module {:resolvers [current-user
-                         admin
-                         roles
-                         email-username
                          suggested-email-username]})

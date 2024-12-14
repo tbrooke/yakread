@@ -13,6 +13,7 @@
    :user [:map {:closed true}
           [:xt/id                     :uuid]
           [:user/email                ::string]
+          (? :user/roles              [:set [:enum :admin]])
           (? :user/joined-at          :time/instant)
           (? :user/digest-days        [:set ::day])
           (? :user/send-digest-at     :time/local-time)
@@ -72,7 +73,7 @@
    :feed [:map {:closed true}
           [:xt/id                :uuid]
           [:feed/url             ::string]
-          [:feed/synced-at       :time/instant]
+          (? :feed/synced-at     :time/instant)
           (? :feed/title         ::string)
           (? :feed/description   ::string)
           (? :feed/image-url     ::string)
@@ -104,10 +105,10 @@
 
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a :skip document.
    :skip [:map {:closed true}
-          [:xt/id :uuid]
-          [:skip/user :uuid]
+          [:xt/id           :uuid]
+          [:skip/user       :uuid]
           [:skip/skipped-at :time/instant]
-          [:skip/items [:vector :uuid]]]})
+          [:skip/items      [:vector :uuid]]]})
 
 (def module
   {:schema schema})

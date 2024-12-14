@@ -34,9 +34,7 @@
 
   (with-context
     (fn [{:keys [biff/db]}]
-      (vec (q db
-              '{:find (pull conn [*])
-                :where [[conn :conn/user]]}))))
+      ))
 
   (com.yakread.app.subscriptions.add-test/get-current-ns)
   (com.yakread.lib.test/current-ns)

@@ -1,5 +1,5 @@
 (ns com.yakread.app.subscriptions.add
-  (:require [com.biffweb :as biff]
+  (:require [com.biffweb :as biff :refer [q <<-]]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
             [com.yakread.lib.pipeline :as lib.pipe]
@@ -68,7 +68,7 @@
                   {:action (lib.route/path router :app.subscriptions.add/rss {})
                    :hx-indicator (str "#" (lib.ui/dom-id ::rss-indicator))}
                   (lib.ui/uber-input
-                   {:label "Website or feed URL"
+                   {:label "Website or feed URL" ; TODO spinner icon
                     :name "url"
                     :value (:url params)
                     :required true
@@ -118,30 +118,48 @@
                                       :email-username username}})))]
             (lib.pipe/make
              :start
-             (fn [{:keys [biff/db params]}]
+             (fn [{:keys [biff/db session params]}]
                (let [username (lib.user/normalize-email-username (:username params))]
-                 (if (or (empty? username)
-                         (lib.user/email-username-taken? db username))
+                 (cond
+                   (or (empty? username)
+                       (lib.user/email-username-taken? db username))
                    (response false (:username params))
-                   {:biff.pipe/next [:biff.pipe/pathom :save-username]
-                    :biff.pipe.pathom/query [{:user/current [(? :user/email-username)]}]
-                    ::username username})))
 
-             :save-username
-             (fn [{:keys [biff.pipe.pathom/output session ::username]}]
-               (if (get-in output [:user/current :user/email-username])
-                 (response true nil)
-                 {:biff.pipe/next     [:biff.pipe/tx :end]
-                  :biff.pipe.tx/input [{:db/doc-type :user
-                                        :db/op :update
-                                        :xt/id (:uid session)
-                                        :user/email-username* [:db/unique username]}]
-                  :biff.pipe/catch    :biff.pipe/tx
-                  ::username          username}))
+                   (biff/lookup db :user/email-username username)
+                   (response true nil)
+
+                   :else
+                   {:biff.pipe/next     [:biff.pipe/tx :end]
+                    :biff.pipe.tx/input [{:db/doc-type :user
+                                          :db/op :update
+                                          :xt/id (:uid session)
+                                          :user/email-username [:db/unique username]}]
+                    :biff.pipe/catch    :biff.pipe/tx
+                    ::username          username})))
 
              :end
              (fn [{:keys [biff.pipe/exception ::username]}]
                (response (not exception) username))))}])
+
+(defn- subscribe-feeds-tx [db user-id feed-urls]
+  (let [url->feed (into {} (q db
+                              '{:find [url feed]
+                                :in [[url ...]]
+                                :where [[feed :feed/url url]]}
+                              feed-urls))
+        new-urls  (remove url->feed feed-urls)]
+    (for [[i url] (map-indexed vector feed-urls)
+          :let [feed-id (get url->feed url (keyword "db.id" (str "url" i)))]
+          doc (concat [{:db/doc-type    :sub/feed
+                        :db.op/upsert   {:sub/user user-id
+                                         :sub.feed/feed feed-id}
+                        :sub/created-at [:db/default :db/now]}]
+                      (when-not (url->feed url)
+                        [{:db/doc-type :feed
+                          :db/op       :create
+                          :xt/id       feed-id
+                          :feed/url    url}]))]
+      doc)))
 
 (def rss-route
   ["/dev/subscriptions/add/rss"
@@ -156,7 +174,7 @@
               :biff.pipe/catch      :biff.pipe/http})
 
            :add-urls
-           (fn [{:keys [session params biff.pipe.http/output]}]
+           (fn [{:keys [biff/db session params biff.pipe.http/output]}]
              (let [feed-urls (some->> output
                                       lib.rss/parse-urls
                                       (mapv :url)
@@ -168,11 +186,8 @@
                   :biff.router/params {:error "invalid-rss-feed"
                                        :url (:url params)}}
                  {:biff.pipe/next     [:biff.pipe/tx]
-                  :biff.pipe.tx/input (for [url feed-urls]
-                                        {:db/doc-type :conn/rss
-                                         :db.op/upsert {:conn/user (:uid session)
-                                                        :conn.rss/url url}
-                                         :conn.rss/subscribed-at :db/now})
+                  :biff.pipe.tx/input (subscribe-feeds-tx db (:uid session) feed-urls)
+                  :biff.pipe.tx/retry :add-urls ; TODO implement
                   :status             303
                   :biff.router/name   :app.subscriptions.add/page
                   :biff.router/params {:added-feeds (count feed-urls)}}))))}])
@@ -187,22 +202,17 @@
               :biff.pipe.slurp/input tempfile})
 
            :end
-           (fn [{:keys [session biff.pipe.slurp/output]}]
-             (let [urls (lib.rss/extract-opml-urls output)
-                   tx (for [url urls]
-                        {:db/doc-type :conn/rss
-                         :db.op/upsert {:conn/user (:uid session)
-                                        :conn.rss/url url}
-                         :conn.rss/subscribed-at :db/now
-                         :conn.rss/source :manual})]
-               (merge (when (not-empty urls)
-                        {:biff.pipe/next [:biff.pipe/tx]
-                         :biff.pipe.tx/input tx})
-                      {:status 303
-                       :biff.router/name :app.subscriptions.add/page
-                       :biff.router/params (if (empty? urls)
-                                             {:error "invalid-opml-file"}
-                                             {:added-feeds (count urls)})}))))}])
+           (fn [{:keys [biff/db session biff.pipe.slurp/output]}]
+             (if-some [urls (not-empty (lib.rss/extract-opml-urls output))]
+               {:biff.pipe/next     [:biff.pipe/tx]
+                :biff.pipe.tx/input (subscribe-feeds-tx db (:uid session) urls)
+                :biff.pipe.tx/retry :end ; TODO implement
+                :status             303
+                :biff.router/name   :app.subscriptions.add/page
+                :biff.router/params {:added-feeds (count urls)}}
+               {:status             303
+                :biff.router/name   :app.subscriptions.add/page
+                :biff.router/params {:error "invalid-opml-file"}})))}])
 
 (def module
   {:routes [page-route

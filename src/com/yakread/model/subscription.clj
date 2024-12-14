@@ -222,12 +222,12 @@
          (when (not= old-conns new-conns)
            {conns-id new-conns}))))})
 
-(def module {:resolvers [subscriptions
-                         rss-sub
-                         rss-sub-from-params
-                         rss-sub-items]
-             :indexes [email-indexer
-                       rss-indexer]})
+(def module {:resolvers [#_subscriptions
+                         #_rss-sub
+                         #_rss-sub-from-params
+                         #_rss-sub-items]
+             :indexes [#_email-indexer
+                       #_rss-indexer]})
 
 (comment
   (inc 3)

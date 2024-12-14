@@ -12,6 +12,7 @@
 
 (def ? pco/?)
 
+;; TODO maybe include db basis somewhere
 (defn process [ctx & args]
   (try
     (with-open [db (biff/open-db-with-index ctx)]

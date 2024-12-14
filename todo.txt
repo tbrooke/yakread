@@ -1,6 +1,7 @@
+- rewrite app to work with new schema
+
 - fetch rss feed contents periodically
 - finish :app.subscription.view/page
-- redo schema
 
 - email subscriptions
 - favorites
