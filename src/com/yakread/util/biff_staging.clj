@@ -1,6 +1,7 @@
 (ns com.yakread.util.biff-staging
-  (:require [com.biffweb :as biff]
-            [com.wsscode.pathom3.connect.operation :as-alias pco]
+  (:require [clojure.walk :as walk]
+            [com.biffweb :as biff]
+            [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.connect.planner :as-alias pcp]
             [malli.core :as malli]
             [malli.registry :as malr]
@@ -8,39 +9,54 @@
             [xtdb.api :as xt]
             [com.biffweb.protocols :as biff.proto]))
 
-(defn all-document-attrs [{:keys [registry] :as malli-opts}]
-  (set (for [schema-k (keys (malr/schemas (:registry malli-opts)))
-             :let [schema (try (malli/deref-recursive schema-k malli-opts) (catch Exception _))]
-             :when schema
-             :let [schemas (volatile! [])
-                   _ (malli/walk schema (fn [schema _ _ _]
-                                          (vswap! schemas conj schema)))]
-             schema @schemas
-             :let [ast (malli/ast schema)]
-             :when (and ast
-                        (= (:type ast) :map)
-                        (contains? (:keys ast) :xt/id))
-             k (keys (:keys ast))
-             k [k (keyword (namespace k) (str "_" (name k)))]]
-         k)))
+(defn- doc-asts [{:keys [registry] :as malli-opts}]
+  (for [schema-k (keys (malr/schemas (:registry malli-opts)))
+        :let [schema (try (malli/deref-recursive schema-k malli-opts) (catch Exception _))]
+        :when schema
+        :let [schemas (volatile! [])
+              _ (malli/walk schema (fn [schema _ _ _]
+                                     (vswap! schemas conj schema)))]
+        schema @schemas
+        :let [ast (malli/ast schema)]
+        :when (and ast
+                   (= (:type ast) :map)
+                   (contains? (:keys ast) :xt/id))]
+    ast))
 
-;; TODO make this a batch resolver?
-(defn pull-resolver [malli-opts]
-  (let [attrs (all-document-attrs malli-opts)]
-    (letfn [(request-shape->pull-query [request-shape]
-              (vec (keep (fn [[k v]]
-                           (cond
-                             (not attrs) nil
-                             (empty? v) k
-                             :else {k (request-shape->pull-query v)}))
-                         request-shape)))]
-      (pco/resolver `pull-resolver
+(defn pull-resolvers [malli-opts]
+  (let [asts      (doc-asts malli-opts)
+        all-attrs (->> asts
+                       (mapcat (comp keys :keys))
+                       set)
+        ref-attrs (->> asts
+                       (mapcat :keys)
+                       (keep (fn [[k {:keys [properties]}]]
+                               (when (:biff/ref properties)
+                                 k)))
+                       set)]
+    (concat
+     [(pco/resolver `entity-resolver
                     {::pco/input [:xt/id]
-                     ::pco/output (vec attrs)}
-                    (fn [{:keys [biff/db ::pcp/node ::pcp/graph] :as env} {:keys [xt/id]}]
-                      (let [{::pcp/keys [expects]} node
-                            query (request-shape->pull-query expects)]
-                        (xt/pull db query id)))))))
+                     ::pco/output (vec (for [k all-attrs]
+                                         (if (ref-attrs k)
+                                           {k [:xt/id]}
+                                           k)))}
+                    (fn [{:keys [biff/db]} {:keys [xt/id]}]
+                      (let [doc (xt/entity db id)]
+                        (->> (keys doc)
+                             (filterv ref-attrs)
+                             (reduce (fn [doc k]
+                                       (update doc k #(hash-map :xt/id %)))
+                                     doc)))))]
+     (for [attr ref-attrs
+           :let [attr (keyword (namespace attr) (str "_" (name attr)))]]
+       (pco/resolver (symbol (subs (str attr) 1))
+                     {::pco/input [:xt/id]
+                      ::pco/output [{attr [:xt/id]}]}
+                     (fn [{:keys [biff/db]} {:keys [xt/id]}]
+                       (update (xt/pull db [{attr [:xt/id]}] id)
+                               attr
+                               vec)))))))
 
 ;; TODO maybe use this somewhere
 (defn wrap-db-with-index [handler]

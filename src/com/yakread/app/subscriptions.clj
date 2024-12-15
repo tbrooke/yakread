@@ -3,10 +3,10 @@
             [clojure.set :as set]
             [clojure.edn :as edn]
             [com.biffweb :as biff]
-            [com.wsscode.pathom3.connect.operation :as pco]
+            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.middleware :as lib.middle]
-            [com.yakread.lib.pathom :as lib.pathom :refer [?]]
+            [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipe]
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.serialize :as lib.serialize]
@@ -35,50 +35,41 @@
    :ui.page/title           :string
    :ui.page/icon            :string})
 
-(defn- card [{:sub/keys [title last-published kind newsletter feed unread pinned] :as sub}
-             {:keys [pin-url view-sub-url]}]
-  (let [ident (select-keys sub [:sub/newsletter :sub/conn-id])]
-    [:.relative
-     [:div {:class '[absolute
-                     top-1.5
-                     right-0]}
-      (lib.ui/overflow-menu
-       {:icon "ellipsis-vertical-regular"}
-       (let [[hx-method label] (if pinned
-                                 [:hx-delete "Unpin"]
-                                 [:hx-put "Pin"])]
-         (lib.ui/overflow-button
-          {hx-method pin-url
-           :hx-vals (lib.htmx/edn-hx-vals ident)
-           :hx-target "#content"
-           :hx-on:htmx:before-request "this.closest('.sub-card').remove()"}
-          label)))]
-     [:a {:href (view-sub-url ident)
-          :class (concat '[block
-                           bg-white
-                           shadow
-                           p-2
-                           text-sm
-                           hover:bg-neut-50]
-                         (when (< 0 unread)
-                           '[border-l-4
-                             border-tealv-500]))}
-      [:.truncate.font-semibold.mr-6 (or (not-empty title) "[no title]")]
-      [:.text-neut-800.mr-6 unread " unread posts"]]]))
-
-(defn- grid [{:keys [id] :as opts} subscriptions]
-  (let [cnt (count subscriptions)]
-    [:div {:id id
-           :class '[grid
-                    grid-cols-1
-                    sm:grid-cols-2
-                    lg:grid-cols-3
-                    xl:grid-cols-4
-                    "2xl:grid-cols-5"
-                    gap-4]}
-     (for [[i sub] (map-indexed vector subscriptions)]
-       [:.sub-card {:style {:z-index (- (+ 10 cnt) i)}}
-        (card sub opts)])]))
+(defresolver sub-card [{:keys [biff/router]}
+                       {:sub/keys [id title unread published-at pinned-at]}]
+  #::pco{:input [:sub/id
+                 :sub/title
+                 :sub/unread
+                 (? :sub/published-at)
+                 (? :sub/pinned-at)]}
+  {:sub.view/card
+   [:.relative
+    [:div {:class '[absolute
+                    top-1.5
+                    right-0]}
+     (lib.ui/overflow-menu
+      {:icon "ellipsis-vertical-regular"}
+      (let [[hx-method label] (if pinned-at
+                                [:hx-delete "Unpin"]
+                                [:hx-put "Pin"])]
+        (lib.ui/overflow-button
+         {hx-method (lib.route/path router :app.subscriptions.page/pin {})
+          :hx-vals (lib.htmx/edn-hx-vals {:sub/id id})
+          :hx-target "#content"
+          :hx-on:htmx:before-request "this.closest('.sub-card').remove()"}
+         label)))]
+    [:a {:href (lib.route/path router :app.subscriptions.view/page {:sub-id id})
+         :class (concat '[block
+                          bg-white
+                          shadow
+                          p-2
+                          text-sm
+                          hover:bg-neut-50]
+                        (when (< 0 unread)
+                          '[border-l-4
+                            border-tealv-500]))}
+     [:.truncate.font-semibold.mr-6 (or (not-empty title) "[no title]")]
+     [:.text-neut-800.mr-6 unread " unread posts"]]]})
 
 (defn- empty-state [router]
   (lib.ui/empty-page-state {:icons ["envelope-regular-sharp"
@@ -93,36 +84,37 @@
   ["/dev/subscriptions/content"
    {:name :app.subscriptions.page/content
     :get (lib.pathom/handler
-          [{:user/current [{:user/subscriptions
-                            [:sub/title
-                             :sub/kind
-                             :sub/unread
-                             :sub/last-published
-                             :sub/pinned
-                             (? :sub/newsletter)
-                             (? :sub/feed)
-                             (? :sub/conn-id)]}]}]
+          [{:user/current [{:sub/_user
+                            [:xt/id
+                             :sub.view/card
+                             (? :sub/published-at)
+                             (? :sub/pinned-at)]}]}]
           (fn [{:keys [biff/router]}
-               {{:user/keys [subscriptions]} :user/current}]
-            (let [{pinned-subs true unpinned-subs false} (group-by :sub/pinned subscriptions)
-                  pin-url (lib.route/path router :app.subscriptions.page/pin {})
-                  grid-opts (fn [id]
-                              {:id id
-                               :pin-url pin-url
-                               :view-sub-url (fn [entity]
-                                               (lib.route/path router
-                                                 :app.subscriptions.view/page
-                                                 {:entity (lib.serialize/edn->base64 entity)}))})]
+               {{subscriptions :sub/_user} :user/current}]
+            (let [{pinned-subs true unpinned-subs false} (group-by (comp some? :sub/pinned-at) subscriptions)]
               (if (empty? subscriptions)
                 (empty-state router)
                 [:div.grow.flex.flex-col
-                 (grid (grid-opts "pinned") pinned-subs)
-                 (when (every? not-empty [pinned-subs unpinned-subs])
-                   [:div#sub-divider {:class '[my-10
-                                               border
-                                               border-neut-200]}])
-                 (grid (grid-opts "subscriptions") unpinned-subs)]))))}])
-
+                 (biff/join [:div#sub-divider {:class '[my-10
+                                                        border
+                                                        border-neut-200]}]
+                            (for [[id subscriptions] [["pinned" pinned-subs]
+                                                      ["unpinned" unpinned-subs]]
+                                  :when (not-empty subscriptions)
+                                  :let [cnt (count subscriptions)]]
+                              [:div {:id id
+                                     :class '[grid
+                                              grid-cols-1
+                                              sm:grid-cols-2
+                                              lg:grid-cols-3
+                                              xl:grid-cols-4
+                                              "2xl:grid-cols-5"
+                                              gap-4]}
+                               (for [[i sub] (->> subscriptions
+                                                  (sort-by :sub/published-at #(compare %2 %1))
+                                                  (map-indexed vector))]
+                                 [:.sub-card {:style {:z-index (- (+ 10 cnt) i)}}
+                                  (:sub.view/card sub)])]))]))))}])
 
 (def page-route
   ["/dev/subscriptions"
@@ -160,7 +152,8 @@
       :delete handler})])
 
 (def module
-  {:routes [page-route
+  {:resolvers [sub-card]
+   :routes [page-route
             ["" {:middleware [lib.middle/wrap-signed-in]}
              page-content-route
              pin-route]]})

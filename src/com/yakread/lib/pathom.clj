@@ -5,7 +5,8 @@
             [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.connect.runner :as runner]
             [com.yakread.lib.error :as lib.error]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [xtdb.api :as xt]))
 
 (alter-var-root #'runner/processor-exception (constantly (fn [_ ex] ex)))
 (alter-var-root #'runner/report-resolver-error (constantly (fn [_ _ ex] (throw ex))))
@@ -15,7 +16,9 @@
 ;; TODO maybe include db basis somewhere
 (defn process [ctx & args]
   (try
-    (with-open [db (biff/open-db-with-index ctx)]
+    (with-open [db (if (:biff.index/indexes ctx)
+                     (biff/open-db-with-index ctx)
+                     (xt/open-db (:biff.xtdb/node ctx)))]
       (apply eql/process (assoc ctx :biff/db db) args))
     (catch Exception e
       (if-some [unreachable (get-in (ex-data e)

@@ -12,7 +12,7 @@
             [xtdb.api :as xt]))
 
 (def page-route
-  ["/dev/subscriptions/view/:entity"
+  ["/dev/subscriptions/view/:sub-id"
    {:name :app.subscriptions.view/page
     :get (lib.pathom/handler
           [:app.shell/app-shell
@@ -97,7 +97,7 @@
        (biff/join interpunct)))
 
 (def page-content-route
-  ["/dev/subscriptions/view/:entity/content"
+  ["/dev/subscriptions/view/:sub-id/content"
    {:name :app.subscriptions.view.page/content
     :get (lib.pathom/handler
           [{(? :params/sub) [:xt/id
@@ -136,7 +136,7 @@
                          :target "_blank"}
                         {:href (lib.route/path router
                                  :app.subscriptions.view/page
-                                 {:entity (lib.serialize/edn->base64
+                                 {:sub-id (lib.serialize/edn->base64
                                            {:sub/conn-id conn-id
                                             :item/id (:xt/id item)})})})
                    [:div {:class (concat '[bg-white

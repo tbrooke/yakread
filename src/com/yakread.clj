@@ -97,8 +97,8 @@
                     (malli.u/schemas)
                     (keep :schema modules))})
 
-(def pathom-env (pci/register (conj (mapcat :resolvers modules)
-                                    (biffs/pull-resolver malli-opts))))
+(def pathom-env (pci/register (concat (mapcat :resolvers modules)
+                                      (biffs/pull-resolvers malli-opts))))
 
 (defn merge-context [{:keys [com.yakread/spark-model] :as ctx}]
   (let [;snapshots (biff/index-snapshots ctx)

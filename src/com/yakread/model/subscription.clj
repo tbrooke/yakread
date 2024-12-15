@@ -1,7 +1,9 @@
 (ns com.yakread.model.subscription
   (:require [com.biffweb :as biff :refer [q <<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
+            [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.serialize :as lib.serialize]
+            [clojure.string :as str]
             [clojure.set :as set]
             [xtdb.api :as xt]))
 
@@ -20,6 +22,27 @@
    :sub/total          :int
    :sub/read           :int
    :sub/items          [:vector :biff.attr/ref]})
+
+(defresolver email-title [{:keys [sub.email/from]}]
+  {:sub/title (str/replace from #"\s<.*>" "")})
+
+(defresolver feed-title [{:keys [sub.feed/feed]}]
+  #::pco{:input [{:sub.feed/feed [:feed/url
+                                  (? :feed/title)]}]}
+  {:sub/title (or (:feed/title feed)
+                  (:feed/url feed))})
+
+(defresolver view-url [{:keys [biff/router]} {:keys [sub/user xt/id]}]
+  {:sub/view-url (lib.route/path router :app.subscriptions.view/page {:sub-id id})})
+
+(defresolver sub-id [{:keys [xt/id sub/user]}]
+  {:sub/id id})
+
+(defresolver stub-unread []
+  {:sub/unread 10})
+
+(defresolver stub-published-at []
+  {:sub/published-at (java.time.Instant/now)})
 
 (defn- rss-sub-doc [conn feed sub pinned]
   (let [{:conn.rss/keys [url title subscribed-at]} conn]
@@ -222,7 +245,13 @@
          (when (not= old-conns new-conns)
            {conns-id new-conns}))))})
 
-(def module {:resolvers [#_subscriptions
+(def module {:resolvers [sub-id
+                         view-url
+                         email-title
+                         feed-title
+                         stub-published-at
+                         stub-unread
+                         #_subscriptions
                          #_rss-sub
                          #_rss-sub-from-params
                          #_rss-sub-items]
