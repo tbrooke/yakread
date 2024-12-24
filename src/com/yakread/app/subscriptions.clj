@@ -133,23 +133,19 @@
 
 (def pin-route
   ["/dev/subscriptions/pin"
-   (let [handler (lib.pipe/make
-                  :start
-                  (fn [{:keys [session params request-method]}]
-                    (let [op (case request-method
-                               :put :db/union
-                               :delete :db/difference)
-                          tx [(merge {:db/doc-type :pinned
-                                      :db.op/upsert {:pinned/user (:uid session)}}
-                                     (if (:sub/newsletter params)
-                                       {:pinned/newsletters [op (:sub/newsletter params)]}
-                                       {:pinned/rss [op (:sub/conn-id params)]}))]]
-                      {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render]
-                       :biff.pipe.tx/input tx
+   (let [handler (fn [new-value]
+                   (lib.pipe/make
+                    :start
+                    (fn [{{:keys [sub/id]} :params}]
+                      {:biff.pipe/next              [:biff.pipe/tx :biff.pipe/render]
+                       :biff.pipe.tx/input          [{:db/doc-type   :sub/any
+                                                      :db/op         :update
+                                                      :xt/id         id
+                                                      :sub/pinned-at new-value}]
                        :biff.pipe.render/route-name :app.subscriptions.page/content})))]
-     {:name :app.subscriptions.page/pin
-      :put handler
-      :delete handler})])
+     {:name   :app.subscriptions.page/pin
+      :put    (handler :db/now)
+      :delete (handler :db/dissoc)})])
 
 (def module
   {:resolvers [sub-card]
@@ -157,8 +153,3 @@
             ["" {:middleware [lib.middle/wrap-signed-in]}
              page-content-route
              pin-route]]})
-
-;; TODO
-;; - sub page
-;; - item page
-;; - use tabs for pinned / not pinned... or something

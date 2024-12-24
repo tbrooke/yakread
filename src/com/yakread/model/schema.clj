@@ -42,6 +42,7 @@
                        ;; If the user unsubscribes, instead of deleting the :sub-email, we set this flag. Then even if the
                        ;; newsletter sends more emails, we won't accidentally re-subscribe them.
                        [:sub.email/unsubscribed-at :time/instant])
+   :sub/any   [:or :sub/feed :sub/email]
 
    :item/base  [:map {:closed true}
                 [:xt/id               :uuid]
