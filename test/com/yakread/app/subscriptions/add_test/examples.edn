@@ -1,74 +1,56 @@
 [
 {:route-name :app.subscriptions.add/username,
- :doc "username taken",
+ :method :post,
  :handler-id :start,
- :db-contents #{{:xt/id 1, :user/email-username* "abc"}},
- :ctx {:params {:username "abc"}},
- :expected
- {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "username-unavailable", :email-username "abc"}}}
-
-{:route-name :app.subscriptions.add/username,
- :doc "username taken",
- :handler-id :start,
- :db-contents #{{:xt/id 1, :conn.email/username "abc"}},
- :ctx {:params {:username "abc"}},
- :expected
- {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "username-unavailable", :email-username "abc"}}}
-
-{:route-name :app.subscriptions.add/username,
- :doc "username not taken",
- :handler-id :start,
- :db-contents #{},
- :ctx {:params {:username "abc"}},
- :expected
- {:biff.pipe/next [:biff.pipe/pathom :save-username],
-  :biff.pipe.pathom/query [#:user{:current [:user/email-username]}],
-  :com.yakread.app.subscriptions.add/username "abc"}}
-
-{:route-name :app.subscriptions.add/username,
- :doc "empty username",
- :handler-id :start,
- :expected
- {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "username-unavailable", :email-username nil}}}
-
-{:route-name :app.subscriptions.add/username,
- :doc "early return",
- :handler-id :save-username,
- :ctx
- {:session {:uid 1},
-  :com.yakread.app.subscriptions.add/username "abc",
-  :biff.pipe.pathom/output
-  #:user{:current #:user{:email-username "hello"}}},
+ :doc "already has a username",
+ :db-contents #{{:xt/id 1, :user/email-username "abc"}},
+ :ctx {:session {:uid 1}, :params {:username "123"}},
  :expected {:status 303, :biff.router/name :app.subscriptions.add/page}}
 
 {:route-name :app.subscriptions.add/username,
- :doc "transact",
- :handler-id :save-username,
- :ctx
- {:session {:uid 1},
-  :com.yakread.app.subscriptions.add/username "abc"},
+ :method :post,
+ :handler-id :start,
+ :doc "invalid username",
+ :db-contents #{},
+ :ctx {:session {:uid 1}, :params {:username "admin"}},
+ :expected
+ {:status 303,
+  :biff.router/name :app.subscriptions.add/page,
+  :biff.router/params
+  {:error "username-unavailable", :email-username "admin"}}}
+
+{:route-name :app.subscriptions.add/username,
+ :method :post,
+ :handler-id :start,
+ :doc "username taken",
+ :db-contents #{{:xt/id 2, :user/email-username "abc"}},
+ :ctx {:session {:uid 1}, :params {:username "abc"}},
+ :expected
+ {:status 303,
+  :biff.router/name :app.subscriptions.add/page,
+  :biff.router/params
+  {:error "username-unavailable", :email-username "abc"}}}
+
+{:route-name :app.subscriptions.add/username,
+ :method :post,
+ :handler-id :start,
+ :doc "username not taken",
+ :db-contents #{},
+ :ctx {:session {:uid 1}, :params {:username "abc"}},
  :expected
  {:biff.pipe/next [:biff.pipe/tx :end],
   :biff.pipe.tx/input
   [{:db/doc-type :user,
     :db/op :update,
     :xt/id 1,
-    :user/email-username* [:db/unique "abc"]}],
+    :user/email-username [:db/unique "abc"]}],
   :biff.pipe/catch :biff.pipe/tx,
   :com.yakread.app.subscriptions.add/username "abc"}}
 
 {:route-name :app.subscriptions.add/username,
- :doc "fail",
+ :method :post,
  :handler-id :end,
+ :doc "fail",
  :ctx
  {:com.yakread.app.subscriptions.add/username "hello",
   :biff.pipe/exception true},
@@ -79,15 +61,16 @@
   {:error "username-unavailable", :email-username "hello"}}}
 
 {:route-name :app.subscriptions.add/username,
- :doc "succeed",
+ :method :post,
  :handler-id :end,
+ :doc "succeed",
  :ctx #:com.yakread.app.subscriptions.add{:username "hello"},
  :expected {:status 303, :biff.router/name :app.subscriptions.add/page}}
 
-{:doc "fix the url",
- :route-name :app.subscriptions.add/rss,
+{:route-name :app.subscriptions.add/rss,
  :method :post,
  :handler-id :start,
+ :doc "fix the url",
  :ctx {:params {:url "example.com"}},
  :expected
  {:biff.pipe/next [:biff.pipe/http :add-urls],
@@ -100,25 +83,32 @@
 {:route-name :app.subscriptions.add/rss,
  :method :post,
  :handler-id :add-urls,
- :ctx {:session {:uid 1}},
+ :doc "invalid url",
  :fixture :example-com,
+ :ctx {:session {:uid 1}},
  :expected
  {:status 303,
   :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params {:error "invalid-rss-feed", :url nil}}}
+  :biff.router/params
+  {:error "invalid-rss-feed", :url "https://example.com"}}}
 
 {:route-name :app.subscriptions.add/rss,
  :method :post,
  :handler-id :add-urls,
- :ctx {:session {:uid 1}},
+ :doc "auto-discovery",
  :fixture :obryant-dev,
+ :ctx {:session {:uid 1}},
  :expected
  {:biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/input
-  ({:db/doc-type :conn/rss,
-    :db.op/upsert
-    {:conn/user 1, :conn.rss/url "https://obryant.dev/feed.xml"},
-    :conn.rss/subscribed-at :db/now}),
+  ({:db/doc-type :sub/feed,
+    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url0},
+    :sub/created-at [:db/default :db/now]}
+   {:db/doc-type :feed,
+    :db/op :create,
+    :xt/id :db.id/url0,
+    :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
+  :biff.pipe.tx/retry :add-urls,
   :status 303,
   :biff.router/name :app.subscriptions.add/page,
   :biff.router/params {:added-feeds 1}}}
@@ -126,60 +116,93 @@
 {:route-name :app.subscriptions.add/rss,
  :method :post,
  :handler-id :add-urls,
- :ctx {:session {:uid 1}},
+ :doc "direct url",
  :fixture :obryant-dev-feed-xml,
+ :ctx {:session {:uid 1}},
  :expected
  {:biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/input
-  ({:db/doc-type :conn/rss,
-    :db.op/upsert
-    {:conn/user 1, :conn.rss/url "https://obryant.dev/feed.xml"},
-    :conn.rss/subscribed-at :db/now}),
+  ({:db/doc-type :sub/feed,
+    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url0},
+    :sub/created-at [:db/default :db/now]}
+   {:db/doc-type :feed,
+    :db/op :create,
+    :xt/id :db.id/url0,
+    :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
+  :biff.pipe.tx/retry :add-urls,
   :status 303,
   :biff.router/name :app.subscriptions.add/page,
   :biff.router/params {:added-feeds 1}}}
 
-{:doc "slurp the uploaded file",
- :route-name :app.subscriptions.add/opml,
+{:route-name :app.subscriptions.add/rss,
+ :method :post,
+ :handler-id :add-urls,
+ :doc "don't create feed doc if someone already subscribes",
+ :fixture :obryant-dev,
+ :ctx {:session {:uid 1}},
+ :db-contents #{{:xt/id 2, :feed/url "https://obryant.dev/feed.xml"}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/tx],
+  :biff.pipe.tx/input
+  ({:db/doc-type :sub/feed,
+    :db.op/upsert {:sub/user 1, :sub.feed/feed 2},
+    :sub/created-at [:db/default :db/now]}),
+  :biff.pipe.tx/retry :add-urls,
+  :status 303,
+  :biff.router/name :app.subscriptions.add/page,
+  :biff.router/params {:added-feeds 1}}}
+
+{:route-name :app.subscriptions.add/opml,
+ :method :post,
  :handler-id :start,
+ :doc "slurp the uploaded file",
  :ctx {:params {:opml {:tempfile "/tmp/some-file"}}},
  :expected
  {:biff.pipe/next [:biff.pipe/slurp :end],
   :biff.pipe.slurp/input "/tmp/some-file"}}
 
-{:doc "extract and save the opml urls",
- :route-name :app.subscriptions.add/opml,
+{:route-name :app.subscriptions.add/opml,
+ :method :post,
  :handler-id :end,
+ :doc "extract and save the opml urls",
  :fixture :sample-opml,
  :ctx {:session {:uid 1}},
  :expected
  {:biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/input
-  ({:db/doc-type :conn/rss,
-    :db.op/upsert
-    {:conn/user 1, :conn.rss/url "https://code.thheller.com/feed.xml"},
-    :conn.rss/subscribed-at :db/now,
-    :conn.rss/source :manual}
-   {:db/doc-type :conn/rss,
-    :db.op/upsert
-    {:conn/user 1,
-     :conn.rss/url
-     "http://timothypratley.blogspot.com/feeds/posts/default"},
-    :conn.rss/subscribed-at :db/now,
-    :conn.rss/source :manual}
-   {:db/doc-type :conn/rss,
-    :db.op/upsert
-    {:conn/user 1,
-     :conn.rss/url "https://www.clojuriststogether.org/index.xml"},
-    :conn.rss/subscribed-at :db/now,
-    :conn.rss/source :manual}),
+  ({:db/doc-type :sub/feed,
+    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url0},
+    :sub/created-at [:db/default :db/now]}
+   {:db/doc-type :feed,
+    :db/op :create,
+    :xt/id :db.id/url0,
+    :feed/url [:db/unique "https://code.thheller.com/feed.xml"]}
+   {:db/doc-type :sub/feed,
+    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url1},
+    :sub/created-at [:db/default :db/now]}
+   {:db/doc-type :feed,
+    :db/op :create,
+    :xt/id :db.id/url1,
+    :feed/url
+    [:db/unique
+     "http://timothypratley.blogspot.com/feeds/posts/default"]}
+   {:db/doc-type :sub/feed,
+    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url2},
+    :sub/created-at [:db/default :db/now]}
+   {:db/doc-type :feed,
+    :db/op :create,
+    :xt/id :db.id/url2,
+    :feed/url
+    [:db/unique "https://www.clojuriststogether.org/index.xml"]}),
+  :biff.pipe.tx/retry :end,
   :status 303,
   :biff.router/name :app.subscriptions.add/page,
   :biff.router/params {:added-feeds 3}}}
 
-{:doc "no urls found, show an error",
- :route-name :app.subscriptions.add/opml,
+{:route-name :app.subscriptions.add/opml,
+ :method :post,
  :handler-id :end,
+ :doc "no urls found, show an error",
  :ctx {:session {:uid 1}, :biff.pipe.slurp/output ""},
  :expected
  {:status 303,

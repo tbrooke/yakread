@@ -1,0 +1,30 @@
+[
+{:route-name :app.subscriptions.page/pin,
+ :method :put,
+ :handler-id :start,
+ :doc "pin",
+ :ctx {:params #:sub{:id 1}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render],
+  :biff.pipe.tx/input
+  [{:db/doc-type :sub/any,
+    :db/op :update,
+    :xt/id 1,
+    :sub/pinned-at :db/now}],
+  :biff.pipe.render/route-name :app.subscriptions.page/content}}
+
+{:route-name :app.subscriptions.page/pin,
+ :method :delete,
+ :handler-id :start,
+ :doc "unpin",
+ :ctx {:params #:sub{:id 1}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render],
+  :biff.pipe.tx/input
+  [{:db/doc-type :sub/any,
+    :db/op :update,
+    :xt/id 1,
+    :sub/pinned-at :db/dissoc}],
+  :biff.pipe.render/route-name :app.subscriptions.page/content}}
+
+]

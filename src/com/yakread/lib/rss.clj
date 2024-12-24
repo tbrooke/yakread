@@ -33,6 +33,7 @@
          :title (.attr element "title")}))))
 
 (defn extract-opml-urls [body]
+  ;; NOTE: by default java.xml prints all parsing errors to the console.
   (some->> (try (xpath/xml->doc body) (catch SAXParseException _))
            (xpath/$x:attrs* "//outline")
            (keep :xmlUrl)

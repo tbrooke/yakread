@@ -1,12 +1,7 @@
 - rewrite app to work with new schema
-    finish app.subscriptions (mutations)
-    app.subscriptions.view
-    model.subscriptions
     sync rss feeds
-
-
-- fetch rss feed contents periodically
-- finish :app.subscription.view/page
+    model.subscriptions
+    app.subscriptions.view
 
 - email subscriptions
 - favorites
@@ -15,6 +10,7 @@
 - for you
 - home page/auth
 - email digests
-- ads
-- premium plan
+- pay-what-you-want
 - admin page
+- generative testing for get routes + resolvers
+- e2e tests

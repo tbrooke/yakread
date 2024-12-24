@@ -14,73 +14,71 @@
             [com.yakread.lib.test :as lib.test]))
 
 (def username-route-examples
-  (for [opts [{:doc         "username taken"
-               :handler-id  :start
-               :db-contents #{{:xt/id 1
-                               :user/email-username* "abc"}}
-               :ctx         {:params {:username "abc"}}}
-              {:doc         "username taken"
-               :handler-id  :start
-               :db-contents #{{:xt/id 1
-                               :conn.email/username "abc"}}
-               :ctx         {:params {:username "abc"}}}
-              {:doc         "username not taken"
-               :handler-id  :start
-               :db-contents #{}
-               :ctx         {:params {:username "abc"}}}
-              {:doc        "empty username"
-               :handler-id :start}
+  (lib.test/route-examples
+   [:app.subscriptions.add/username :post :start]
+   [{:doc         "already has a username"
+     :db-contents #{{:xt/id 1
+                     :user/email-username "abc"}}
+     :ctx         {:session {:uid 1}
+                   :params {:username "123"}}}
+    {:doc         "invalid username"
+     :db-contents #{}
+     :ctx         {:session {:uid 1}
+                   :params {:username "admin"}}}
+    {:doc         "username taken"
+     :db-contents #{{:xt/id 2
+                     :user/email-username "abc"}}
+     :ctx         {:session {:uid 1}
+                   :params {:username "abc"}}}
+    {:doc         "username not taken"
+     :db-contents #{}
+     :ctx         {:session {:uid 1}
+                   :params {:username "abc"}}}]
 
-              {:doc        "early return"
-               :handler-id :save-username
-               :ctx        {:session {:uid 1}
-                            ::sut/username "abc"
-                            :biff.pipe.pathom/output {:user/current
-                                                      {:user/email-username
-                                                       "hello"}}}}
-              {:doc        "transact"
-               :handler-id :save-username
-               :ctx        {:session {:uid 1}
-                            ::sut/username "abc"}}
-
-              {:doc        "fail"
-               :handler-id :end
-               :ctx        {::sut/username "hello"
-                            :biff.pipe/exception true}}
-              {:doc        "succeed"
-               :handler-id :end
-               :ctx        {::sut/username "hello"}}]]
-    (merge {:route-name :app.subscriptions.add/username}
-           opts)))
+   [:app.subscriptions.add/username :post :end]
+   [{:doc        "fail"
+     :handler-id :end
+     :ctx        {::sut/username "hello"
+                  :biff.pipe/exception true}}
+    {:doc        "succeed"
+     :handler-id :end
+     :ctx        {::sut/username "hello"}}]))
 
 (def rss-route-examples
-  (concat [{:doc        "fix the url"
-            :route-name :app.subscriptions.add/rss
-            :method     :post
-            :handler-id :start
-            :ctx        {:params {:url "example.com"}}}]
-          (for [fixture [:example-com :obryant-dev :obryant-dev-feed-xml]]
-            {:route-name :app.subscriptions.add/rss
-             :method     :post
-             :handler-id :add-urls
-             :ctx        {:session {:uid 1}}
-             :fixture    fixture})))
+  (lib.test/route-examples
+   [:app.subscriptions.add/rss :post :start]
+   [{:doc "fix the url"
+     :ctx {:params {:url "example.com"}}}]
+
+   [:app.subscriptions.add/rss :post :add-urls]
+   [{:doc     "invalid url"
+     :fixture :example-com
+     :ctx     {:session {:uid 1}}}
+    {:doc     "auto-discovery"
+     :fixture :obryant-dev
+     :ctx     {:session {:uid 1}}}
+    {:doc     "direct url"
+     :fixture :obryant-dev-feed-xml
+     :ctx     {:session {:uid 1}}}
+    {:doc         "don't create feed doc if someone already subscribes"
+     :fixture     :obryant-dev
+     :ctx         {:session {:uid 1}}
+     :db-contents #{{:xt/id 2
+                     :feed/url "https://obryant.dev/feed.xml"}}}]))
 
 (def opml-route-examples
-  [{:doc "slurp the uploaded file"
-    :route-name :app.subscriptions.add/opml
-    :handler-id :start
-    :ctx {:params {:opml {:tempfile "/tmp/some-file"}}}}
-   {:doc "extract and save the opml urls"
-    :route-name :app.subscriptions.add/opml
-    :handler-id :end
-    :fixture :sample-opml
-    :ctx {:session {:uid 1}}}
-   {:doc "no urls found, show an error"
-    :route-name :app.subscriptions.add/opml
-    :handler-id :end
-    :ctx {:session {:uid 1}
-          :biff.pipe.slurp/output ""}}])
+  (lib.test/route-examples
+   [:app.subscriptions.add/opml :post :start]
+   [{:doc "slurp the uploaded file"
+     :ctx {:params {:opml {:tempfile "/tmp/some-file"}}}}]
+
+   [:app.subscriptions.add/opml :post :end]
+   [{:doc     "extract and save the opml urls"
+     :fixture :sample-opml
+     :ctx     {:session {:uid 1}}}
+    {:doc "no urls found, show an error"
+     :ctx {:session {:uid 1}
+           :biff.pipe.slurp/output ""}}]))
 
 (defn get-context []
   (let [current-ns (lib.test/current-ns)
@@ -95,7 +93,7 @@
                                    opml-route-examples)}))
 
 (deftest examples
-  #_(lib.test/check-examples! (get-context)))
+  (lib.test/check-examples! (get-context)))
 
 (comment
   ;; Generate fixtures

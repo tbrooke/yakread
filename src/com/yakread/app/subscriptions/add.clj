@@ -6,7 +6,8 @@
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.rss :as lib.rss]
             [com.yakread.lib.ui :as lib.ui]
-            [com.yakread.lib.user :as lib.user]))
+            [com.yakread.lib.user :as lib.user]
+            [xtdb.api :as xt]))
 
 (def page-route
   ["/dev/subscriptions/add"
@@ -121,12 +122,12 @@
              (fn [{:keys [biff/db session params]}]
                (let [username (lib.user/normalize-email-username (:username params))]
                  (cond
-                   (or (empty? username)
-                       (lib.user/email-username-taken? db username))
-                   (response false (:username params))
-
-                   (biff/lookup db :user/email-username username)
+                   (:user/email-username (xt/entity db (:uid session)))
                    (response true nil)
+
+                   (or (empty? username)
+                       (biff/lookup-id db :user/email-username username))
+                   (response false (:username params))
 
                    :else
                    {:biff.pipe/next     [:biff.pipe/tx :end]
@@ -158,7 +159,7 @@
                         [{:db/doc-type :feed
                           :db/op       :create
                           :xt/id       feed-id
-                          :feed/url    url}]))]
+                          :feed/url    [:db/unique url]}]))]
       doc)))
 
 (def rss-route
@@ -166,15 +167,15 @@
    {:name :app.subscriptions.add/rss
     :post (lib.pipe/make
            :start
-           (fn [{:keys [params]}]
+           (fn [{{:keys [url]} :params}]
              {:biff.pipe/next       [:biff.pipe/http :add-urls]
-              :biff.pipe.http/input {:url     (lib.rss/fix-url (:url params))
+              :biff.pipe.http/input {:url     (lib.rss/fix-url url)
                                      :method  :get
                                      :headers {"User-Agent" "https://yakread.com/"}}
               :biff.pipe/catch      :biff.pipe/http})
 
            :add-urls
-           (fn [{:keys [biff/db session params biff.pipe.http/output]}]
+           (fn [{:keys [biff/db session biff.pipe.http/output]}]
              (let [feed-urls (some->> output
                                       lib.rss/parse-urls
                                       (mapv :url)
@@ -184,7 +185,7 @@
                  {:status             303
                   :biff.router/name   :app.subscriptions.add/page
                   :biff.router/params {:error "invalid-rss-feed"
-                                       :url (:url params)}}
+                                       :url (:url output)}}
                  {:biff.pipe/next     [:biff.pipe/tx]
                   :biff.pipe.tx/input (subscribe-feeds-tx db (:uid session) feed-urls)
                   :biff.pipe.tx/retry :add-urls ; TODO implement
