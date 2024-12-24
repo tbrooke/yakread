@@ -1,5 +1,6 @@
 (ns com.yakread
   (:require [cld.core :as cld]
+            [clojure.data.generators :as gen]
             [clojure.string :as str]
             [clojure.test :as test]
             [clojure.tools.logging :as log]
@@ -28,14 +29,17 @@
             [com.yakread.model.subscription :as model.sub]
             [com.yakread.model.user :as model.user]
             [com.yakread.model.schema :as model.schema]
+            [com.yakread.work.subscription :as work.sub]
             [com.yakread.util.biff-staging :as biffs]
             [malli.core :as malli]
             [malli.experimental.time :as malli.t]
             [malli.util :as malli.u]
             [malli.registry :as malr]
             [nrepl.cmdline :as nrepl-cmd]
-            [reitit.ring :as reitit-ring])
+            [reitit.ring :as reitit-ring]
+            [time-literals.read-write :as time-literals])
   (:gen-class))
+
 
 (def modules
   [app.admin/module
@@ -53,6 +57,7 @@
    model.sub/module
    model.user/module
    model.schema/module
+   work.sub/module
    (app.auth/module
     #:biff.auth{:app-path "/"
                 :email-validator app.auth/email-valid?
@@ -112,7 +117,7 @@
                 :biff.pipe/global-handlers lib.pipeline/global-handlers
                 ;:biff/db (:biff/db snapshots)
                 ;:biff.index/snapshots snapshots
-                })
+                :biff/now (java.time.Instant/now)})
         (pcp/with-plan-cache (atom {}))
         (pcr/with-resolver-cache (atom {})))))
 
@@ -159,6 +164,8 @@
 
 (defn -main [& args]
   (cld/default-init!)
+  (time-literals/print-time-literals-clj!)
+  (alter-var-root #'gen/*rnd* (constantly (java.util.Random. (inst-ms (java.time.Instant/now)))))
   (let [{:keys [biff.nrepl/args]} (start)]
     (apply nrepl-cmd/-main args)))
 

@@ -18,23 +18,6 @@
             [clojure.tools.logging :as log])
   (:import [java.time Instant]))
 
-(def schema
-  {:biff.attr/qualified-key qualified-keyword?
-   :biff.attr/schema        any?
-   :biff.attr/input         vector?
-   :biff.attr/resolver      ifn?
-   :biff.attr/rum           vector?
-   :biff.attr/ref           [:map [:xt/id any?]]
-   :biff/attr               map?
-   :biff.route/path         :string
-   :biff.index/get-doc      fn?
-   :biff.index/doc          :biff.attr/ref
-   :biff.index/op           [:enum ::xt/put ::xt/delete]
-   :biff.index/args         [:vector [:map :biff.index/doc :biff.index/op]]
-   :ui.page/attr            map?
-   :ui.page/title           :string
-   :ui.page/icon            :string})
-
 (defresolver sub-card [{:keys [biff/router]}
                        {:sub/keys [id title unread published-at pinned-at]}]
   #::pco{:input [:sub/id

@@ -49,6 +49,8 @@
                 [:item/ingested-at    :time/instant]
                 [:item/title        ? ::string]
                 [:item/url          ? ::string]
+                ;; If the content is <= 1000 chars, put it in XT, otherwise, put it in S3
+                [:item/content      ? ::string]
                 [:item/content-key  ? :uuid]
                 [:item/published-at ? :time/instant]
                 [:item/excerpt      ? ::string]
@@ -82,7 +84,7 @@
           [:feed/image-url     ? ::string]
           [:feed/etag          ? ::string]
           [:feed/last-modified ? ::string]
-          [:feed/sync-failed   ? :boolean]
+          [:feed/failed-syncs  ? :int]
           ;; Only :approved feeds can be recommended to other users in For You.
           [:feed/moderation    ? [:enum :approved :blocked]]]
 

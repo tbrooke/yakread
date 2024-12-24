@@ -5,7 +5,8 @@
             [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.route :as lib.route]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [remus]))
 
 ;; TODO include db basis in exception data
 (defn make [& {:as id->handler}]
@@ -60,4 +61,20 @@
    :biff.pipe/slurp (fn [{:keys [biff.pipe.slurp/input] :as ctx}]
                       (assoc ctx :biff.pipe.slurp/output (slurp input)))
    :biff.pipe/render (fn [{:keys [biff/router biff.pipe.render/route-name] :as ctx}]
-                       (lib.route/call router route-name :get ctx))})
+                       (lib.route/call router route-name :get ctx))
+   :biff.pipe/queue (fn [{:biff.pipe.queue/keys [id job wait-for-result] :as ctx}]
+                      (assoc ctx
+                             :biff.pipe.queue/output
+                             (cond-> ((if wait-for-result
+                                        biff/submit-job-for-result
+                                        biff/submit-job)
+                                      ctx
+                                      id
+                                      job)
+                               wait-for-result deref)))
+   :com.yakread.pipe/remus (fn [{:com.yakread.pipe.remus/keys [url opts] :as ctx}]
+                             (assoc ctx
+                                    :com.yakread.pipe.remus/output
+                                    (update (remus/parse-url url opts) :response dissoc :http-client :body)))
+   :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
+                   (assoc ctx :biff.pipe.s3/output (biff/s3-request ctx input)))})

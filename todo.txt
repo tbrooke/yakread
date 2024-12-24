@@ -1,8 +1,12 @@
 - rewrite app to work with new schema
     sync rss feeds
+      more test cases (e.g. for existing-{titles,guids})
+      trigger job manually after user subscribes to a feed
+      remove/replace stubs in model.subscriptions, test rss syncing manually
     model.subscriptions
     app.subscriptions.view
 
+- include random seed in exception data for reproducibility
 - email subscriptions
 - favorites
 - read later
@@ -14,3 +18,10 @@
 - admin page
 - generative testing for get routes + resolvers
 - e2e tests
+
+
+video topics:
+- code organization (model, app, lib, work)
+- malli schema introspection
+- lib.pipe/make
+- lib.pathom/handler

@@ -72,18 +72,19 @@
 
   (with-context
     (fn [{:keys [biff/db]}]
-      (xt/pull db '[*] #uuid "443307f5-e71a-4595-ac87-b04239ef5c7f")
-      #_(q db
-           '{:find (pull url [{:feed/_url [*]}])
-             :in [url]
-             ;:where [[sub :sub/user user]]
-
-             }
-           "http://timothypratley.blogspot.com/feeds/posts/default"
-           ;#uuid "394a63c2-9191-4575-98d1-6b2fed04a7fc"
-           )
+      (q db
+         {:find '(pull feed [*])
+          :in '[t0]
+          :where ['[feed :feed/url]
+                  [(list 'get-attr 'feed :feed/synced-at (java.time.Instant/ofEpochMilli 0)) '[synced-at ...]]
+                  '[(< synced-at t0)]]}
+         (.minusSeconds (java.time.Instant/now) (* 60 60 4)))
+      
 
       ))
+
+(java.time.Instant/parse "1970-01-01T00:00:00Z")
+
 
   (com.yakread.app.subscriptions.add-test/get-current-ns)
   (com.yakread.lib.test/current-ns)

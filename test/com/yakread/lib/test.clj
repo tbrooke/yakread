@@ -9,6 +9,7 @@
             [com.yakread :as main]
             [com.yakread.lib.route :as lib.route]
             [lambdaisland.uri :as uri]
+            [time-literals.read-write :as time-literals]
             [xtdb.api :as xt]))
 
 (defrecord BiffSystem []
@@ -39,9 +40,14 @@
 (defn- actual [{:keys [biff.test/fixtures
                        biff.test/empty-db
                        biff/router]}
-               {:keys [route-name method handler-id ctx fixture db-contents]
-                :or {method :post}}]
-  (let [handler (lib.route/handler router route-name method)
+               {:keys [route-name fn-sym method handler-id ctx fixture db-contents]
+                :or {method :post}
+                :as example}]
+  (let [handler (cond
+                  route-name (lib.route/handler router route-name method)
+                  fn-sym (requiring-resolve fn-sym)
+                  :else (throw (ex-info "You must include either :route-name or :fn-sym in the test case"
+                                        example)))
         ctx (merge ctx (some-> fixture fixtures))]
     (if (not-empty db-contents)
       (with-open [node (xt/start-node {})]
@@ -63,10 +69,13 @@
 (defn- fixtures-path [current-ns]
   (str (dirname current-ns) "fixtures.edn"))
 
+(defn- read-string* [s]
+  (edn/read-string {:readers time-literals/tags} s))
+
 (defn read-fixtures! [current-ns]
   (-> (fixtures-path current-ns)
       slurp
-      edn/read-string))
+      read-string*))
 
 (defn write-fixtures! [current-ns fixtures]
   (with-open [o (io/writer (fixtures-path current-ns))]
@@ -75,7 +84,7 @@
 (defn read-examples! [current-ns]
   (let [file (io/file (examples-path current-ns))]
     (when (.exists file)
-      (edn/read-string (slurp file)))))
+      (read-string* (slurp file)))))
 
 (defn write-examples! [{:biff.test/keys [current-ns examples] :as ctx}]
   (with-open [node (xt/start-node {})]
@@ -117,5 +126,13 @@
         example examples]
     (merge {:route-name route-name
             :method method
+            :handler-id handler-id}
+           example)))
+
+(defn fn-examples [& {:as examples}]
+  (for [[[fn-var handler-id] examples] examples
+        :let [m (meta fn-var)]
+        example examples]
+    (merge {:fn-sym (symbol (str (:ns m)) (str (:name m)))
             :handler-id handler-id}
            example)))
