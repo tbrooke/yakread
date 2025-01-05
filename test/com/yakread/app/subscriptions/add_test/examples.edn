@@ -99,14 +99,21 @@
  :fixture :obryant-dev,
  :ctx {:session {:uid 1}},
  :expected
- {:biff.pipe/next [:biff.pipe/tx],
+ {:biff.pipe/next
+  [:biff.pipe/tx
+   {:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :work.subscription/sync-feed,
+    :biff.pipe.queue/job
+    #:feed{:id #uuid "bb20b45f-d4d9-5138-3d93-cb799b3970be"}}],
   :biff.pipe.tx/input
   ({:db/doc-type :sub/feed,
-    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url0},
+    :db.op/upsert
+    {:sub/user 1,
+     :sub.feed/feed #uuid "bb20b45f-d4d9-5138-3d93-cb799b3970be"},
     :sub/created-at [:db/default :db/now]}
    {:db/doc-type :feed,
     :db/op :create,
-    :xt/id :db.id/url0,
+    :xt/id #uuid "bb20b45f-d4d9-5138-3d93-cb799b3970be",
     :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
@@ -120,14 +127,21 @@
  :fixture :obryant-dev-feed-xml,
  :ctx {:session {:uid 1}},
  :expected
- {:biff.pipe/next [:biff.pipe/tx],
+ {:biff.pipe/next
+  [:biff.pipe/tx
+   {:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :work.subscription/sync-feed,
+    :biff.pipe.queue/job
+    #:feed{:id #uuid "a32dc9f6-4f1d-f03a-8ce9-70b71df42503"}}],
   :biff.pipe.tx/input
   ({:db/doc-type :sub/feed,
-    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url0},
+    :db.op/upsert
+    {:sub/user 1,
+     :sub.feed/feed #uuid "a32dc9f6-4f1d-f03a-8ce9-70b71df42503"},
     :sub/created-at [:db/default :db/now]}
    {:db/doc-type :feed,
     :db/op :create,
-    :xt/id :db.id/url0,
+    :xt/id #uuid "a32dc9f6-4f1d-f03a-8ce9-70b71df42503",
     :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
@@ -168,30 +182,49 @@
  :fixture :sample-opml,
  :ctx {:session {:uid 1}},
  :expected
- {:biff.pipe/next [:biff.pipe/tx],
+ {:biff.pipe/next
+  [:biff.pipe/tx
+   {:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :work.subscription/sync-feed,
+    :biff.pipe.queue/job
+    #:feed{:id #uuid "629bc222-9cef-e94d-fc1e-932efb9a0f58"}}
+   {:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :work.subscription/sync-feed,
+    :biff.pipe.queue/job
+    #:feed{:id #uuid "e1121b08-05e8-b107-f0f5-b4f22d0cd0f1"}}
+   {:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :work.subscription/sync-feed,
+    :biff.pipe.queue/job
+    #:feed{:id #uuid "4663620f-501c-9270-20ff-67585e33a8f6"}}],
   :biff.pipe.tx/input
   ({:db/doc-type :sub/feed,
-    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url0},
+    :db.op/upsert
+    {:sub/user 1,
+     :sub.feed/feed #uuid "629bc222-9cef-e94d-fc1e-932efb9a0f58"},
     :sub/created-at [:db/default :db/now]}
    {:db/doc-type :feed,
     :db/op :create,
-    :xt/id :db.id/url0,
+    :xt/id #uuid "629bc222-9cef-e94d-fc1e-932efb9a0f58",
     :feed/url [:db/unique "https://code.thheller.com/feed.xml"]}
    {:db/doc-type :sub/feed,
-    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url1},
+    :db.op/upsert
+    {:sub/user 1,
+     :sub.feed/feed #uuid "e1121b08-05e8-b107-f0f5-b4f22d0cd0f1"},
     :sub/created-at [:db/default :db/now]}
    {:db/doc-type :feed,
     :db/op :create,
-    :xt/id :db.id/url1,
+    :xt/id #uuid "e1121b08-05e8-b107-f0f5-b4f22d0cd0f1",
     :feed/url
     [:db/unique
      "http://timothypratley.blogspot.com/feeds/posts/default"]}
    {:db/doc-type :sub/feed,
-    :db.op/upsert {:sub/user 1, :sub.feed/feed :db.id/url2},
+    :db.op/upsert
+    {:sub/user 1,
+     :sub.feed/feed #uuid "4663620f-501c-9270-20ff-67585e33a8f6"},
     :sub/created-at [:db/default :db/now]}
    {:db/doc-type :feed,
     :db/op :create,
-    :xt/id :db.id/url2,
+    :xt/id #uuid "4663620f-501c-9270-20ff-67585e33a8f6",
     :feed/url
     [:db/unique "https://www.clojuriststogether.org/index.xml"]}),
   :biff.pipe.tx/retry :end,

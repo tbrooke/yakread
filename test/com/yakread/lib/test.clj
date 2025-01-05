@@ -1,5 +1,6 @@
 (ns com.yakread.lib.test
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.data.generators :as gen]
+            [clojure.tools.logging :as log]
             [clojure.set :as set]
             [clojure.test :as test]
             [clojure.string :as str]
@@ -87,36 +88,38 @@
       (read-string* (slurp file)))))
 
 (defn write-examples! [{:biff.test/keys [current-ns examples] :as ctx}]
-  (with-open [node (xt/start-node {})]
-    (let [ctx (assoc ctx :biff.test/empty-db (xt/db node))
-          examples (mapv #(assoc % :expected (actual ctx %)) examples)
-          file (io/file (examples-path current-ns))]
-      (io/make-parents file)
-      (with-open [o (io/writer file)]
-        (binding [*out* o]
-          (println "[")
-          (doseq [example examples]
-            (pprint example)
-            (println))
-          (println "]"))))))
+  (binding [gen/*rnd* (java.util.Random. 0)]
+    (with-open [node (xt/start-node {})]
+      (let [ctx (assoc ctx :biff.test/empty-db (xt/db node))
+            examples (mapv #(assoc % :expected (actual ctx %)) examples)
+            file (io/file (examples-path current-ns))]
+        (io/make-parents file)
+        (with-open [o (io/writer file)]
+          (binding [*out* o]
+            (println "[")
+            (doseq [example examples]
+              (pprint example)
+              (println))
+            (println "]")))))))
 
 (defn check-examples! [{:biff.test/keys [examples current-ns] :as ctx}]
-  (let [written-examples (read-examples! current-ns)]
-    (if (not= examples (mapv #(dissoc % :expected) written-examples))
-      (test/report {:type :fail
-                    :message (str "Example test cases for "
-                                  current-ns
-                                  " have changed. Please call write-examples!")})
-      (with-open [node (xt/start-node {})]
-        (let [ctx (assoc ctx :biff.test/empty-db (xt/db node))]
-          (doseq [[i {:keys [doc expected] :as example}] (map-indexed vector written-examples)
-                  :let [_actual (actual ctx example)]]
-            (test/report {:type (if (= expected _actual) :pass :fail)
-                          :expected expected
-                          :actual _actual
-                          :message (str "Example "
-                                        (pr-str (dissoc example :expected))
-                                        " failed.")})))))))
+  (binding [gen/*rnd* (java.util.Random. 0)]
+    (let [written-examples (read-examples! current-ns)]
+      (if (not= examples (mapv #(dissoc % :expected) written-examples))
+        (test/report {:type :fail
+                      :message (str "Example test cases for "
+                                    current-ns
+                                    " have changed. Please call write-examples!")})
+        (with-open [node (xt/start-node {})]
+          (let [ctx (assoc ctx :biff.test/empty-db (xt/db node))]
+            (doseq [[i {:keys [doc expected] :as example}] (map-indexed vector written-examples)
+                    :let [_actual (actual ctx example)]]
+              (test/report {:type (if (= expected _actual) :pass :fail)
+                            :expected expected
+                            :actual _actual
+                            :message (str "Example "
+                                          (pr-str (dissoc example :expected))
+                                          " failed.")}))))))))
 
 (defmacro current-ns []
   *ns*)

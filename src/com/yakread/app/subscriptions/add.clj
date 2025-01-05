@@ -1,5 +1,6 @@
 (ns com.yakread.app.subscriptions.add
-  (:require [com.biffweb :as biff :refer [q <<-]]
+  (:require [clojure.data.generators :as gen]
+            [com.biffweb :as biff :refer [q <<-]]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
             [com.yakread.lib.pipeline :as lib.pipe]
@@ -150,7 +151,7 @@
                               feed-urls))
         new-urls  (remove url->feed feed-urls)]
     (for [[i url] (map-indexed vector feed-urls)
-          :let [feed-id (get url->feed url (keyword "db.id" (str "url" i)))]
+          :let [feed-id (get url->feed url (gen/uuid))]
           doc (concat [{:db/doc-type    :sub/feed
                         :db.op/upsert   {:sub/user user-id
                                          :sub.feed/feed feed-id}
@@ -161,6 +162,13 @@
                           :xt/id       feed-id
                           :feed/url    [:db/unique url]}]))]
       doc)))
+
+(defn- sync-rss-jobs [tx]
+  (for [{:keys [feed/url xt/id]} tx
+        :when url]
+    {:biff.pipe/current :biff.pipe/queue
+     :biff.pipe.queue/id :work.subscription/sync-feed
+     :biff.pipe.queue/job {:feed/id id}}))
 
 (def rss-route
   ["/dev/subscriptions/add/rss"
@@ -180,14 +188,15 @@
                                       lib.rss/parse-urls
                                       (mapv :url)
                                       (take 20)
-                                      vec)]
+                                      vec)
+                   tx (subscribe-feeds-tx db (:uid session) feed-urls)]
                (if (empty? feed-urls)
                  {:status             303
                   :biff.router/name   :app.subscriptions.add/page
                   :biff.router/params {:error "invalid-rss-feed"
                                        :url (:url output)}}
-                 {:biff.pipe/next     [:biff.pipe/tx]
-                  :biff.pipe.tx/input (subscribe-feeds-tx db (:uid session) feed-urls)
+                 {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx))
+                  :biff.pipe.tx/input tx
                   :biff.pipe.tx/retry :add-urls ; TODO implement
                   :status             303
                   :biff.router/name   :app.subscriptions.add/page
@@ -205,12 +214,13 @@
            :end
            (fn [{:keys [biff/db session biff.pipe.slurp/output]}]
              (if-some [urls (not-empty (lib.rss/extract-opml-urls output))]
-               {:biff.pipe/next     [:biff.pipe/tx]
-                :biff.pipe.tx/input (subscribe-feeds-tx db (:uid session) urls)
-                :biff.pipe.tx/retry :end ; TODO implement
-                :status             303
-                :biff.router/name   :app.subscriptions.add/page
-                :biff.router/params {:added-feeds (count urls)}}
+               (let [tx (subscribe-feeds-tx db (:uid session) urls)]
+                 {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx))
+                  :biff.pipe.tx/input tx
+                  :biff.pipe.tx/retry :end ; TODO implement
+                  :status             303
+                  :biff.router/name   :app.subscriptions.add/page
+                  :biff.router/params {:added-feeds (count urls)}})
                {:status             303
                 :biff.router/name   :app.subscriptions.add/page
                 :biff.router/params {:error "invalid-opml-file"}})))}])

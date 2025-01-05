@@ -58,8 +58,7 @@
      :biff.test/examples   sync-all-feeds-examples}))
 
 (deftest examples
-  (binding [gen/*rnd* (java.util.Random. 0)]
-    (lib.test/check-examples! (get-context))))
+  (lib.test/check-examples! (get-context)))
 
 (comment
   ;; Generate fixtures
@@ -70,6 +69,5 @@
      (lib.test/current-ns)
      {:obryant-dev-feed-xml (remus* "https://obryant.dev/feed.xml")}))
 
-  (binding [gen/*rnd* (java.util.Random. 0)]
-    (lib.test/write-examples! (get-context)))
+  (lib.test/write-examples! (get-context))
   ,)

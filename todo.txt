@@ -1,8 +1,6 @@
 - rewrite app to work with new schema
     sync rss feeds
-      more test cases (e.g. for existing-{titles,guids})
-      trigger job manually after user subscribes to a feed
-      remove/replace stubs in model.subscriptions, test rss syncing manually
+      remove/replace stubs in model.subscriptions
     model.subscriptions
     app.subscriptions.view
 

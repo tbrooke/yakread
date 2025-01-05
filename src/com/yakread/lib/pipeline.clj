@@ -8,7 +8,9 @@
             [clojure.tools.logging :as log]
             [remus]))
 
-;; TODO include db basis in exception data
+;; TODO
+;; - include db basis in exception data
+;; - include seed value for clojure.data.generators
 (defn make [& {:as id->handler}]
   (fn execute
     ([ctx handler-id]
