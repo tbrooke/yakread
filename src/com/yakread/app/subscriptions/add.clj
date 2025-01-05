@@ -163,12 +163,12 @@
                           :feed/url    [:db/unique url]}]))]
       doc)))
 
-(defn- sync-rss-jobs [tx]
+(defn- sync-rss-jobs [tx priority]
   (for [{:keys [feed/url xt/id]} tx
         :when url]
     {:biff.pipe/current :biff.pipe/queue
      :biff.pipe.queue/id :work.subscription/sync-feed
-     :biff.pipe.queue/job {:feed/id id}}))
+     :biff.pipe.queue/job {:feed/id id :biff/priority priority}}))
 
 (def rss-route
   ["/dev/subscriptions/add/rss"
@@ -195,7 +195,7 @@
                   :biff.router/name   :app.subscriptions.add/page
                   :biff.router/params {:error "invalid-rss-feed"
                                        :url (:url output)}}
-                 {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx))
+                 {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx 0))
                   :biff.pipe.tx/input tx
                   :biff.pipe.tx/retry :add-urls ; TODO implement
                   :status             303
@@ -215,7 +215,7 @@
            (fn [{:keys [biff/db session biff.pipe.slurp/output]}]
              (if-some [urls (not-empty (lib.rss/extract-opml-urls output))]
                (let [tx (subscribe-feeds-tx db (:uid session) urls)]
-                 {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx))
+                 {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx 5))
                   :biff.pipe.tx/input tx
                   :biff.pipe.tx/retry :end ; TODO implement
                   :status             303
