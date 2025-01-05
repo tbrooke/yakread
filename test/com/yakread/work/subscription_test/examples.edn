@@ -15,16 +15,10 @@
  #:biff.pipe{:next
              ({:biff.pipe/current :biff.pipe/queue,
                :biff.pipe.queue/id :work.subscription/sync-feed,
-               :biff.pipe.queue/job
-               #:feed{:id {:feed/url "1", :xt/id 1}}}
+               :biff.pipe.queue/job #:feed{:id 3}}
               {:biff.pipe/current :biff.pipe/queue,
                :biff.pipe.queue/id :work.subscription/sync-feed,
-               :biff.pipe.queue/job
-               #:feed{:id
-                      {:feed/url "3",
-                       :feed/synced-at
-                       #time/instant "2019-12-31T00:00:00Z",
-                       :xt/id 3}}})}}
+               :biff.pipe.queue/job #:feed{:id 1}})}}
 
 {:fn-sym com.yakread.work.subscription/sync-feed!,
  :handler-id :start,
@@ -135,7 +129,7 @@
     :db/doc-type :feed}
    {:item/excerpt
     "One of my main regrets in life is getting a bachelor's degree. I've sometimes wondered if I would've had a better experience if I went to the University of Washington instead of BYU, but honestly I think my beef is more with formal education in general. I was homeschooled and got used to having a lot of flexibility in what I spent my time on, and being buried in coursework all the time just sucks in comparison. Especially when \"coursework\" is just a euphemism for \"fake work.\" I've often thought…",
-    :item/published-at #inst "2024-08-31T13:00:00.000-00:00",
+    :item/published-at #time/instant "2024-08-31T13:00:00Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/impressions-sudbury/",
     :item/length 6257,
@@ -150,7 +144,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "It's been almost two years since I made the first release of Platypub, my own little blogging/newsletter platform. I wanted something that gave me 100% control over the design and structure: \"themes\" in Platypub are actual programs, not just collections of template files. I also wanted Platypub to be accessible to anyone, so I built it as a web app that could serve many users (as opposed to WordPress or Ghost, where each user has to have their own installation). That last part turned out to be …",
-    :item/published-at #inst "2024-04-17T17:20:07.000-00:00",
+    :item/published-at #time/instant "2024-04-17T17:20:07Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/platypub-back-to-square-one/",
     :item/length 7492,
@@ -166,7 +160,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my sporadic newsletter about improving the information environment... and whatever else I happen to be thinking about. I'm Jacob O'Bryant. Hey! It's been a while. My weekly writing habit didn't survive my getting a job; on the bright side, my bank account has been faring much better. I've decided to start drafting posts on my phone while my kids take their bath in the evening. So my tools-for-online-speech work has been on hold. It turns out I have time for exactly one side project, …",
-    :item/published-at #inst "2024-01-21T00:15:26.000-00:00",
+    :item/published-at #time/instant "2024-01-21T00:15:26Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/i-am-still-alive/",
     :item/length 3966,
@@ -181,7 +175,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my (weekly? monthly? whenever-I-feel-like-it-ly?) newsletter about improving the information environment. I'm Jacob O'Bryant. For a few months back in '22, I was running a Discourse forum as a sidekick to this newsletter. I ended up switching over to Discord because I discovered they had released forum channels, which gave me the structure I liked from Discourse without feeling quite as heavyweight. So I backed up my Discourse instance and shut it down. I have now brought the old for…",
-    :item/published-at #inst "2023-09-07T05:35:16.000-00:00",
+    :item/published-at #time/instant "2023-09-07T05:35:16Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/resurrecting-discourse/",
     :item/length 7926,
@@ -196,7 +190,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my weekly newsletter about practical ways to improve the information environment stuff. I'm Jacob O'Bryant. Well, it finally happened: I have escaped from entrepreneurship. It was a fun 4.5 years, for some definition of fun. I successfully tricked the fine folks over at Tyba into hiring me as a software engineer, and from now on I'll be spending my weekdays saving polar bears/helping renewable power plant operators be more efficient. If any of you are planning to start up a solar pla…",
-    :item/published-at #inst "2023-07-29T00:19:40.000-00:00",
+    :item/published-at #time/instant "2023-07-29T00:19:40Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/i-got-a-job/",
     :item/length 4252,
@@ -211,7 +205,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Lots of exciting stuff has been happening lately: I pulled a muscle in my back on Saturday and took two days to recover. Everyone in my household got sick over the course of a week or so. I got a second job offer and have entered the negotiation phase as I pick which company to join. Apart from some other important work I've been doing, I did at least manage to make a new landing page for Yakread: I am for I believe the third time giving Mastodon another shot. Last time I made a single post ann…",
-    :item/published-at #inst "2023-07-17T20:03:35.000-00:00",
+    :item/published-at #time/instant "2023-07-17T20:03:35Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/experimenting-with-mastodon/",
     :item/length 3627,
@@ -227,7 +221,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my weekly newsletter about practical ways to improve the information environment. I'm Jacob O'Bryant. I mentioned a month ago that I decided to finally get a job and do my tools-for-online-speech work mostly in the form of open-source. (If you missed that—surprise!) I have a compelling offer from one company (a 6-person startup in the renewable energy space) and I'm in the middle of interviews for two other larger startups. I'm hoping to have a contract signed within a couple weeks. …",
-    :item/published-at #inst "2023-07-01T22:31:29.000-00:00",
+    :item/published-at #time/instant "2023-07-01T22:31:29Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/a-few-planned-yakread-updates/",
     :item/length 3712,
@@ -243,7 +237,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my weekly newsletter about practical ways to improve the information environment, focused on my own work in that space. I'm Jacob O'Bryant. A few days ago I read an article that caused me to question one of my fundamental assumptions: what if discussion apps are more important than reading apps? The article was this manifesto from the Initiative for Digital Public Infrastructure (iDPI). In a nutshell their recommendation is that: There should be more emphasis on small community/discu…",
-    :item/published-at #inst "2023-06-24T19:17:34.000-00:00",
+    :item/published-at #time/instant "2023-06-24T19:17:34Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/discussion-reading/",
     :item/length 3851,
@@ -258,7 +252,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my weekly newsletter about practical ways to improve our information environment, focused on my own work in that space. I'm Jacob O'Bryant. So last time I mentioned that I was starting up a TFOS subreddit. However, recent events have made me lose confidence in Reddit's stability. In addition, even though Reddit technically does have support for synchronous chat, realistically I don't think anyone would ever use it, myself included. In contrast, Discord remains a great place for both …",
-    :item/published-at #inst "2023-06-18T06:36:24.000-00:00",
+    :item/published-at #time/instant "2023-06-18T06:36:24Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/reneging-on-reddit/",
     :item/length 2950,
@@ -273,7 +267,7 @@
     :db/doc-type :item/feed}
    {:item/excerpt
     "Welcome to my weekly newsletter about practical steps towards a better Internet, focused on my own work in that space. I'm Jacob O'Bryant. It's been a slow week for me in terms of my software projects because I was selected for federal jury service on Wednesday 🙂. We just finished day 4; looks like it'll continue until at least Thursday. Can't say much else until after the trial is over. I've had a chance to walk around downtown Seattle a bit—if any of you are nearby and want to get lunch some…",
-    :item/published-at #inst "2023-06-05T23:47:23.000-00:00",
+    :item/published-at #time/instant "2023-06-05T23:47:23Z",
     :item/paywalled false,
     :item/url "https://obryant.dev/p/hello-seattle/",
     :item/length 2384,
@@ -286,5 +280,215 @@
     :item/author-url "https://obryant.dev",
     :item/ingested-at :db/now,
     :db/doc-type :item/feed})}}
+
+{:fn-sym com.yakread.work.subscription/sync-feed!,
+ :handler-id :end,
+ :doc "skip existing items",
+ :db-contents
+ #{{:xt/id 3,
+    :item.feed/feed "some-feed",
+    :item.feed/guid
+    "https://obryant.dev/p/platypub-back-to-square-one/"}
+   {:xt/id 2,
+    :item.feed/feed "some-feed",
+    :item/title "Impressions on Sudbury Schooling"}},
+ :fixture :obryant-dev-feed-xml,
+ :ctx #:biff{:job #:feed{:id "some-feed"}},
+ :expected
+ {:biff.pipe/next
+  ({:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "d13a61a0-0347-4bdc-d6c1-84af69871a3b",
+     :body
+     "<p><em>Welcome to my sporadic newsletter about improving the information environment... and whatever else I happen to be thinking about. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>Hey! It's been a while. My weekly writing habit didn't survive my <a href=\"https://tfos.co/p/i-got-a-job/\">getting a job</a>; on the bright side, my bank account has been faring much better. I've decided to start drafting posts on my phone while my kids take their bath in the evening.<br><br>So my tools-for-online-speech work has been on hold. It turns out I have time for exactly one side project, and that's been <a href=\"https://biffweb.com\" target=\"_blank\" rel=\"noopener\">Biff</a>. In the mean time I've been mulling over various schemes for how to make progress on all my projects. I thought about <a href=\"https://forum.tfos.co/t/a-micro-fund-for-biff-tfos-projects/94\">paying other people</a> to work on my apps, but ultimately decided to wait until after I have a paid-off house before I go into that territory.<br><br>Currently I'm hoping to be able to work on <a href=\"https://yakread.com/\">Yakread</a> and other apps in tandem with Biff. Since Yakread is built with Biff, it would make a pretty good real-world example/showcase project for people learning Biff. On top of that, since my full-time occupation no longer consists of working on my own apps, I think it's important that I find some time to keep building things with Biff instead of just working on Biff itself, for the sake of dogfooding. And besides, what's the point of making a sweet web framework if you never build anything with it?<br><br>So I'm confident that sooner or later I'll be able to squeeze in some time at least for Yakread. And of course there's always the wait-until-your-kids-are-slightly-older-so-you-have-more-time strategy, which I am pursuing in tandem. (They're 1 and 3 currently).</p>\n<hr>\n<p>Having already written a handful of think pieces on <a href=\"https://tfos.co/unbundling-social-media/\">unbundling social media</a>, I haven't yet felt much need to write more. I still like the vision I've already outlined&mdash;I'd just like to spend more time on implementation, as discussed above. I think about this from two angles: what do I want for myself, and what do I think has the best chance of actually growing? What do other people need?<br><br>Yakread is certainly in the first category. I use it every day and love it, even though there are still a bunch of improvements I'd like to make. However, while I'm not the only user[1], I no longer think that a better reader app is the best next step towards bringing an unbundled social media ecosystem to the masses.<br><br>Instead, I think a better discussion app is the way to go. It's 2024, and all the options for setting up an online community still seem... not great? The one I like the most is Discourse, but it still doesn't match up super well with all my needs.<br><br>First of all, there's no free version (its single-tenant architecture makes that impractical), and it has a ton of knobs and dials. Maybe not a big deal for my own community&mdash;I've already set it up&mdash;but I also want lots of other people to start communities that I can join, so the ideal discussion platform has to have an easy-to-set-up free plan.<br><br>On top of that, it feels a bit \"heavy\"&mdash;creating a post on Discourse feels like a more significant action than it does on most chat apps, and that limits the number of posts that get written. Same goes for the sign-up process.<br><br>Ultimately, I want something that:</p>\n<ul>\n<li>is lightweight enough to be used as an alternative to posting on social media, yet powerful enough to handle large communities</li>\n<li>encourages any type of communication, whether it's quick back-and-forth chat or ongoing async discussion</li>\n<li>works great with email: sends out automatic email digests like Discourse, and lets new members sign up and leave their first comment at the same time by putting in their email address</li>\n<li>lets you export a list of your members' email addresses, same as you can do with any newsletter platform</li>\n</ul>\n<p>Will I start building this in the foreseeable future? No. But it's fun to think about!</p>\n<p><em>Thanks for reading. <a href=\"mailto:hello@tfos.co?subject=Re:I am still alive\">Hit reply</a> or <a href=\"https://forum.tfos.co/t/i-am-still-alive/118\">chat with me</a> on the forum.</em></p>\n<p>&nbsp;</p>\n<p><strong>Footnotes</strong></p>\n<p>[1] One of my favorite pieces of feedback I've received: \"I love Yakread. So much better than the old Google reader, and it was good.\"</p>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "86d5c620-b9cc-619d-e63a-d18dfc139ac0",
+     :body
+     "<p><em>Welcome to my (weekly? monthly? whenever-I-feel-like-it-ly?) newsletter about improving the information environment. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>For a few months back in '22, I was running a Discourse forum as a sidekick to this newsletter. I ended up switching over to Discord because I discovered they had released <a href=\"https://support.discord.com/hc/en-us/articles/6208479917079-Forum-Channels-FAQ\">forum channels</a>, which gave me the structure I liked from Discourse without feeling quite as heavyweight. So I backed up my Discourse instance and shut it down.</p>\n<p>I have now brought <a href=\"https://forum.tfos.co\">the old forum</a> back to life and have spiffed it up a bit. The main reason is that I&rsquo;ve been thinking about how to keep up a regular writing habit now that I have a job, and I think Discourse fits with that better. I don&rsquo;t want to commit to sitting down for two hours each week to write up the newsletter, so instead my plan is to post in small chunks to the forum throughout the week. Sending my newsletter(s)* will become a mechanical process: copy and paste stuff from the forum, do a little formatting, hit send. At some point I could automate it, maybe.</p>\n<p>*This forum will double as a community for Biff in addition to Tools for Online Speech&mdash;it&rsquo;d be fun to get a bit more overlap going there.</p>\n<p>I could have done a similar process while still posting to Discord instead of here, <em>but</em>, if the forum is to become so central to my publishing flow, I&rsquo;d really like to have the posts be public&mdash;an aspect of Discord about which I have complained many times. With Discourse, I can include in the newsletter below each copied-and-pasted post a &ldquo;View discussion&rdquo; link which will let you actually see the comments without being signed in already. It&rsquo;s a tiny yet crucial thing, and the fact that Discord doesn&rsquo;t handle that use-case is a testament to the fact that it <em>really</em> was not designed to be used the way I wanted to use it.</p>\n<p>Another cool thing about Discourse is that they&rsquo;ve added real-time chat! Discord is becoming Discourse and Discourse is becoming Discord&hellip;</p>\n<div class=\"lightbox-wrapper\"><a class=\"lightbox\" title=\"image\" href=\"https://tfos-forum.nyc3.cdn.digitaloceanspaces.com/original/1X/4784dd20839075d67b9522eb274a49787f843098.png\" data-download-href=\"/uploads/short-url/acGyHBP8kaCjZI2sQOap1t2K9rq.png?dl=1\"><img style=\"aspect-ratio: 379 / 500;\" src=\"https://tfos-forum.nyc3.cdn.digitaloceanspaces.com/optimized/1X/4784dd20839075d67b9522eb274a49787f843098_2_379x500.png\" srcset=\"https://tfos-forum.nyc3.cdn.digitaloceanspaces.com/optimized/1X/4784dd20839075d67b9522eb274a49787f843098_2_379x500.png, https://tfos-forum.nyc3.cdn.digitaloceanspaces.com/optimized/1X/4784dd20839075d67b9522eb274a49787f843098_2_568x750.png 1.5x, https://tfos-forum.nyc3.cdn.digitaloceanspaces.com/optimized/1X/4784dd20839075d67b9522eb274a49787f843098_2_758x1000.png 2x\" alt=\"image\" width=\"379\" height=\"500\" loading=\"lazy\" data-base62-sha1=\"acGyHBP8kaCjZI2sQOap1t2K9rq\" data-dominant-color=\"262626\"></a></div>\n<p><a href=\"https://forum.tfos.co/t/im-resurrecting-the-discourse-forum\">Discussion &gt;&gt;</a></p>\n<hr>\n<p><strong>Yakread latest features and roadmap</strong></p>\n<div class=\"cooked\">\n<p>I made a few tweaks to Yakread a month or so ago:</p>\n<ul>\n<li>The &ldquo;For You&rdquo;/&ldquo;In case you missed it&rdquo; algorithm now takes your pinned subs into account. If you pin subs on the subscriptions page, they get boosted substantially in the algorithm.</li>\n<li>Made some improvements to Yakread&rsquo;s feed parsing so that it works with Mastodon RSS feeds.</li>\n<li>Improved the unsubscribe feature/flow so that it can handle all newsletters, not just ones that support automatic unsubscribe.</li>\n</ul>\n<p>Next on the docket:</p>\n<p><strong>Open-sourcing the codebase.</strong> I&rsquo;d like to get this out of the way before I move on to adding more features. The codebase won&rsquo;t be polished or anything, but I&rsquo;ll at least have instructions so potential contributors can run it locally and deploy it. It will likely require some code work as well, like cleaning up/nuking the commit history (ahem) and making sure I&rsquo;m not hardcoding &ldquo;yakread.com&rdquo; anywhere.</p>\n<p><strong>Dark mode!</strong> And typography settings. Font size at least.</p>\n<p>Better experience for <strong>short-form/high-frequency RSS feeds</strong> (like Mastodon feeds). I&rsquo;d like to batch the posts in some way, but there are some implementation details to figure out. I&rsquo;ll also be able to easily add support for Substack Notes and even Twitter, thanks to <a href=\"https://openrss.org\">openrss.org</a>. Hopefully Substack gets their act together and adds native RSS support at some point.</p>\n<p><strong>Tags for subscriptions and bookmarks</strong>, so you can organize them by topic. I&rsquo;ll probably also add a filter to the For You page so you can view algorithmically-selected posts from a particular tag. Maybe let you choose how much each tag should be weighted, e.g. &ldquo;50% of my feed should be content tagged as &lsquo;butterflies&rsquo;, 30% should be &hellip;&rdquo;</p>\n<p><a href=\"https://forum.tfos.co/t/yakread-latest-features-and-roadmap/\">Discussion &gt;&gt;</a></p>\n<hr>\n<p><strong>Open source as software dev career prep</strong></p>\n<div class=\"cooked\">\n<p>Someone solicited some advice from me recently on the topic of how to pivot into a career as a software developer and I wrote up a fairly verbose email response. The main suggestion I gave was to spend time tinkering with an open-source project, in addition to working on your own projects and whatever else you might be doing to learn programming. I thought it&rsquo;d be worthwhile to rewrite that up here.</p>\n<p>First is a caveat: I&rsquo;ve never pivoted into a software dev career; it&rsquo;s the career I&rsquo;ve started with. The best advice will probably come from people who have had personal experience making the pivot. My advice will tend to lean more towards &ldquo;what will help you prepare to do the work of a software engineer&rdquo; and less towards &ldquo;how do you get a first job as a software engineer without a CS degree.&rdquo; The two questions have some overlap, but how much, I don&rsquo;t know.</p>\n<p>Back to open source. In my experience, the most significant difference between coding on your own and coding in a job is that in the latter, you have to learn a pre-existing codebase. At least in the first few months, it&rsquo;s normal in my experience to spend the vast majority of your time studying the existing code and learning how it works. After many hours of that, you write 20 lines of code, then repeat.</p>\n<p>Tinkering with open-source projects is a great complement to working on your own projects because it gives you experience in working with someone else&rsquo;s codebase. You don&rsquo;t even have to submit your changes back to the project; you can just mess around at first. As a start for one of my projects, one time I took an open-source Android music player and modified it so that if you hit the skip button within the first 30 seconds of a song, the next song would be the theme song for Bill Nye the Science Guy.</p>\n<p>After doing some of that, if you <em>are</em> able to start writing pull requests that get accepted into open-source projects, that will be even better preparation for a job. Besides learning how an existing codebase works, you&rsquo;ll get practice taking a feature request/bug report description and translating it into working code, and it&rsquo;ll force you to be more rigorous&mdash;you have to make reasonably sure you&rsquo;re not introducing any bugs, and you have to write code that&rsquo;s easy for others to understand and maintain. You&rsquo;ll also likely have to make changes to your code based on feedback.</p>\n<p>You can Google around to find an open-source project you&rsquo;re interested in. Think about what apps/websites you use yourself, then see if there are any open-source alternatives. e.g. if you write on Substack, you might enjoy hacking on <a href=\"https://github.com/TryGhost/Ghost\">Ghost</a>.</p>\n<p>A final note: different projects have different stances/policies/instructions on contributing. You don&rsquo;t need permission to tinker around with the project on your own, but if you want to try submitting a pull request, look for a link/section on the GitHub page titled &ldquo;contributing.&rdquo; For example, the Ghost GitHub page links to <a href=\"https://github.com/TryGhost/Ghost/blob/main/.github/CONTRIBUTING.md\">this document</a>. In general, just be aware that getting a pull request merged into a project creates work for the maintainer (they have to review your code, they have to fix any bugs that pop up later, etc), so try to minimize that burden.</p>\n<p>Some other assorted things I mentioned:</p>\n<ul>\n<li>\n<p>It&rsquo;s never too early to start looking at job postings and talking to people who work there. Even if you aren&rsquo;t ready to start applying yet, you can still build relationships and learn more about what it&rsquo;s like working there, what they look for in new hires, and any other questions you might have.</p>\n</li>\n<li>\n<p>Don&rsquo;t get too hung up on which language to learn. Pick one and stick with it for a while. If you&rsquo;ve found an open-source project you&rsquo;re interested in, perhaps pick whatever language it&rsquo;s written in. It&rsquo;s probably best to pick a fairly mainstream language so that there will be plenty of learning resources.</p>\n</li>\n<li>\n<p>I don&rsquo;t know anyone who&rsquo;s tried <a href=\"https://launchschool.com/\">Launch School</a>, but based on the website it looks promising to me. In particular, the pricing ($200/month for as long as you need) seems ideal for a company that wants to support mastery-based learning. (In contrast, I used to be excited about Lambda School&ndash;now BloomTech&ndash;which professed to use mastery-based learning, until my wife tried it in 2019. The quality of education was extremely low.)</p>\n</li>\n</ul>\n<p><a href=\"https://forum.tfos.co/t/open-source-as-software-dev-career-prep\">Discussion &gt;&gt;</a></p>\n</div>\n</div>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "2249e190-8bcf-01f3-1543-93cf2f9d04a6",
+     :body
+     "<p><em>Welcome to my <s>weekly</s> newsletter about <s>practical ways to improve the information environment</s> stuff. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>Well, it finally happened: I have escaped from entrepreneurship. It was a fun 4.5 years, for some definition of fun. I successfully tricked the fine folks over at&nbsp;<a href=\"https://www.tyba.ai/\">Tyba</a> into hiring me as a software engineer, and from now on I'll be spending my weekdays saving polar bears/helping renewable power plant operators be more efficient. If any of you are planning to start up a solar plant, HMU. In seriousness, I am looking forward to building up some <a href=\"https://www.ferc.gov/media/2020-energy-primer-handbook-energy-market-basics\">domain expertise</a> in the energy industry&mdash;seems like not a bad thing to specialize in.</p>\n<p>Today was my third day; I've mostly been poking around the codebase and doing some simple bugfixes as I find my way around. It's a bit like moving into a big city you've never been to before. I assume. I've never moved to a big city, unless you count that one stint in Malaysia, but I digress.</p>\n<p>I guess I should say it's like moving into a big city <em>where every two weeks they give you <strong>money</strong>.</em> Heck yeah, it's been way too long since that's been a thing for me.</p>\n<p>(For the Clojurists, our codebase is written with <a href=\"https://fulcro.fulcrologic.com/\">Fulcro</a>. I did some Fulcro about three years ago, an experience that is now coming extremely in handy. Also, while I have your attention, I'll mention&nbsp;that I found out about Tyba after the CTO saw my message in #available-for-jobs on Clojurians Slack and DMed me&mdash;that channel actually works!)</p>\n<p>As for all my projects&mdash;<a href=\"https://yakread.com\">Yakread</a>, <a href=\"https://thesample.ai\">The Sample</a> (lol tear), <a href=\"https://biffweb.com\">Biff</a>, this newsletter,&nbsp;<em>et cetera</em>&mdash;thankfully they're all fairly mature and don't need to be actively worked on all the time. I should have at least four hours of side project time each week, and maybe a bit more every now and then. I'm going to put all the projects in rotation, the order of which currently looks like so:</p>\n<ol>\n<li>Yakread</li>\n<li>Biff</li>\n<li>Write essay(s)</li>\n<li>Platypub</li>\n<li>\"Biff from scratch\" (a mini book/series of guides I'm planning to write)</li>\n</ol>\n<p>I'm now in the middle of doing some Yakread updates. When I'm done with that, I'll send out a newsletter and then switch to the next project for a while, repeat. Then I can still write the newsletter at a regular cadence but not have to worry about it taking too much time away from coding etc. I made a \"write essays\" project so that every once in a while I can sit down and write something more substantial.</p>\n<p>I am also pretty much decided in favor of open-sourcing Yakread. That way it can have more overlap with Biff, since people who use Biff might be interested in contributing to Yakread and vice-versa. The more I can consolidate my projects, the better. After the current batch of Yakread updates, I'll put it back in the queue right behind Platypub, and then when I get to it next I'll open-source it.</p>\n<p>Although I'll no longer be working full-time on tools for online speech, I don't see that as a step backward. I'll be able to explore different paths than I had to previously now that my personal income is no longer a concern. In the best case scenario, I see Biff and TFOS&nbsp;slowly growing as both a set of projects and as a community over the next five years. At some point around the 5-7 year mark&mdash;after I have a house paid off, hopefully&mdash;I may be in a position to accelerate things more, e.g. by providing seed funding for <a href=\"https://tfos.co/p/what-if-i-started-a-nonprofit/\">a nonprofit</a>.</p>\n<p>But mostly, I'm excited to just see where the winds take us.</p>\n<hr>\n<p>Stuff I've been reading:</p>\n<ul>\n<li>⭐ Let The Internet Be Grimy [<a href=\"https://tedium.co/2023/07/08/threads-social-media-brand-safety/\">Tedium</a>]</li>\n<li>⭐ Building personal and organizational prestige [<a href=\"https://lethain.com/building-prestige/\">Irrational Exuberance</a>]</li>\n<li>⭐ The Learning System [<a href=\"https://www.henrikkarlsson.xyz/p/learningsystem\">Escaping Flatland</a>]</li>\n<li>Social RSS [<a href=\"https://chriscoyier.net/2023/07/01/social-rss/\">Chris Coyier</a>]</li>\n<li>Who killed Google Reader? [<a href=\"https://www.theverge.com/23778253/google-reader-death-2013-rss-social\">The Verge</a>]</li>\n<li>Spaced Repetition Through Newsletters [<a href=\"https://www.atvbt.com/spaced-repetition-through-newsletters/\">Atoms vs Bits</a>]</li>\n<li>Postmodernism to Poastmodernism [<a href=\"https://economistwritingeveryday.com/2022/10/08/postmodernism-to-poastmodernism/\">Economist Writing Every Day</a>]</li>\n<li>The World&rsquo;s Most Important App (For Now) [<a href=\"https://www.theatlantic.com/technology/archive/2023/06/telegram-app-encrypted-messaging-russia/674558/\">The Atlantic</a>]</li>\n<li>Bespoke misinformation as solution to targeted disinformation [<a href=\"https://economistwritingeveryday.com/2023/07/03/what-if-the-solution-to-disinformation-is-more-disinformation/\">Economist Writing Every Day</a>]</li>\n<li>How to own the butt rock conversation [<a href=\"https://www.content-technologist.com/butt-rock-seo/\">The Content Technologist</a>]</li>\n<li>The dance of the naked emperors [<a href=\"https://www.experimental-history.com/p/the-dance-of-the-naked-emperors\">Experimental History</a>]</li>\n</ul>\n<p>Outside interests:</p>\n<ul>\n<li>The World China Is Building [<a href=\"https://www.noemamag.com/the-world-china-is-building/\">NOEMA</a>]</li>\n<li>People need to hear the good news about climate change [<a href=\"https://www.slowboring.com/p/people-need-to-hear-the-good-news\">Slow Boring</a>]</li>\n<li>No, NEPA really is a problem for clean energy [<a href=\"https://www.noahpinion.blog/p/no-nepa-really-is-a-problem-for-clean\">Noahpinion</a>]</li>\n<li>&ldquo;Demand Commitment Mechanisms&rdquo; Can Jumpstart Long-Duration Energy Storage [<a href=\"https://progress.institute/demand-commitment-mechanisms-can-jumpstart-long-term-energy-storage/\">Institute for Progress</a>]</li>\n</ul>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "fa83d907-4e8f-1ba9-b8ec-6571abcba715",
+     :body
+     "<p>Lots of exciting stuff has been happening lately:</p>\n<ul>\n<li>I pulled a muscle in my back on Saturday and took two days to recover.</li>\n<li>Everyone in my household got sick over the course of a week or so.</li>\n<li>I got a second job offer and have entered the negotiation phase as I pick which company to join.</li>\n</ul>\n<p>Apart from some other <a href=\"https://en.wikipedia.org/wiki/The_Legend_of_Zelda:_Breath_of_the_Wild\">important work</a> I've been doing, I did at least manage to make <a href=\"https://yakread.com/?noredirect=true\">a new landing page</a> for Yakread:</p>\n<p><img src=\"https://platypub.sfo3.cdn.digitaloceanspaces.com/2b49f34b-a671-4bfb-b01b-aa44f2a490f6\" alt=\"\"></p>\n<p>I am for I believe the third time giving Mastodon <a href=\"https://social.linux.pizza/@obryant666\">another shot</a>. Last time I made a single post announcing \"I'm going to try posting on Mastodon again,\" and then didn't make another post for a few months. (I think. I'm not going to bother checking.) So this time I'm foregoing the announcement (except for this paragraph...) and just posting.</p>\n<p>I'm interested in Mastodon/the fediverse for a few reasons:</p>\n<ul>\n<li>I'm concerned that the Discord server just isn't a great fit: I'd like to have a&nbsp;<em>public</em> place for comments/discussion so people reading my newsletter can click the links and see the content.</li>\n<li>I suspect that a decent chunk of people who would be interested in my writing are already on Mastodon (or would be open to joining), so posting there would make it easier for them to follow my work. (Discord is also lacking here since it doesn't offer much/anything in the way of aggregation.)</li>\n<li>I want to experiment with semi-automatically generating this newsletter from my Mastodon posts, so that I can write the newsletter in little chunks throughout the week without needing to have a block of time. That'll be especially helpful after I start having a job.</li>\n</ul>\n<p>I'm not a huge fan of Mastodon's chronological timeline, but I will probably add back support for following Mastodon accounts with Yakread. Instead of adding an integration that uses the Mastodon API (like Yakread used to have), I'm going to do it through RSS:</p>\n<ol>\n<li>I'll improve Yakread's support for RSS feeds with lots of short posts, e.g. maybe batch them up into fewer, larger posts.</li>\n<li>Then I'll improve Yakread's RSS feed detection so that if you paste in a link for a Mastodon account, Yakread will add the associated RSS feed to your subscriptions. (e.g. here's <a href=\"https://social.linux.pizza/@obryant666.rss\">my feed</a>.)</li>\n</ol>\n<p>Plus, then it's easy to extend to any other platform like Bluesky or Substack Notes if they happen to add RSS feeds. And if they don't, well, would you really want to engage with a platform that doesn't even support RSS 😉?</p>\n<p>(I guess it would also work if someone made an RSS bridge, e.g. if you paste in a link to someone's Substack Notes page, Yakread could lookup the associated RSS feed on some 3rd party service instead of from Substack.)</p>\n<p>This train of thought has me also wondering about if I should make my own fediverse client, like a mix between Yakread, <a href=\"https://github.com/jacobobryant/platypub#platypub\">Platypub</a>, and Mastodon. Imagine an app that looks like a standard Twitter clone, but if someone clicks \"Follow\" on your profile, it shows a popup with several options:</p>\n<ul>\n<li>An email signup box</li>\n<li>A click-to-copy button for your Mastodon URL</li>\n<li>A click-to-copy button for the RSS feed</li>\n<li>Whatever the equivalent for Bluesky if that ever stops being invite-only</li>\n</ul>\n<p>If someone signs up via email, they get an automated digest of your posts, perhaps ranked by number of comments/likes.</p>\n<p>The timeline would basically be Yakread: algorithmically ranked, and made up from various content sources like newsletters and RSS feeds, along with your regular fediverse follows. For posting, you can post regular short-form posts as expected, but you could also write long-form posts as well as \"pages\" a la WordPress and friends, to give structure to your profile/website. i.e. on the publishing side, I'd be merging my Mastodon account with <a href=\"https://tfos.co/\">my website</a>.</p>\n<p>Just a thought!</p>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "b70c45c1-1074-3c2b-24aa-17775bf242ac",
+     :body
+     "<p><em>Welcome to my weekly newsletter about practical ways to improve the information environment. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>&nbsp;<a href=\"https://tfos.co/p/exploring-reddit-essays/\">I mentioned</a> a month ago that I decided to finally get a job and do my tools-for-online-speech work mostly in the form of open-source. (If you missed that&mdash;surprise!) I have a compelling offer from one company (a 6-person startup in the renewable energy space) and I'm in the middle of interviews for two other larger startups. I'm hoping to have a contract signed within a couple weeks.</p>\n<p>In the mean time I've been enjoying a semi-vacation for the past week or two. I don't need to look for more jobs to apply for, so while I wait for my scheduled interviews to roll around I've been spending more time with the offspring. We went to Home Depot's kid workshop today and made a nice bean bag toss thing.</p>\n<hr>\n<p>This upcoming week I might actually get around to doing some more Yakread updates. A few things on the top of my mind:</p>\n<p><strong>Add an \"in case you missed it\" section</strong> to the emails again, which will resurface old articles from your subscriptions and bookmarks that you haven't read yet. Then you can get the Full Yakread Experience&reg; just from skimming the daily emails every day.</p>\n<p>I've actually stopped using the feed on the Yakread web app myself. During my morning routine, I skim the email on my phone and open any links I want to read. Throughout the day, any reading time I have goes into those articles. If I get through all of those and I have more reading time, then instead of opening my Yakread feed, I just read a book. And if I don't get to all the articles and they're starting to pile up in my open tabs, then I bookmark them in Yakread and trust that they'll come up in the future, once I add the in-case-you-missed-it section.</p>\n<p><strong>Make a landing</strong> <strong>page</strong>, again. I removed the landing page a while ago, <a href=\"https://yakread.com\">opting instead</a> to put new visitors immediately on a feed of articles. But the vibes are off (not to mention the signup conversion rate. I think it'd do better with a more traditional landing page that gives some quick context, accompanied by a nice big email signup form. I'll include a \"try it out first\" button that takes you to the article feed without needing to create an account first.</p>\n<p><strong>Typography settings and dark mode</strong>, if the latter isn't too much work. The main complication is that newsletter posts come with their own styling, and overriding that may be tricky (or not; I won't know until I try).</p>\n<p>It's amazing how many items in a product backlog you can cross off as \"eh, doesn't seem that important anymore\" if you just give them a month or two to simmer.</p>\n<p>I'm feeling pretty good about open-sourcing Yakread. I'd like to wait until I'm settled into my new job first. So if you're a coder and you want to hack on Yakread, that might be an option in a month or so.</p>\n<hr>\n<p>Some things I read this week:</p>\n<p>Private Comments, or Why I&rsquo;m Down On Webmentions [<a href=\"https://havenweb.org/2023/04/10/private-comments.html\">havenweb.org</a>]. The creator of <a href=\"https://havenweb.org/index.html\">Haven</a> (and a fellow TFOS reader!) writes about some fundamental problems with the IndieWeb approach of trying to host all your comments on your own website: you still need to have a filtering/moderation layer somewhere.</p>\n<p>The Twenty-Six Words That Created the Internet&nbsp;[<a href=\"https://www.goodreads.com/en/book/show/42170844\">www.goodreads.com</a>]. A deep dive on Section 230 by law professor Jeff Kosseff. See also <a href=\"https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3351323\">Why Section 230 Is </a><a href=\"https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3351323\">Better Than the First Amendment</a>.</p>\n<p>Spaced Repetition Through Newsletters [<a href=\"https://www.atvbt.com/spaced-repetition-through-newsletters/\">www.atvbt.com</a>]</p>\n<p>Supreme Court Clarifies \"True Threats\" First Amendment Exception [<a href=\"https://popehat.substack.com/p/supreme-court-clarifies-true-threats\">popehat.substack.com</a>]</p>\n<p>The Economics of Engineering Blogs [<a href=\"https://www.thediff.co/archive/the-economics-of-engineering-blogs/\">www.thediff.co</a>]. \"Allegedly, the multi-armed bandit problem was so time-consuming to Allied researchers in the Second World War that they looked into ways to get the Germans to try to solve it specifically to waste their time.\"<br><br></p>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "7684676c-4635-0e7d-0125-f7c3aab6a391",
+     :body
+     "<p><em>Welcome to my weekly newsletter about practical ways to improve the information environment, focused on my own work in that space. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>A few days ago I read an article that caused me to question one of my fundamental assumptions: what if discussion apps are more important than reading apps?</p>\n<p>The article was <a href=\"https://publicinfrastructure.org/2023/03/29/the-three-legged-stool/\">this manifesto</a> from the Initiative for Digital Public Infrastructure (iDPI). In a nutshell their recommendation is that:</p>\n<ul>\n<li>There should be more emphasis on small community/discussion apps instead of stuffing everyone into a few giant platforms.</li>\n<li>There should be&nbsp;\"loyal clients\" which let users interact with multiple communities from one place, and which are designed to prioritize users' interests over platforms' interests.</li>\n<li>There should be a bunch of 3rd party algorithm services which can be used by loyal clients to provide ranking, filtering, discovery etc.</li>\n</ul>\n<p>I've been following iDPI for a little while; their recommendations come closer to <a href=\"https://tfos.co/unbundling-social-media/\">my own scheme</a> than any other initiative I'm aware of.</p>\n<p>The main point where I disagree with them is that I think having \"full\" loyal clients&mdash;3rd party apps that can read posts from and publish posts to a bunch of different community apps&mdash;would introduce too much coordination cost and would slow down innovation. Community apps wouldn't be able to release new functionality to all their users immediately; they would have to wait for 3rd party clients to add support as well.</p>\n<p>Instead I think that the <em>reading</em> of posts should be aggregated into 3rd party clients, but <em>publishing</em> posts doesn't need to be. You want a single feed of content so that you don't have to check a bunch of different communities regularly, but if you want to reply to one of those posts, it's acceptable if you have to click on the post and switch to the app it came from.</p>\n<p>I could be wrong though, and either way I'm interested to watch their progress.</p>\n<p>As I was pondering the differences between our approaches and my <a href=\"https://tfos.co/p/reneging-on-reddit/\">ongoing dissatisfaction</a> with the community software available to me, I started to have a small epiphany: what if there was an app that looked like Discord/Slack, and one of its main features was that you could subscribe to RSS feeds from within the channels, <em>and</em> it published an RSS feed for each channel?</p>\n<p>Think of it like a community-focused RSS reader. Moderators can add subscriptions to a channel. When a subscription publishes a new post, it'll show up in the channel. Members can comment on it, or make their own top-level post in the channel. The outbound RSS feed for that channel includes all the top-level posts, including posts from members and posts from that channel's subscribed RSS feeds. You could have a channel where you subscribe to other channels.</p>\n<p>Similar to how Discord and Slack have 3rd-party bots for doing various stuff, there could be bots for ranking and filtering content from the incoming RSS feeds. Maybe some bots would be sources of content on their own&mdash;a Yakread bot might recommend articles and keep track of which recommendations get the most comments/emoji responses.</p>\n<p>I'm still fleshing this idea out&mdash;there are a lot of UX details that would need to be handled&mdash;but in general I'm mostly convinced of at least two things:</p>\n<ul>\n<li>I would definitely benefit from having a new type of community app. Discord, Reddit, Discourse and everything else I've looked at just don't quite fit my needs. (High confidence.)</li>\n<li>A discussion app that emphasized subscribing to and publishing RSS feeds might be useful to more people than a reading app like Yakread. (Medium confidence.)</li>\n</ul>\n<p>We'll see if that idea goes anywhere 🙂.</p>\n<p>A few other things I read last week:</p>\n<ul>\n<li>Podcasts Could Unleash a New Age of Enlightenment [<a href=\"https://www.wired.com/story/podcasts-speech-thought-history-enlightenment/\">www.wired.com</a>]</li>\n<li>Why it's so hard to fix the information ecosystem [<a href=\"https://www.noahpinion.blog/p/why-its-so-hard-to-fix-the-information\">www.noahpinion.blog</a>]</li>\n<li>How to Prepare for the Deluge of Generative AI on Social Media [<a href=\"https://knightcolumbia.org/content/how-to-prepare-for-the-deluge-of-generative-ai-on-social-media\">knightcolumbia.org</a>]</li>\n</ul>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "124db6a1-b083-556e-5932-114bd0e148c9",
+     :body
+     "<p><em>Welcome to my weekly newsletter about <a href=\"https://tfos.co/p/you-can-unbundle-social-media/\">practical ways</a> to improve our <a href=\"https://tfos.co/p/tfos/\">information environment</a>, focused on <a href=\"https://yakread.com\">my own work</a> in that space. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>So last time I mentioned that I was starting up a TFOS subreddit. However, recent events have made me lose confidence in Reddit's stability. In addition, even though Reddit technically does have support for synchronous chat, realistically I don't think anyone would ever use it, myself included. In contrast, Discord remains a great place for both sync and async discussion, and it doesn't appear to be in danger of implosion, so I think I'll stay put over there. Not having public links for discussions is annoying, but I can always polish up the&nbsp;<a href=\"https://discord.tfos.co\">Discord forum publisher</a> to fix that... at some point.</p>\n<p>I've been stewing over what fundamentalish changes, if any, I should make to Yakread. One of Yakread's core features is that it resurfaces old articles from your subscriptions and bookmarks that you haven't read yet; however that only happens on the web app. I think I should put an \"In case you missed it\" section back into the daily emails, so you can benefit from that resurfacing even if you only interact with Yakread via the emails. Someone brought that up several weeks ago, and I've been noticing myself lately that some days I prefer using my extra reading time to just read books instead of scrolling Yakread. I like the idea of being able to get the full Yakread experience just from the daily emails.</p>\n<p>In other Yakread news, I'm also leaning towards making it open-source. I'm going to wait until I've started a new job and have settled into that before I make a decision. But so far I am thinking that putting all my non-job projects under a single umbrella (open-source) would make them easier to manage. The main benefit of keeping Yakread closed-source would be if I really want it to become a full-time business down the road... but honestly, as of right now I'm feeling much more attracted to just making money the normal way, via employment. And I think there's a good chance Yakread would have higher impact as an open-source project.</p>\n<p>For similar reasons, I'll probably abandon my <a href=\"https://substack.yakread.com/p/dont-subscribe\">Yakstack</a> initiative. I have no energy for growth hacking, as humorous as Yakstack would've been.</p>\n<p>My wife and I went to a few open houses today for recently built homes that are on sale. It'll be a couple years at least before we're ready to take on a mortgage (it wouldn't hurt if interest rates go down at some point...), but we thought it'd be a fun date. Those things sure are expensive!</p>\n<p>Stuff I've read recently:</p>\n<ul>\n<li>Rereading &ldquo;Editorial Discretion&rdquo; [<a href=\"https://knightcolumbia.org/blog/rereading-editorial-discretion\">knightcolumbia.org</a>]</li>\n<li>Snowden Ten Years Later [<a href=\"https://www.schneier.com/blog/archives/2023/06/snowden-ten-years-later.html\">www.schneier.com</a>]</li>\n<li>Shirky: Situated Software [<a href=\"https://gwern.net/doc/technology/2004-03-30-shirky-situatedsoftware.html\">gwern.net</a>]</li>\n<li>A Natural History of Trust &amp; Safety [<a href=\"https://feerst.medium.com/a-natural-history-of-trust-safety-c73066d04b86\">feerst.medium.com</a>]</li>\n<li>Nextdoor Has an Election-Misinformation Problem [<a href=\"https://www.theatlantic.com/technology/archive/2023/05/nextdoor-local-election-misinformation-volunteer-moderation/674152/\">www.theatlantic.com</a>]</li>\n<li>Journalistic Lessons for the Algorithmic&nbsp;Age [<a href=\"https://themarkup.org/hello-world/2023/02/04/journalistic-lessons-for-the-algorithmic-age\">themarkup.org</a>]</li>\n<li>The Surprising Power of Documentation [<a href=\"https://vadimkravcenko.com/shorts/proper-documentation/\">vadimkravcenko.com</a>]</li>\n</ul>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   {:biff.pipe/current :biff.pipe/s3,
+    :biff.pipe.s3/input
+    {:method "PUT",
+     :key "56b99bb2-9b40-d50c-dbfe-ca6deeafacc8",
+     :body
+     "<p><em>Welcome to my weekly newsletter about practical steps towards a better Internet, focused on <a href=\"https://yakread.com\">my own work</a> in that space. I'm <a href=\"https://tfos.co/\">Jacob O'Bryant</a>.</em></p>\n<p>It's been a slow week for me in terms of my software projects because I was selected for federal jury service on Wednesday 🙂. We just finished day 4; looks like it'll continue until at least Thursday. Can't say much else until after the trial is over. I've had a chance to walk around downtown Seattle a bit&mdash;if any of you are nearby and want to get lunch sometime in the next couple days, let me know.</p>\n<p>(I'm just glad my hotel expenses are getting reimbursed!)</p>\n<p>I've had a bit of FOMO over the years from not being located in a big tech/startup hub, the bay area in particular. I actually once had plane tickets to visit San Francisco for a week and try to do some networking, but they were scheduled for&mdash;wait for it&mdash;April 2020. You know what happened next.</p>\n<p>I've hardly done anything for the past several days I've been in Seattle, other than walk a few blocks to Jimmy John's for lunch every day. (One of my super powers is that I'm a repetitive eater and have no need to try out new restaurants once I find one I like). But I've been absorbing the \"city vibes\" a bit, and... I don't think I'm much of a city person anyway.</p>\n<p>This is perhaps a typical feeling among people with kids, but I wouldn't mind setting up base in suburbia somewhere. You're close to grocery stores and doctor's offices, you have fast internet, the roads get plowed, the electricity rarely goes out in the winter as far as I'm aware... (all in comparison to living out in the woods as I do now). But you can still live somewhere relatively cheap without a ton of traffic. There may not be any networking opportunities, but hey, there's always the internet + remote work.</p>\n<p>I read a few good articles this week. A few of them are technical (I've placed those links at the end):</p>\n<p>The Open Source Business Model is Under Siege [<a href=\"https://www.influxdata.com/blog/the-open-source-database-business-model-is-under-siege/\">www.influxdata.com</a>]</p>\n<p>Optimizing impact: why I will not start an Envoy platform company [<a href=\"https://medium.com/@mattklein123/optimizing-impact-why-i-will-not-start-an-envoy-platform-company-8904286658cb\">medium.com</a>]</p>\n<p>Why America Needs Moderates [<a href=\"https://www.discoursemagazine.com/politics/2023/05/04/why-america-needs-moderates/\">www.discoursemagazine.com</a>]</p>\n<p>Reluctance To Process Contributions, and Tips from InnerSource [<a href=\"https://www.harihareswara.net/posts/2022/reluctance-to-process-contributions-and-tips-from-innersource/\">www.harihareswara.net</a>]</p>\n<p>The Gemini protocol seen by this HTTP client person [<a href=\"https://daniel.haxx.se/blog/2023/05/28/the-gemini-protocol-seen-by-this-http-client-person/\">daniel.haxx.se</a>]</p>\n<p>Humble Chronicles: State Management [<a href=\"https://tonsky.me/blog/humble-state/\">tonsky.me</a>]</p>\n<p>And from the TFOS subreddit:&nbsp;Structuring yakread more like a newsletter [<a href=\"https://www.reddit.com/r/tfos/comments/141q54p/structuring_yakread_more_like_a_newsletter/\">reddit.com/r/tfos</a>]</p>",
+     :headers {"x-amz-acl" "private", "content-type" "text/html"}}}
+   :biff.pipe/tx),
+  :biff.pipe.tx/input
+  ({:feed/title "Jacob O'Bryant",
+    :feed/etag "\"e237805355ab150e3d08399ef22c5c92-ssl-df\"",
+    :db/op :update,
+    :feed/failed-syncs :db/dissoc,
+    :xt/id "some-feed",
+    :feed/synced-at :db/now,
+    :db/doc-type :feed}
+   {:item/excerpt
+    "Welcome to my sporadic newsletter about improving the information environment... and whatever else I happen to be thinking about. I'm Jacob O'Bryant. Hey! It's been a while. My weekly writing habit didn't survive my getting a job; on the bright side, my bank account has been faring much better. I've decided to start drafting posts on my phone while my kids take their bath in the evening. So my tools-for-online-speech work has been on hold. It turns out I have time for exactly one side project, …",
+    :item/published-at #time/instant "2024-01-21T00:15:26Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/i-am-still-alive/",
+    :item/length 3966,
+    :item/content-key #uuid "d13a61a0-0347-4bdc-d6c1-84af69871a3b",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid "https://obryant.dev/p/i-am-still-alive/",
+    :item/title "I am still alive",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Welcome to my (weekly? monthly? whenever-I-feel-like-it-ly?) newsletter about improving the information environment. I'm Jacob O'Bryant. For a few months back in '22, I was running a Discourse forum as a sidekick to this newsletter. I ended up switching over to Discord because I discovered they had released forum channels, which gave me the structure I liked from Discourse without feeling quite as heavyweight. So I backed up my Discourse instance and shut it down. I have now brought the old for…",
+    :item/published-at #time/instant "2023-09-07T05:35:16Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/resurrecting-discourse/",
+    :item/length 7926,
+    :item/content-key #uuid "86d5c620-b9cc-619d-e63a-d18dfc139ac0",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid "https://obryant.dev/p/resurrecting-discourse/",
+    :item/title "I'm resurrecting the Discourse forum",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Welcome to my weekly newsletter about practical ways to improve the information environment stuff. I'm Jacob O'Bryant. Well, it finally happened: I have escaped from entrepreneurship. It was a fun 4.5 years, for some definition of fun. I successfully tricked the fine folks over at Tyba into hiring me as a software engineer, and from now on I'll be spending my weekdays saving polar bears/helping renewable power plant operators be more efficient. If any of you are planning to start up a solar pla…",
+    :item/published-at #time/instant "2023-07-29T00:19:40Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/i-got-a-job/",
+    :item/length 4252,
+    :item/content-key #uuid "2249e190-8bcf-01f3-1543-93cf2f9d04a6",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid "https://obryant.dev/p/i-got-a-job/",
+    :item/title "I got a job",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Lots of exciting stuff has been happening lately: I pulled a muscle in my back on Saturday and took two days to recover. Everyone in my household got sick over the course of a week or so. I got a second job offer and have entered the negotiation phase as I pick which company to join. Apart from some other important work I've been doing, I did at least manage to make a new landing page for Yakread: I am for I believe the third time giving Mastodon another shot. Last time I made a single post ann…",
+    :item/published-at #time/instant "2023-07-17T20:03:35Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/experimenting-with-mastodon/",
+    :item/length 3627,
+    :item/content-key #uuid "fa83d907-4e8f-1ba9-b8ec-6571abcba715",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid
+    "https://obryant.dev/p/experimenting-with-mastodon/",
+    :item/title "Experimenting with Mastodon",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Welcome to my weekly newsletter about practical ways to improve the information environment. I'm Jacob O'Bryant. I mentioned a month ago that I decided to finally get a job and do my tools-for-online-speech work mostly in the form of open-source. (If you missed that—surprise!) I have a compelling offer from one company (a 6-person startup in the renewable energy space) and I'm in the middle of interviews for two other larger startups. I'm hoping to have a contract signed within a couple weeks. …",
+    :item/published-at #time/instant "2023-07-01T22:31:29Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/a-few-planned-yakread-updates/",
+    :item/length 3712,
+    :item/content-key #uuid "b70c45c1-1074-3c2b-24aa-17775bf242ac",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid
+    "https://obryant.dev/p/a-few-planned-yakread-updates/",
+    :item/title "A few planned Yakread updates",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Welcome to my weekly newsletter about practical ways to improve the information environment, focused on my own work in that space. I'm Jacob O'Bryant. A few days ago I read an article that caused me to question one of my fundamental assumptions: what if discussion apps are more important than reading apps? The article was this manifesto from the Initiative for Digital Public Infrastructure (iDPI). In a nutshell their recommendation is that: There should be more emphasis on small community/discu…",
+    :item/published-at #time/instant "2023-06-24T19:17:34Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/discussion-reading/",
+    :item/length 3851,
+    :item/content-key #uuid "7684676c-4635-0e7d-0125-f7c3aab6a391",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid "https://obryant.dev/p/discussion-reading/",
+    :item/title "Discussion apps > reading apps?",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Welcome to my weekly newsletter about practical ways to improve our information environment, focused on my own work in that space. I'm Jacob O'Bryant. So last time I mentioned that I was starting up a TFOS subreddit. However, recent events have made me lose confidence in Reddit's stability. In addition, even though Reddit technically does have support for synchronous chat, realistically I don't think anyone would ever use it, myself included. In contrast, Discord remains a great place for both …",
+    :item/published-at #time/instant "2023-06-18T06:36:24Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/reneging-on-reddit/",
+    :item/length 2950,
+    :item/content-key #uuid "124db6a1-b083-556e-5932-114bd0e148c9",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid "https://obryant.dev/p/reneging-on-reddit/",
+    :item/title "Reneging on the subreddit",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed}
+   {:item/excerpt
+    "Welcome to my weekly newsletter about practical steps towards a better Internet, focused on my own work in that space. I'm Jacob O'Bryant. It's been a slow week for me in terms of my software projects because I was selected for federal jury service on Wednesday 🙂. We just finished day 4; looks like it'll continue until at least Thursday. Can't say much else until after the trial is over. I've had a chance to walk around downtown Seattle a bit—if any of you are nearby and want to get lunch some…",
+    :item/published-at #time/instant "2023-06-05T23:47:23Z",
+    :item/paywalled false,
+    :item/url "https://obryant.dev/p/hello-seattle/",
+    :item/length 2384,
+    :item/content-key #uuid "56b99bb2-9b40-d50c-dbfe-ca6deeafacc8",
+    :item/lang "en",
+    :item/author-name "Jacob O'Bryant",
+    :item.feed/guid "https://obryant.dev/p/hello-seattle/",
+    :item/title "Hello Seattle I am a manta ray",
+    :item.feed/feed "some-feed",
+    :item/author-url "https://obryant.dev",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/feed})}}
+
+{:fn-sym com.yakread.work.subscription-test/published-at-types,
+ :handler-id nil,
+ :doc ":item/published-at should be a java.time.Instant",
+ :fixture :obryant-dev-feed-xml,
+ :ctx #:biff{:job #:feed{:id 1}},
+ :expected #{"class java.time.Instant"}}
 
 ]

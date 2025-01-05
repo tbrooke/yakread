@@ -24,5 +24,10 @@
  :biff/host #profile {:dev "0.0.0.0" :default "localhost"}
  :biff/jwt-secret #biff/secret JWT_SECRET
  :biff/port 8080
+ :biff.s3/origin "https://nyc3.digitaloceanspaces.com"
+ :biff.s3/access-key "DO00YP8ZPFEDAV32RH6W"
+ :biff.s3/secret-key #biff/secret S3_SECRET_KEY
+ :biff.s3/bucket "yakread"
+ :biff.s3/edge "https://yakread.nyc3.cdn.digitaloceanspaces.com"
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
  :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY}

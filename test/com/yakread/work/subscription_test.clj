@@ -7,6 +7,13 @@
 
 (def inst-2020 (java.time.Instant/parse "2020-01-01T00:00:00Z"))
 
+(defn published-at-types [ctx _]
+  (->> (sut/sync-feed! ctx :end)
+       :biff.pipe.tx/input
+       (keep :item/published-at)
+       (mapv (comp str type))
+       set))
+
 (def sync-all-feeds-examples
   (lib.test/fn-examples
    [#'sut/sync-all-feeds! :start]
@@ -26,6 +33,20 @@
 
    [#'sut/sync-feed! :end]
    [{:doc "save feed items"
+     :fixture :obryant-dev-feed-xml
+     :ctx {:biff/job {:feed/id 1}}}
+    {:doc "skip existing items"
+     :db-contents #{{:xt/id 2
+                     :item.feed/feed "some-feed"
+                     :item/title "Impressions on Sudbury Schooling"}
+                    {:xt/id 3
+                     :item.feed/feed "some-feed"
+                     :item.feed/guid "https://obryant.dev/p/platypub-back-to-square-one/"}}
+     :fixture :obryant-dev-feed-xml
+     :ctx {:biff/job {:feed/id "some-feed"}}}]
+
+   [#'published-at-types nil]
+   [{:doc ":item/published-at should be a java.time.Instant"
      :fixture :obryant-dev-feed-xml
      :ctx {:biff/job {:feed/id 1}}}]))
 

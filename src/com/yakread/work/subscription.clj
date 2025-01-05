@@ -21,7 +21,7 @@
    :start
    (fn [{:keys [biff/db biff/now]}]
      (let [feed-ids (q db
-                       {:find '(pull feed [*])
+                       {:find 'feed
                         :in '[t0]
                         :where ['[feed :feed/url]
                                 [(list 'get-attr 'feed :feed/synced-at epoch) '[synced-at ...]]
@@ -106,7 +106,7 @@
                              :item/lang         (lib.content/lang html)
                              :item/paywalled    (some-> text str/trim (str/ends-with? "Read more"))
                              :item/url          (:link entry)
-                             :item/published-at (some entry [:published-date :updated-date])
+                             :item/published-at (some-> (some entry [:published-date :updated-date]) (.toInstant))
                              :item/author-name  (or (-> entry :authors first :name)
                                                     (:feed/title feed-doc))
                              :item/author-url   (-> entry :authors first :uri)
