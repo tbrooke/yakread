@@ -1,0 +1,57 @@
+[
+{:index-id :last-published,
+ :doc "New feed",
+ :ctx
+ #:biff.index{:index-get {},
+              :op :xtdb.api/put,
+              :doc
+              {:item.feed/feed 1,
+               :item/published-at
+               #time/instant "2024-01-01T00:00:00Z"}},
+ :expected {1 #time/instant "2024-01-01T00:00:00Z"}}
+
+{:index-id :last-published,
+ :doc "Existing feed",
+ :ctx
+ #:biff.index{:index-get {1 #time/instant "2024-01-01T00:00:00Z"},
+              :op :xtdb.api/put,
+              :doc
+              {:item.feed/feed 1,
+               :item/published-at
+               #time/instant "2025-01-01T00:00:00Z"}},
+ :expected {1 #time/instant "2025-01-01T00:00:00Z"}}
+
+{:index-id :last-published,
+ :doc ":item/ingested-at",
+ :ctx
+ #:biff.index{:index-get {1 #time/instant "2024-01-01T00:00:00Z"},
+              :op :xtdb.api/put,
+              :doc
+              {:item.feed/feed 1,
+               :item/ingested-at
+               #time/instant "2025-01-01T00:00:00Z"}},
+ :expected {1 #time/instant "2025-01-01T00:00:00Z"}}
+
+{:index-id :last-published,
+ :doc "old item -- no-op",
+ :ctx
+ #:biff.index{:index-get {1 #time/instant "2024-01-01T00:00:00Z"},
+              :op :xtdb.api/put,
+              :doc
+              {:item.feed/feed 1,
+               :item/ingested-at
+               #time/instant "2023-01-01T00:00:00Z"}},
+ :expected nil}
+
+{:index-id :last-published,
+ :doc "email item",
+ :ctx
+ #:biff.index{:index-get {},
+              :op :xtdb.api/put,
+              :doc
+              {:item.email/sub 1,
+               :item/published-at
+               #time/instant "2024-01-01T00:00:00Z"}},
+ :expected {1 #time/instant "2024-01-01T00:00:00Z"}}
+
+]

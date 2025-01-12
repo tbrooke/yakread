@@ -1,17 +1,27 @@
 (ns com.yakread.lib.test
   (:require [clojure.data.generators :as gen]
-            [clojure.tools.logging :as log]
-            [clojure.set :as set]
-            [clojure.test :as test]
-            [clojure.string :as str]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
-            [clojure.edn :as edn]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :as test :refer [is]]
+            [clojure.test.check :as tc]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.generators :as tc-gen]
+            [clojure.test.check.properties :as prop]
+            [clojure.tools.logging :as log]
+            [com.stuartsierra.dependency :as dep]
             [com.yakread :as main]
             [com.yakread.lib.route :as lib.route]
+            [com.yakread.util.biff-staging :as biffs]
+            [fugato.core :as fugato]
             [lambdaisland.uri :as uri]
+            [malli.experimental.time.generator]
+            [malli.generator :as malli.g]
             [time-literals.read-write :as time-literals]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt])
+  (:import [java.time Instant]))
 
 (defrecord BiffSystem []
   java.io.Closeable
@@ -40,22 +50,31 @@
 
 (defn- actual [{:keys [biff.test/fixtures
                        biff.test/empty-db
+                       biff/modules
                        biff/router]}
-               {:keys [route-name fn-sym method handler-id ctx fixture db-contents]
+               {:keys [route-name fn-sym index-id method handler-id ctx fixture db-contents]
                 :or {method :post}
                 :as example}]
-  (let [handler (cond
-                  route-name (lib.route/handler router route-name method)
-                  fn-sym (requiring-resolve fn-sym)
-                  :else (throw (ex-info "You must include either :route-name or :fn-sym in the test case"
-                                        example)))
+  (let [sut* (cond
+               route-name (lib.route/handler router route-name method)
+               fn-sym (requiring-resolve fn-sym)
+               index-id (->> @modules
+                             (mapcat :indexes)
+                             (filterv (comp #{index-id} :id))
+                             first
+                             :indexer)
+               :else (throw (ex-info "You must include either :route-name or :fn-sym in the test case"
+                                     example)))
+        sut (if handler-id
+              #(sut* % handler-id)
+              sut*)
         ctx (merge ctx (some-> fixture fixtures))]
     (if (not-empty db-contents)
       (with-open [node (xt/start-node {})]
         (xt/await-tx node (xt/submit-tx node (for [doc db-contents]
                                                [::xt/put doc])))
-        (handler (assoc ctx :biff/db (xt/db node)) handler-id))
-      (handler (assoc ctx :biff/db empty-db) handler-id))))
+        (sut (assoc ctx :biff/db (xt/db node))))
+      (sut (assoc ctx :biff/db empty-db)))))
 
 (defn dirname [current-ns]
   (str "test/"
@@ -139,3 +158,101 @@
     (merge {:fn-sym (symbol (str (:ns m)) (str (:name m)))
             :handler-id handler-id}
            example)))
+
+(defn index-examples [& {:as examples}]
+  (for [[index-id examples] examples
+        example examples]
+    (merge {:index-id index-id}
+           example)))
+
+(defn- rank [graph x overrides]
+  (or (get overrides x)
+      (if-some [deps (get-in graph [:dependencies x])]
+        (inc (apply max (mapv #(rank graph % overrides) deps)))
+        1)))
+
+(defn make-model [{:keys [biff/malli-opts schemas rank-overrides]}]
+  ;; TODO make this work with ref attrs that are cardinality-many
+  (when-not (set? schemas)
+    (throw (ex-info (str "`schemas` must be a set; got " (type schemas) " instead.")
+                    {:schemas schemas})))
+  (let [schema->ast (into {}
+                          (map (fn [ast]
+                                 [(-> ast :properties :schema)
+                                  ast]))
+                          (biffs/doc-asts main/malli-opts))
+        graph (reduce (fn [graph [doc-schema target-schema]]
+                        (dep/depend graph doc-schema target-schema))
+                      (dep/graph)
+                      (for [[doc-schema ast] schema->ast
+                            [_ {:keys [properties]}] (:keys ast)
+                            target-schema (:biff/ref properties)]
+                        [doc-schema target-schema]))
+        schemas (filterv (fn [schema]
+                           (or (schemas schema)
+                               (some #(dep/depends? graph % schema) schemas)))
+                         (dep/topo-sort graph))]
+    (into {}
+          (for [schema schemas
+                :let [deps (get-in graph [:dependencies schema])
+                      attr->properties (update-vals (get-in schema->ast [schema :keys])
+                                                    :properties)
+                      required-deps (->> (vals attr->properties)
+                                         (remove :optional)
+                                         (mapcat :biff/ref))
+                      attr->targets (into {}
+                                          (keep (fn [[attr properties]]
+                                                  (when-some [targets (:biff/ref properties)]
+                                                    [attr targets])))
+                                          attr->properties)]]
+            [schema {:freq (Math/pow 2 (rank graph schema rank-overrides))
+                     :run? (fn [state]
+                             (every? #(contains? state %) required-deps))
+                     :args (fn [state]
+                             (tc-gen/tuple
+                              (reduce (fn [gen [attr targets]]
+                                        (tc-gen/bind gen
+                                                     (fn [doc]
+                                                       (if (or (not (contains? doc attr))
+                                                               (empty? targets))
+                                                         (tc-gen/return (dissoc doc attr))
+                                                         (tc-gen/let [target (tc-gen/elements targets)
+                                                                      target-id (tc-gen/elements (keys (get state target)))]
+                                                           (assoc doc attr target-id))))))
+                                      (malli.g/generator schema malli-opts)
+                                      (for [[attr targets] attr->targets]
+                                        [attr (filterv #(contains? state %) targets)]))))
+                     :next-state (fn [state {[doc] :args}]
+                                   (-> state
+                                       (assoc-in [schema (:xt/id doc)] doc)
+                                       (update ::referenced (fnil into #{}) (keep doc (keys attr->targets)))))
+                     :valid? (fn [state {[doc] :args}]
+                               (not (contains? (::referenced state) (:xt/id doc))))}]))))
+
+(defn indexer-prop [{:keys [indexer model-opts expected-fn]}]
+  (let [model (make-model model-opts)]
+    (prop/for-all [commands (fugato/commands model {} 5 1)]
+      (let [docs (mapv (comp first :args) commands)
+            expected (expected-fn docs)
+            actual (->> docs
+                        (reduce (fn [changes doc]
+                                  (merge changes
+                                         (indexer #:biff.index{:index-get changes
+                                                               :op ::xt/put
+                                                               :doc doc})))
+                                {})
+                        (remove (comp nil? val))
+                        (into {}))]
+        (is (= expected actual))))))
+
+(def ^:dynamic *defspec-opts* {:num-tests 5})
+
+(defn instant [& [year month day hour minute _second millisecond]]
+  (Instant/parse (format "%d-%02d-%02dT%02d:%02d:%02d.%03dZ"
+                         (or year 1970)
+                         (or month 1)
+                         (or day 1)
+                         (or hour 0)
+                         (or minute 0)
+                         (or _second 0)
+                         (or millisecond 0))))

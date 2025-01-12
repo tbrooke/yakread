@@ -17,6 +17,9 @@
 - generative testing for get routes + resolvers
 - e2e tests
 
+misc
+- deal with large values in lib.pipeline exceptions, lib.test examples
+
 
 video topics:
 - code organization (model, app, lib, work)

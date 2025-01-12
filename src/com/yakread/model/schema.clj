@@ -4,7 +4,7 @@
   [:merge base-schema (into [:map {:closed true}] map-args)])
 
 (def ? {:optional true})
-(def r {:biff/ref true})
+(defn r [target] {:biff/ref (if (coll? target) target #{target})})
 (def ?r {:biff/ref true, :optional true})
 
 (def schema
@@ -30,12 +30,12 @@
           [:user/email-username     ? ::string]]
 
    :sub/base  [:map {:closed true}
-               [:xt/id            :uuid]
-               [:sub/user       r :uuid]
-               [:sub/created-at   :time/instant]
-               [:sub/pinned-at  ? :time/instant]]
+               [:xt/id                    :uuid]
+               [:sub/user       (r :user) :uuid]
+               [:sub/created-at           :time/instant]
+               [:sub/pinned-at  ?         :time/instant]]
    :sub/feed  (inherit :sub/base
-                       [:sub.feed/feed r :ref/uuid])
+                       [:sub.feed/feed (r :feed) :ref/uuid])
    ;; :sub-email is automatically created when the user receives an email with a new From field.
    :sub/email (inherit :sub/base
                        [:sub.email/from            ::string]
@@ -66,14 +66,15 @@
                 [:item/image-url    ? ::string]
                 [:item/paywalled    ? :boolean]]
    :item/feed  (inherit :item/base
-                        [:item.feed/feed r :uuid]
+                        [:item.feed/feed (r :feed) :uuid]
                         ;; The RSS <guid> / Atom <id> field.
                         [:item.feed/guid ? ::string])
    :item/email (inherit :item/base
-                        [:item.email/sub                r :uuid]
-                        [:item.email/unsubscribe        ? ::string]
-                        [:item.email/reply-to           ? ::string]
-                        [:item.email/maybe-confirmation ? :boolean])
+                        [:item.email/sub                (r :sub/email) :uuid]
+                        [:item.email/content-key                       :uuid]
+                        [:item.email/unsubscribe        ?              ::string]
+                        [:item.email/reply-to           ?              ::string]
+                        [:item.email/maybe-confirmation ?              :boolean])
 
    :feed [:map {:closed true}
           [:xt/id                :uuid]
@@ -94,26 +95,28 @@
    ;; - we send the user a digest email using this item's title in the subject line
    ;; - we recommend the item in For You and the user reports it
    :user-item [:map {:closed true}
-               [:xt/id                     :uuid]
-               [:user-item/user          r :uuid]
-               [:user-item/item          r :uuid]
-               [:user-item/viewed-at     ? :time/instant]
-               [:user-item/bookmarked-at ? :time/instant]
-               [:user-item/favorited-at  ? :time/instant]
-               [:user-item/digested-at   ? :time/instant]
-               [:user-item/read-position ? :int]
+               [:xt/id                                     :uuid]
+               [:user-item/user          (r :user)         :uuid]
+               [:user-item/item          (r [:item/feed
+                                             :item/email]) :uuid]
+               [:user-item/viewed-at     ?                 :time/instant]
+               [:user-item/bookmarked-at ?                 :time/instant]
+               [:user-item/favorited-at  ?                 :time/instant]
+               [:user-item/digested-at   ?                 :time/instant]
+               [:user-item/read-position ?                 :int]
                ;; User clicked thumbs-down. Mutually exclusive with :user-item/favorited-at
-               [:user-item/disliked-at   ? :time/instant]
+               [:user-item/disliked-at   ?                 :time/instant]
                ;; This item was recommended in For You and the user reported it.
-               [:user-item/reported-at   ? :time/instant]
-               [:user-item/report-reason ? ::string]]
+               [:user-item/reported-at   ?                 :time/instant]
+               [:user-item/report-reason ?                 ::string]]
 
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a :skip document.
    :skip [:map {:closed true}
-          [:xt/id             :uuid]
-          [:skip/user       r :uuid]
-          [:skip/skipped-at   :time/instant]
-          [:skip/items      r [:vector :uuid]]]})
+          [:xt/id                             :uuid]
+          [:skip/user       (r :user)         :uuid]
+          [:skip/skipped-at                   :time/instant]
+          [:skip/items      (r [:item/feed
+                                :item/email]) [:vector :uuid]]]})
 
 (def module
   {:schema schema})

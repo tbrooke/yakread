@@ -9,7 +9,7 @@
             [xtdb.api :as xt]
             [com.biffweb.protocols :as biff.proto]))
 
-(defn- doc-asts [{:keys [registry] :as malli-opts}]
+(defn doc-asts [{:keys [registry] :as malli-opts}]
   (for [schema-k (keys (malr/schemas (:registry malli-opts)))
         :let [schema (try (malli/deref-recursive schema-k malli-opts) (catch Exception _))]
         :when schema
@@ -21,7 +21,7 @@
         :when (and ast
                    (= (:type ast) :map)
                    (contains? (:keys ast) :xt/id))]
-    ast))
+    (assoc-in ast [:properties :schema] schema-k)))
 
 (defn pull-resolvers [malli-opts]
   (let [asts      (doc-asts malli-opts)

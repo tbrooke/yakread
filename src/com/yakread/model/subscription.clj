@@ -1,11 +1,13 @@
 (ns com.yakread.model.subscription
   (:require [com.biffweb :as biff :refer [q <<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
+            [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.serialize :as lib.serialize]
             [clojure.string :as str]
             [clojure.set :as set]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt])
+  (:import [java.time Instant]))
 
 (def schema
   {:sub/id             any?
@@ -38,11 +40,36 @@
 (defresolver sub-id [{:keys [xt/id sub/user]}]
   {:sub/id id})
 
+;; TODO
 (defresolver stub-unread []
   {:sub/unread 10})
 
+;; TODO
 (defresolver stub-published-at []
   {:sub/published-at (java.time.Instant/now)})
+
+(defn- index-update [index-get id f]
+  (let [old-doc (index-get id)
+        new-doc (f old-doc)]
+    (when (not= old-doc new-doc)
+      {id new-doc})))
+
+(def last-published-index
+  {:id :last-published
+   :version 0
+   :schema [:tuple :uuid :time/instant]
+   :indexer
+   (fn [{:biff.index/keys [index-get op doc]}]
+     (when-let [id (and (= op ::xt/put)
+                        (some doc [:item.feed/feed :item.email/sub]))]
+       (index-update index-get
+                     id
+                     (fn [last-published]
+                       (->> [last-published (some doc [:item/published-at :item/ingested-at])]
+                            (filterv some?)
+                            (apply max-key inst-ms))))))})
+
+;; -----------------------------------------------------------------------------
 
 (defn- rss-sub-doc [conn feed sub pinned]
   (let [{:conn.rss/keys [url title subscribed-at]} conn]
@@ -255,7 +282,8 @@
                          #_rss-sub
                          #_rss-sub-from-params
                          #_rss-sub-items]
-             :indexes [#_email-indexer
+             :indexes [last-published-index
+                       #_email-indexer
                        #_rss-indexer]})
 
 (comment
