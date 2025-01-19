@@ -2,8 +2,10 @@
   (:require [com.biffweb :as biff :refer [q <<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.error :as lib.error]
+            [com.yakread.lib.item :as lib.item]
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.serialize :as lib.serialize]
+            [com.yakread.lib.user-item :as lib.user-item]
             [clojure.string :as str]
             [clojure.set :as set]
             [xtdb.api :as xt])
@@ -44,9 +46,15 @@
 (defresolver stub-unread []
   {:sub/unread 10})
 
-;; TODO
-(defresolver stub-published-at []
-  {:sub/published-at (java.time.Instant/now)})
+(defresolver feed-sub-published-at [{:keys [biff/db]} {:keys [sub.feed/feed]}]
+  {::pco/output [:sub/published-at]}
+  (when-some [published-at (biff/index-get db :last-published (:xt/id feed))]
+    {:sub/published-at published-at}))
+
+(defresolver email-sub-published-at [{:keys [biff/db]} {:keys [xt/id sub.email/from]}]
+  {::pco/output [:sub/published-at]}
+  (when-some [published-at (biff/index-get db :last-published id)]
+    {:sub/published-at published-at}))
 
 (defn- index-update [index-get id f]
   (let [old-doc (index-get id)
@@ -56,18 +64,47 @@
 
 (def last-published-index
   {:id :last-published
-   :version 0
-   :schema [:tuple :uuid :time/instant]
+   :version 1
+   :schema [:tuple :uuid :time/instant] ;; TODO maybe enforce this in tests/dev or something
    :indexer
    (fn [{:biff.index/keys [index-get op doc]}]
      (when-let [id (and (= op ::xt/put)
-                        (some doc [:item.feed/feed :item.email/sub]))]
+                        (lib.item/source-id doc))]
        (index-update index-get
                      id
                      (fn [last-published]
-                       (->> [last-published (some doc [:item/published-at :item/ingested-at])]
+                       (->> [last-published (lib.item/published-at doc)]
                             (filterv some?)
                             (apply max-key inst-ms))))))})
+
+(def unread-index
+  {:id :unread
+   :version 0
+   :schema [:or {:registry {}}
+            ;; user+source -> read
+            [:tuple [:tuple :uuid :uuid] :int]
+            ;; source -> total
+            [:tuple :uuid :int]
+            ;; item -> source
+            [:tuple :uuid :uuid]
+            ;; rec -> item-read?
+            [:tuple :uuid [:enum true]]]
+   :indexer
+   (fn [{:biff.index/keys [index-get op doc]}]
+     (let [source-id (lib.item/source-id doc)]
+       (cond
+         (and (= op ::xt/put) source-id (-> (:xt/id doc) index-get nil?))
+         {(:xt/id doc) source-id
+          source-id ((fnil inc 0) (index-get source-id))}
+
+         (and (= op ::xt/put) (:user-item/user doc))
+         (let [new-doc-read? (lib.user-item/read? doc)
+               old-doc-read? (boolean (index-get (:xt/id doc)))]
+           (when (not= new-doc-read? old-doc-read?)
+             (let [id [(:user-item/user doc) (index-get (:user-item/item doc))]
+                   n-read ((fnil (if new-doc-read? inc dec) 0) (index-get id))]
+               {(:xt/id doc) (when new-doc-read? true)
+                id           (when (not= n-read 0) n-read)}))))))})
 
 ;; -----------------------------------------------------------------------------
 
@@ -276,13 +313,15 @@
                          view-url
                          email-title
                          feed-title
-                         stub-published-at
                          stub-unread
+                         feed-sub-published-at
+                         email-sub-published-at
                          #_subscriptions
                          #_rss-sub
                          #_rss-sub-from-params
                          #_rss-sub-items]
              :indexes [last-published-index
+                       unread-index
                        #_email-indexer
                        #_rss-indexer]})
 

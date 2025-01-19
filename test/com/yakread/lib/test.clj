@@ -11,6 +11,7 @@
             [clojure.test.check.generators :as tc-gen]
             [clojure.test.check.properties :as prop]
             [clojure.tools.logging :as log]
+            [com.biffweb :as biff]
             [com.stuartsierra.dependency :as dep]
             [com.yakread :as main]
             [com.yakread.lib.route :as lib.route]
@@ -227,25 +228,30 @@
                                        (assoc-in [schema (:xt/id doc)] doc)
                                        (update ::referenced (fnil into #{}) (keep doc (keys attr->targets)))))
                      :valid? (fn [state {[doc] :args}]
-                               (not (contains? (::referenced state) (:xt/id doc))))}]))))
+                               (->> (keys attr->targets)
+                                    (keep doc)
+                                    (every? #(contains? (::referenced state) %))))}]))))
+
+(defn indexer-actual [indexer docs]
+  (->> docs
+       (reduce (fn [changes doc]
+                 (merge changes
+                        (indexer #:biff.index{:index-get changes
+                                              :op ::xt/put
+                                              :doc doc})))
+               {})
+       (remove (comp nil? val))
+       (into {})))
 
 (defn indexer-prop [{:keys [indexer model-opts expected-fn]}]
   (let [model (make-model model-opts)]
     (prop/for-all [commands (fugato/commands model {} 5 1)]
       (let [docs (mapv (comp first :args) commands)
             expected (expected-fn docs)
-            actual (->> docs
-                        (reduce (fn [changes doc]
-                                  (merge changes
-                                         (indexer #:biff.index{:index-get changes
-                                                               :op ::xt/put
-                                                               :doc doc})))
-                                {})
-                        (remove (comp nil? val))
-                        (into {}))]
+            actual (indexer-actual indexer docs)]
         (is (= expected actual))))))
 
-(def ^:dynamic *defspec-opts* {:num-tests 5})
+(def ^:dynamic *defspec-opts* {:num-tests 25})
 
 (defn instant [& [year month day hour minute _second millisecond]]
   (Instant/parse (format "%d-%02d-%02dT%02d:%02d:%02d.%03dZ"
@@ -256,3 +262,46 @@
                          (or minute 0)
                          (or _second 0)
                          (or millisecond 0))))
+
+(defn- write-trace! [{:keys [indexer id]} result]
+  (let [tmp-file (io/file (System/getProperty "java.io.tmpdir")
+                          (str "biff-trace-" (subs (str id) 1) "-" (:seed result) ".edn"))
+        docs (for [{[doc] :args} (-> result :shrunk :smallest first)]
+               doc)
+        [changes steps] (reduce (fn [[changes steps] doc]
+                                  (let [new-changes (indexer #:biff.index{:index-get changes
+                                                                          :op ::xt/put
+                                                                          :doc doc})]
+                                    [(merge changes new-changes)
+                                     (into steps [doc
+                                                  '=>
+                                                  new-changes
+                                                  '_])]))
+                                [{} []]
+                                docs)
+        state (->> changes
+                   (remove (comp nil? val))
+                   (into {}))]
+    (with-open [file (io/writer tmp-file)]
+      (binding [*out* file]
+        (biff/pprint (conj steps state))))
+    (str tmp-file)))
+
+(defn test-index [index opts]
+  (let [num-tests (:num-tests opts)
+        prop-opts (assoc (select-keys opts [:model-opts :expected-fn])
+                         :indexer (:indexer index))
+        quick-check-opts (apply dissoc opts (keys prop-opts))
+        {:keys [shrunk] :as result} (tc/quick-check (:num-tests quick-check-opts)
+                                                    (indexer-prop prop-opts)
+                                                    quick-check-opts)
+        result (cond-> result
+                 true (dissoc :shrunk :fail)
+                 shrunk (assoc :biff/trace (write-trace! index result))
+                 true (assoc :index (:id index)))]
+    result))
+
+(defmacro deftest-index [index opts]
+  (assert (symbol? index) (str "First argument must be a symbol, instead got: " (pr-str index)))
+  `(test/deftest ~(symbol (str (name index) "-test"))
+     (prn (test-index ~index ~opts))))

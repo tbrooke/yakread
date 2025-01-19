@@ -1,7 +1,6 @@
 - rewrite app to work with new schema
-    sync rss feeds
-      remove/replace stubs in model.subscriptions
-    model.subscriptions
+    finish unread-index
+    finish model.subscriptions
     app.subscriptions.view
 
 - include random seed in exception data for reproducibility
@@ -19,9 +18,11 @@
 
 misc
 - deal with large values in lib.pipeline exceptions, lib.test examples
+- "column families not opened" error after you remove an index
 
 
-video topics:
+video/blog topics:
+- generative testing for indexes
 - code organization (model, app, lib, work)
 - malli schema introspection
 - lib.pipe/make
