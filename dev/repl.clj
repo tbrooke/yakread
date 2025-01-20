@@ -8,7 +8,7 @@
 
 (defn with-context [f]
   (let [ctx @main/system]
-    (with-open [db #_(biff/open-db-with-index ctx) (xt/open-db (:biff.xtdb/node ctx))]
+    (with-open [db (biff/open-db-with-index ctx) #_(xt/open-db (:biff.xtdb/node ctx))]
       (f (assoc (biff/merge-context ctx)
                 :biff/db db
                 :session {:uid (biff/lookup-id db :user/email "hello@obryant.dev")})))))
@@ -44,26 +44,25 @@
   (tapped
    (with-context
      (fn [{:keys [biff/db session] :as ctx}]
-       (lib.pathom/process ctx
+       (time (lib.pathom/process ctx
                            {}
                            [{:user/current [{:sub/_user
-                                             [:xt/id
-                                              :sub.view/card
+                                             [:sub/id
+                                              :sub/title
+                                              :sub/unread
+                                              :sub/published-at
+                                              {:sub/items [:xt/id
+                                                           :item/title
+                                                           ]}
+                                              ;:sub.view/card
 
-                                              (? :sub/published-at)
-                                              (? :sub/pinned-at)
+                                              ;(? :sub/published-at)
+                                              ;(? :sub/pinned-at)
 
                                               ]}]}]
-                           )
+                           ))
 
-       #_(lib.pathom/process ctx
-                             #:xt{:id #uuid "8316de0a-8c41-4876-8347-e43dffde8f90"}
-                             [;{:sub.feed/feed [:feed/url
-                              ;                 (? :feed/title)]}
-                              :sub/title
-                              ]
-
-                             )
+       
 
        )))
 
@@ -72,16 +71,10 @@
 
   (with-context
     (fn [{:keys [biff/db]}]
-      (q db
-         {:find '(pull feed [*])
-          :in '[t0]
-          :where ['[feed :feed/url]
-                  [(list 'get-attr 'feed :feed/synced-at (java.time.Instant/ofEpochMilli 0)) '[synced-at ...]]
-                  '[(< synced-at t0)]]}
-         (.minusSeconds (java.time.Instant/now) (* 60 60 4)))
-      
-
-      ))
+      (for [feed-id (q db
+                       '{:find doc
+                         :where [[doc :feed/url]]})]
+        [feed-id (biff/index-get db :last-published feed-id)])))
 
 (java.time.Instant/parse "1970-01-01T00:00:00Z")
 

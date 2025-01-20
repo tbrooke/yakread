@@ -48,21 +48,18 @@
 (deftest examples
   (lib.test/check-examples! (get-context)))
 
-(defspec last-published-index-test lib.test/*defspec-opts*
-  (lib.test/indexer-prop
-   {:indexer     (:indexer sut/last-published-index)
-    :model-opts  {:biff/malli-opts main/malli-opts
-                  :schemas #{:item/feed :item/email}
-                  :rank-overrides {:sub/email 1}}
-    :expected-fn (fn [docs]
-                   (-> (group-by lib.item/source-id docs)
-                       (dissoc nil)
-                       (update-vals (fn [docs]
-                                      (->> docs
-                                           (mapv lib.item/published-at)
-                                           (apply max-key inst-ms))))))}))
-
-
+(deftest-index sut/last-published-index
+  {:num-tests   25
+   :model-opts  {:biff/malli-opts main/malli-opts
+                 :schemas #{:item/feed :item/email}
+                 :rank-overrides {:sub/email 1}}
+   :expected-fn (fn [docs]
+                  (-> (group-by lib.item/source-id docs)
+                      (dissoc nil)
+                      (update-vals (fn [docs]
+                                     (->> docs
+                                          (mapv lib.item/published-at)
+                                          (apply max-key inst-ms))))))})
 
 (deftest-index sut/unread-index
   {:num-tests   25

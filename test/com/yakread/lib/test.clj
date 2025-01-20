@@ -66,7 +66,7 @@
                              :indexer)
                :else (throw (ex-info "You must include either :route-name or :fn-sym in the test case"
                                      example)))
-        sut (if handler-id
+        sut (if (contains? example :handler-id)
               #(sut* % handler-id)
               sut*)
         ctx (merge ctx (some-> fixture fixtures))]
@@ -172,8 +172,12 @@
         (inc (apply max (mapv #(rank graph % overrides) deps)))
         1)))
 
+;; TODO
+;; - support ref attrs that are cardinality-many
+;; - set default weights such that explicitly passed schemas are equal
+;; - improve shrinking
+;; - maybe don't use fugato
 (defn make-model [{:keys [biff/malli-opts schemas rank-overrides]}]
-  ;; TODO make this work with ref attrs that are cardinality-many
   (when-not (set? schemas)
     (throw (ex-info (str "`schemas` must be a set; got " (type schemas) " instead.")
                     {:schemas schemas})))
@@ -232,7 +236,7 @@
                                     (keep doc)
                                     (every? #(contains? (::referenced state) %))))}]))))
 
-(defn indexer-actual [indexer docs]
+(defn- indexer-actual [indexer docs]
   (->> docs
        (reduce (fn [changes doc]
                  (merge changes
