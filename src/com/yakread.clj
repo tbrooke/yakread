@@ -90,10 +90,10 @@
 
 (defn on-save [sys]
   (biff/add-libs)
-  (biff/eval-files! sys)
-  (generate-assets! sys)
-  (test/run-all-tests #"com.yakread.*-test")
-  (log/info :done))
+  (when-not (:clojure.tools.namespace.reload/error (biff/eval-files! sys))
+    (generate-assets! sys)
+    (test/run-all-tests #"com.yakread.*-test")
+    (log/info :done)))
 
 (def malli-opts
   {:registry (apply malr/composite-registry

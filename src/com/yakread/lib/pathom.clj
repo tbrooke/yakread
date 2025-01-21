@@ -8,6 +8,7 @@
             [clojure.tools.logging :as log]
             [xtdb.api :as xt]))
 
+;; TODO try to do this without monkey patching
 (alter-var-root #'runner/processor-exception (constantly (fn [_ ex] ex)))
 (alter-var-root #'runner/report-resolver-error (constantly (fn [_ _ ex] (throw ex))))
 

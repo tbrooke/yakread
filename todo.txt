@@ -1,8 +1,7 @@
-- rewrite app to work with new schema
-    app.subscriptions.view
-
-- include random seed in exception data for reproducibility
-- email subscriptions
+- subscriptions
+  - read items
+  - mutations for view sub page
+  - ingest email
 - favorites
 - read later
 - settings
@@ -14,7 +13,9 @@
 - generative testing for get routes + resolvers
 - e2e tests
 
+
 misc
+- include random seed in exception data for reproducibility
 - deal with large values in lib.pipeline exceptions, lib.test examples
 - "column families not opened" error after you remove an index
 - index-get, index-get-many: better error message for nonexistent index id 

@@ -44,29 +44,26 @@
   (tapped
    (with-context
      (fn [{:keys [biff/db session] :as ctx}]
-       (time (lib.pathom/process ctx
-                           {}
-                           [{:user/current [{:sub/_user
-                                             [:sub/id
-                                              :sub/title
-                                              :sub/unread
-                                              :sub/published-at
-                                              {:sub/items [:xt/id
-                                                           :item/title
-                                                           ]}
-                                              ;:sub.view/card
+       (lib.pathom/process
+        (assoc ctx :path-params {:item-id "7CD1ilA9QyqOyM9sKIKByQ"})
+        {}
+        [{:params/item-unsafe [:xt/id
+                               {:item/sub [:xt/id
+                                           :sub/user]}]}]
+        #_[{:user/current [{:sub/_user
+                          [:sub/id
+                           :sub/title
+                           :sub/unread
+                           :sub/published-at
+                           {:sub/items [:xt/id
+                                        :item/title
+                                        ]}
+                           ;:sub.view/card
 
-                                              ;(? :sub/published-at)
-                                              ;(? :sub/pinned-at)
+                           ;(? :sub/published-at)
+                           ;(? :sub/pinned-at)
 
-                                              ]}]}]
-                           ))
-
-       
-
-       )))
-
-  
+                           ]}]}]))))
 
 
   (with-context

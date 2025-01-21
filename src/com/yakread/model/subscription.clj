@@ -1,5 +1,6 @@
 (ns com.yakread.model.subscription
   (:require [com.biffweb :as biff :refer [q <<-]]
+            [com.yakread.util.biff-staging :as biffs]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.item :as lib.item]
@@ -36,8 +37,8 @@
   {:sub/title (or (:feed/title feed)
                   (:feed/url feed))})
 
-(defresolver view-url [{:keys [biff/router]} {:sub/keys [id]}]
-  {:sub/view-url (lib.route/path router :app.subscriptions.view/page {:sub-id id})})
+(defresolver sub-id->xt-id [{:keys [sub/id]}]
+  {:xt/id id})
 
 (defresolver sub-info [{:keys [xt/id sub/user sub.feed/feed sub.email/from]}]
   #::pco{:input [:xt/id
@@ -80,6 +81,14 @@
                         :sub/email :item.email/sub)
                       'source]]}
             source-id))})
+
+(defresolver from-params [{:keys [biff/db biff/malli-opts session path-params]} _]
+  #::pco{:output [{:params/sub [:xt/id]}]}
+  (let [sub-id (lib.serialize/url->uuid (:sub-id path-params))
+        sub (when (some? sub-id)
+              (xt/entity db sub-id))]
+    (when (and sub (= (:uid session) (:sub/user sub)))
+      {:params/sub (biffs/joinify @malli-opts sub)})))
 
 (defn- index-update [index-get id f]
   (let [old-doc (index-get id)
@@ -170,15 +179,15 @@
 ;;        sub    (biff/index-get db :rss-subscriptions [:sub user url])
 ;;        pinned (biff/lookup db :pinned/user user)]
 ;;    (rss-sub-doc conn feed sub pinned)))
-
-(defresolver rss-sub-from-params [{:keys [biff/db session path-params]} _]
-  #::pco{:output [{:params/sub [:xt/id :sub/conn-id]}]}
-  (let [conn-id (biff/catchall (:sub/conn-id (lib.serialize/base64->edn (:entity path-params))))
-        conn (when (uuid? conn-id)
-               (xt/entity db conn-id))]
-    (when (and conn (= (:uid session) (:conn/user conn)))
-      {:params/sub (merge conn {:sub/conn-id conn-id})})))
-
+;;
+;;(defresolver rss-sub-from-params [{:keys [biff/db session path-params]} _]
+;;  #::pco{:output [{:params/sub [:xt/id :sub/conn-id]}]}
+;;  (let [conn-id (biff/catchall (:sub/conn-id (lib.serialize/base64->edn (:entity path-params))))
+;;        conn (when (uuid? conn-id)
+;;               (xt/entity db conn-id))]
+;;    (when (and conn (= (:uid session) (:conn/user conn)))
+;;      {:params/sub (merge conn {:sub/conn-id conn-id})})))
+;;
 ;;(defresolver subscriptions [{:keys [biff/db]} {user-id :xt/id}]
 ;;  #::pco{:output [{:user/subscriptions [:sub/title
 ;;                                        :sub/kind
@@ -335,13 +344,14 @@
 ;;           {conns-id new-conns}))))})
 
 (def module {:resolvers [sub-info
-                         view-url
+                         sub-id->xt-id
                          email-title
                          feed-title
                          sub-source-id
                          unread
                          published-at
                          items
+                         from-params
                          #_subscriptions
                          #_rss-sub
                          #_rss-sub-from-params

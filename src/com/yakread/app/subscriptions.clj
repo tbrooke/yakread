@@ -41,7 +41,7 @@
           :hx-target "#content"
           :hx-on:htmx:before-request "this.closest('.sub-card').remove()"}
          label)))]
-    [:a {:href (lib.route/path router :app.subscriptions.view/page {:sub-id id})
+    [:a {:href (lib.route/path router :app.subscriptions.view/page {:sub-id (lib.serialize/uuid->url id)})
          :class (concat '[block
                           bg-white
                           shadow

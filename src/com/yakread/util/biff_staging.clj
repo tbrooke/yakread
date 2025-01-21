@@ -23,17 +23,32 @@
                    (contains? (:keys ast) :xt/id))]
     (assoc-in ast [:properties :schema] schema-k)))
 
+(def schema-info
+  (memoize
+   (fn [malli-opts]
+     (let [asts      (doc-asts malli-opts)
+           all-attrs (->> asts
+                          (mapcat (comp keys :keys))
+                          set)
+           ref-attrs (->> asts
+                          (mapcat :keys)
+                          (keep (fn [[k {:keys [properties]}]]
+                                  (when (:biff/ref properties)
+                                    k)))
+                          set)]
+       {:all-attrs all-attrs
+        :ref-attrs ref-attrs}))))
+
+(defn joinify [malli-opts doc]
+  (let [{:keys [ref-attrs]} (schema-info malli-opts)]
+    (->> (keys doc)
+         (filterv ref-attrs)
+         (reduce (fn [doc k]
+                   (update doc k #(hash-map :xt/id %)))
+                 doc))))
+
 (defn pull-resolvers [malli-opts]
-  (let [asts      (doc-asts malli-opts)
-        all-attrs (->> asts
-                       (mapcat (comp keys :keys))
-                       set)
-        ref-attrs (->> asts
-                       (mapcat :keys)
-                       (keep (fn [[k {:keys [properties]}]]
-                               (when (:biff/ref properties)
-                                 k)))
-                       set)]
+  (let [{:keys [all-attrs ref-attrs]} (schema-info malli-opts)]
     (concat
      [(pco/resolver `entity-resolver
                     {::pco/input [:xt/id]
@@ -42,12 +57,7 @@
                                            {k [:xt/id]}
                                            k)))}
                     (fn [{:keys [biff/db]} {:keys [xt/id]}]
-                      (let [doc (xt/entity db id)]
-                        (->> (keys doc)
-                             (filterv ref-attrs)
-                             (reduce (fn [doc k]
-                                       (update doc k #(hash-map :xt/id %)))
-                                     doc)))))]
+                      (joinify malli-opts (xt/entity db id))))]
      (for [attr ref-attrs
            :let [attr (keyword (namespace attr) (str "_" (name attr)))]]
        (pco/resolver (symbol (subs (str attr) 1))

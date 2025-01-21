@@ -11,30 +11,33 @@
             [lambdaisland.uri :as uri]
             [xtdb.api :as xt]))
 
-(def page-route
-  ["/dev/subscriptions/view/:sub-id"
-   {:name :app.subscriptions.view/page
+(def read-page-route
+  ["/dev/sub-item/:item-id"
+   {:name :app.subscriptions.view/read
     :get (lib.pathom/handler
           [:app.shell/app-shell
-           {(? :params/sub) [:sub/title
-                             :sub/user]}
+           ;;{(? :params/sub) [:sub/title
+           ;;                  :sub/user]}
            {(? :params/item) [:xt/id
-                              :item/title]}]
+                              :item/title
+                              {:item/sub [:sub/id
+                                          :sub/title]}]}]
           (fn [{:keys [biff/router session path-params]}
                {:keys [app.shell/app-shell]
-                current-item :params/item
-                {:sub/keys [title user] :as sub} :params/sub}]
-            (if (not= user (:uid session))
+                {:item/keys [sub] :as item} :params/item}]
+            (if (nil? item)
               {:status 303
                :biff.router/name :app.subscriptions/page}
               (app-shell
-               {:title title}
-               ;; TODO display item
-               (when current-item
-                 [:pre.mb-6 (pr-str current-item)])
-               (lib.ui/page-header {:title     title
+               {:title (:sub/title sub)}
+               ;; TODO display item, probably lazily
+               (when item
+                 [:pre.mb-6 (with-out-str (biff/pprint item))])
+               (lib.ui/page-header {:title     (:sub/title sub)
                                     :back-href (lib.route/path router :app.subscriptions/page {})})
-               [:div#content (lib.ui/lazy-load-spaced router :app.subscriptions.view.page/content path-params)]))))}])
+               [:div#content (lib.ui/lazy-load-spaced router
+                                                      :app.subscriptions.view.page/content
+                                                      {:sub-id (lib.serialize/uuid->url (:sub/id sub))})]))))}])
 
 (defn- clean-string [s]
   (str/replace (apply str (remove #{\newline
@@ -58,7 +61,8 @@
            (str/join " | ")))
 
 (defn- fancy-format-date [date]
-  (let [date-fmt (if (apply = (map #(biff/crop-date % "yyyy") [date (java.util.Date.)]))
+  (let [date (java.util.Date/from date)
+        date-fmt (if (apply = (map #(biff/crop-date % "yyyy") [date (java.util.Date.)]))
                    "d MMM"
                    "d MMM yyyy")]
     (biff/format-date date date-fmt)))
@@ -97,15 +101,15 @@
        (biff/join interpunct)))
 
 (def page-content-route
-  ["/dev/subscriptions/view/:sub-id/content"
+  ["/dev/subscription/:sub-id/content"
    {:name :app.subscriptions.view.page/content
     :get (lib.pathom/handler
-          [{(? :params/sub) [:xt/id
+          [{(? :params/sub) [:sub/id
                              {:sub/items
-                              [:xt/id
-                               :item/title
+                              [:item/id
                                :item/unread
-                               (? :item/image-with-default)
+                               (? :item/title)
+                               ;(? :item/image-with-default)
                                (? :item/author-name)
                                (? :item/byline)
                                (? :item/excerpt)
@@ -114,15 +118,15 @@
                                (? :item/published-at)
                                (? :item/site-name)
                                (? :item/url)]}]}
-           {(? :params/item) [:xt/id
-                              :item/title]}
+           ;{(? :params/item) [:xt/id
+           ;                   :item/title]}
            {:user/current [(? :user/use-original-links)]}]
           (fn [{:keys [biff/router session path-params]}
                {:keys [app.shell/app-shell]
                 current-item :params/item
                 {:keys [user/use-original-links]} :user/current
-                {:sub/keys [items] conn-id :xt/id} :params/sub}]
-            (if-not conn-id
+                {:sub/keys [id items]} :params/sub}]
+            (if-not id
               {:status 404 :body ""}
               [:<>
                [:div {:class '[flex
@@ -130,15 +134,11 @@
                                gap-6
                                max-w-screen-sm
                                "max-sm:-mx-4"]}
-                (for [{:item/keys [title excerpt unread image-with-default url] :as item} items]
+                (for [{:item/keys [id title excerpt unread image-with-default url] :as item} items]
                   [:a (if (and use-original-links url)
-                        {:href url ; TODO set to /dev/read/:id
-                         :target "_blank"}
-                        {:href (lib.route/path router
-                                 :app.subscriptions.view/page
-                                 {:sub-id (lib.serialize/edn->base64
-                                           {:sub/conn-id conn-id
-                                            :item/id (:xt/id item)})})})
+                        {:href url :target "_blank"}
+                        {:href (lib.route/path router :app.subscriptions.view/read
+                                 {:item-id (lib.serialize/uuid->url id)})})
                    [:div {:class (concat '[bg-white
                                            hover:bg-neut-50
                                            p-4
@@ -189,7 +189,35 @@
                                         "h-[5.5rem]"
                                         rounded]}]])]]])]])))}])
 
+(def page-route
+  ["/dev/subscription/:sub-id"
+   {:name :app.subscriptions.view/page
+    :get (lib.pathom/handler
+          [:app.shell/app-shell
+           {(? :params/sub) [:sub/title
+                             :sub/user]}
+           ;;{(? :params/item) [:xt/id
+           ;;                   :item/title]}
+           ]
+          (fn [{:keys [biff/router session path-params]}
+               {:keys [app.shell/app-shell]
+                current-item :params/item
+                {:sub/keys [title]} :params/sub}]
+            (if (nil? title)
+              {:status 303
+               :biff.router/name :app.subscriptions/page}
+              (app-shell
+               {:title title}
+               ;; TODO display item
+               (when current-item
+                 [:pre.mb-6 (pr-str current-item)])
+               (lib.ui/page-header {:title     title
+                                    :back-href (lib.route/path router :app.subscriptions/page {})})
+               [:div#content (lib.ui/lazy-load-spaced router :app.subscriptions.view.page/content path-params)]))))}])
+
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}
              page-route
-             page-content-route]]})
+             page-content-route
+             read-page-route
+             #_read-content-route]]})
