@@ -1,3 +1,4 @@
+- move more stuff from config.edn to config.env
 - subscriptions
   - read items
   - mutations for view sub page
@@ -26,6 +27,7 @@ misc
 
 
 video/blog topics:
+- demo for what there is so far
 - generative testing for indexes
 - code organization (model, app, lib, work)
 - malli schema introspection
