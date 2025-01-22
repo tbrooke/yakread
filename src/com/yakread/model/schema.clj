@@ -103,12 +103,17 @@
                [:user-item/bookmarked-at ?                 :time/instant]
                [:user-item/favorited-at  ?                 :time/instant]
                [:user-item/digested-at   ?                 :time/instant]
-               [:user-item/read-position ?                 :int]
+               [:user-item/position      ?r                :uuid]
                ;; User clicked thumbs-down. Mutually exclusive with :user-item/favorited-at
                [:user-item/disliked-at   ?                 :time/instant]
                ;; This item was recommended in For You and the user reported it.
                [:user-item/reported-at   ?                 :time/instant]
                [:user-item/report-reason ?                 ::string]]
+
+   ;; Split this out of :user-item because it'll change very frequently.
+   :position [:map {:closed true}
+              [:xt/id          :uuid]
+              [:position/value :int]]
 
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a :skip document.
    :skip [:map {:closed true}

@@ -11,33 +11,95 @@
             [lambdaisland.uri :as uri]
             [xtdb.api :as xt]))
 
+;; TODO finish
+(def read-content-route
+  ["/dev/sub-item/:item-id/content"
+   {:name :app.subscriptions.view.read/content
+    :get (lib.pathom/handler
+          [{(? :params/item) [:item/doc-type
+                              (? :item/url)
+                              (? :item/title)
+                              (? :item/clean-html)
+                              {:item/sub [:sub/id
+                                          :sub/title]}]}]
+          (fn [{:keys [biff/router]}
+               {{:item/keys [url doc-type title sub clean-html]} :params/item}]
+            [:<>
+             [:div #_{:_ (str "on load wait 200 ms then call window.scrollTo(0, " position ")")}
+              #_(biff/form {:class "hidden"
+                            :id "save-position"
+                            :hx-post (util/make-url base-url "save-position")
+                            :hx-trigger "save-position"
+                            :hidden {:position position
+                                     :item (:xt/id item)}})
+              [:div {:class '[text-sm
+                              max-sm:mx-4
+                              text-neut-800
+                              flex
+                              justify-between
+                              gap-6]}
+               ;[:div details]
+               (when url
+                 [:a {:class '[underline
+                               whitespace-nowrap
+                               max-sm:hidden]
+                      :href url :target "_blank"}
+                  "View original"])]
+              [:.h-1]
+              [:h1.font-bold.text-2xl.max-sm:mx-4.text-neut-900 title]
+              (when url
+                [:a.underline.whitespace-nowrap.sm:hidden.max-sm:mx-4.text-sm.text-neut-800
+                 {:class '[underline
+                           whitespace-nowrap
+                           sm:hidden
+                           max-sm:mx-4
+                           text-sm
+                           text-neut-800]
+                  :href url
+                  :target "_blank"}
+                 "View original"])
+              [:.h-6]
+              [:.px-4.bg-white.contain-content.overflow-hidden
+               [:div {:id "post-content"
+                      :data-contents clean-html
+                      :_ "on load call renderPost()"
+                      :class (if (= doc-type :item/email)
+                               '[py-4]
+                               '[prose-lg
+                                 prose-quoteless
+                                 prose-neut-900
+                                 prose-a:text-tealv-600
+                                 hover:prose-a:underline
+                                 prose-blockquote:border-l-tealv-500
+                                 prose-h1:text-3xl
+                                 lg:prose-h1:text-4xl])}]]
+              ;(button-bar ctx)
+              ]
+
+             (lib.ui/page-header {:title     (:sub/title sub)
+                                  :back-href (lib.route/path router :app.subscriptions/page {})})
+             [:div#content (lib.ui/lazy-load-spaced router
+                                                    :app.subscriptions.view.page/content
+                                                    {:sub-id (lib.serialize/uuid->url (:sub/id sub))})]]))}])
+
 (def read-page-route
   ["/dev/sub-item/:item-id"
    {:name :app.subscriptions.view/read
     :get (lib.pathom/handler
           [:app.shell/app-shell
-           ;;{(? :params/sub) [:sub/title
-           ;;                  :sub/user]}
            {(? :params/item) [:xt/id
                               :item/title
                               {:item/sub [:sub/id
                                           :sub/title]}]}]
           (fn [{:keys [biff/router session path-params]}
                {:keys [app.shell/app-shell]
-                {:item/keys [sub] :as item} :params/item}]
+                {:item/keys [title sub content] :as item} :params/item}]
             (if (nil? item)
               {:status 303
                :biff.router/name :app.subscriptions/page}
               (app-shell
-               {:title (:sub/title sub)}
-               ;; TODO display item, probably lazily
-               (when item
-                 [:pre.mb-6 (with-out-str (biff/pprint item))])
-               (lib.ui/page-header {:title     (:sub/title sub)
-                                    :back-href (lib.route/path router :app.subscriptions/page {})})
-               [:div#content (lib.ui/lazy-load-spaced router
-                                                      :app.subscriptions.view.page/content
-                                                      {:sub-id (lib.serialize/uuid->url (:sub/id sub))})]))))}])
+               {:title title}
+               (lib.ui/lazy-load-spaced router :app.subscriptions.view.read/content path-params)))))}])
 
 (defn- clean-string [s]
   (str/replace (apply str (remove #{\newline
@@ -194,23 +256,15 @@
    {:name :app.subscriptions.view/page
     :get (lib.pathom/handler
           [:app.shell/app-shell
-           {(? :params/sub) [:sub/title
-                             :sub/user]}
-           ;;{(? :params/item) [:xt/id
-           ;;                   :item/title]}
-           ]
+           {(? :params/sub) [:sub/title]}]
           (fn [{:keys [biff/router session path-params]}
                {:keys [app.shell/app-shell]
-                current-item :params/item
                 {:sub/keys [title]} :params/sub}]
             (if (nil? title)
               {:status 303
                :biff.router/name :app.subscriptions/page}
               (app-shell
                {:title title}
-               ;; TODO display item
-               (when current-item
-                 [:pre.mb-6 (pr-str current-item)])
                (lib.ui/page-header {:title     title
                                     :back-href (lib.route/path router :app.subscriptions/page {})})
                [:div#content (lib.ui/lazy-load-spaced router :app.subscriptions.view.page/content path-params)]))))}])
@@ -220,4 +274,4 @@
              page-route
              page-content-route
              read-page-route
-             #_read-content-route]]})
+             read-content-route]]})

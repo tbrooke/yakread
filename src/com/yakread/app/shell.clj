@@ -55,8 +55,8 @@
    [[:link {:rel "stylesheet" :href (css-path)}]
     [:script {:src "https://unpkg.com/htmx.org@2.0.2"}]
     [:script {:src "https://unpkg.com/hyperscript.org@0.9.12"}]
-    [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.1/purify.min.js"}]
-    [:script {:src "/js/new-app.js"}]
+    [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js"}]
+    [:script {:src "/js/main.js"}]
     [:script {:src "https://unpkg.com/@popperjs/core@2"}]
     [:script {:src "https://unpkg.com/tippy.js@6"}]
     (when include-plausible

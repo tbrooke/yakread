@@ -1,10 +1,13 @@
 (ns com.yakread.model.item
-  (:require [com.biffweb :as biff :refer [q <<-]]
+  (:require [clojure.string :as str]
+            [com.biffweb :as biff :refer [q <<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.user-item :as lib.user-item]
             [clojure.set :as set]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt]
+            [rum.core :as rum])
+  (:import [org.jsoup Jsoup]))
 
 (defresolver user-item [{:keys [biff/db session]} items]
   #::pco{:input [:xt/id]
@@ -87,8 +90,44 @@
 (defresolver xt-id [{:keys [item/id]}]
   {:xt/id id})
 
+;; TODO add resolver/clause for :item.email/content-key
+(defresolver content [ctx {:item/keys [content-key url]}]
+  #::pco{:input [(? :item/content-key)
+                 (? :item/url)]
+         :output [:item/content]}
+  (cond
+    content-key
+    {:item/content (:body (biff/s3-request ctx {:method "GET" :key (str content-key)}))}
+
+    url
+    {:item/content (rum/render-static-markup [:a {:href url} url])}))
+
+(defresolver clean-html [{:item/keys [content]}]
+  {:item/clean-html
+   (let [doc (Jsoup/parse content)]
+     (-> doc
+         (.select "a[href]")
+         (.attr "target" "_blank"))
+     (doseq [img (.select doc "img[src^=http://]")]
+       (.attr img "src" (str/replace (.attr img "src")
+                                     #"^http://"
+                                     "https://")))
+     (.outerHtml doc))})
+
+(defresolver doc-type [{:keys [item.feed/feed
+                               item.email/user]}]
+  #::pco{:input [(? :item.feed/feed)
+                 (? :item.email/user)]
+         :output [:item/doc-type]}
+  (cond
+    feed {:item/doc-type :item/feed}
+    user {:item/doc-type :item/email}))
+
 (def module
-  {:resolvers [item-id
+  {:resolvers [doc-type
+               clean-html
+               content
+               item-id
                xt-id
                user-item
                unread

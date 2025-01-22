@@ -48,6 +48,8 @@
         (assoc ctx :path-params {:item-id "7CD1ilA9QyqOyM9sKIKByQ"})
         {}
         [{:params/item-unsafe [:xt/id
+                               (? :item/content)
+                               (? :item/content-key)
                                {:item/sub [:xt/id
                                            :sub/user]}]}]
         #_[{:user/current [{:sub/_user

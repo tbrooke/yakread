@@ -12,22 +12,6 @@
             [xtdb.api :as xt])
   (:import [java.time Instant]))
 
-(def schema
-  {:sub/id             any?
-   :sub/user           :biff.attr/ref
-   :sub/newsletter     :string
-   :sub/feed           :string
-   :sub/kind           [:enum
-                        :sub.kind/email
-                        :sub.kind/rss]
-   :sub/title          :string
-   :sub/unread         :int
-   :sub/last-published :time/instant
-   :sub/pinned         :boolean
-   :sub/total          :int
-   :sub/read           :int
-   :sub/items          [:vector :biff.attr/ref]})
-
 (defresolver email-title [{:keys [sub.email/from]}]
   {:sub/title (str/replace from #"\s<.*>" "")})
 
@@ -347,7 +331,6 @@
                          sub-id->xt-id
                          email-title
                          feed-title
-                         sub-source-id
                          unread
                          published-at
                          items
