@@ -196,7 +196,8 @@
                                gap-6
                                max-w-screen-sm
                                "max-sm:-mx-4"]}
-                (for [{:item/keys [id title excerpt unread image-with-default url] :as item} items]
+                (for [{:item/keys [id title excerpt unread image-with-default url] :as item}
+                      (sort-by :item/published-at #(compare %2 %1) items)]
                   [:a (if (and use-original-links url)
                         {:href url :target "_blank"}
                         {:href (lib.route/path router :app.subscriptions.view/read

@@ -4,6 +4,7 @@
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.user-item :as lib.user-item]
+            [com.yakread.lib.s3 :as lib.s3]
             [clojure.set :as set]
             [xtdb.api :as xt]
             [rum.core :as rum])
@@ -96,8 +97,9 @@
                  (? :item/url)]
          :output [:item/content]}
   (cond
+    ;; TODO actually use s3 when configured
     content-key
-    {:item/content (:body (biff/s3-request ctx {:method "GET" :key (str content-key)}))}
+    {:item/content (:body (lib.s3/mock-request #_biff/s3-request ctx {:method "GET" :key (str content-key)}))}
 
     url
     {:item/content (rum/render-static-markup [:a {:href url} url])}))
