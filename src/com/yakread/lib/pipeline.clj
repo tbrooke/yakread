@@ -1,12 +1,15 @@
 (ns com.yakread.lib.pipeline
   (:require [clj-http.client :as http]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.walk :as walk]
             [com.biffweb :as biff]
             [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.route :as lib.route]
             [clojure.tools.logging :as log]
-            [remus]))
+            [remus]
+            [taoensso.nippy :as nippy]))
 
 ;; TODO
 ;; - include db basis in exception data
@@ -49,6 +52,15 @@
                        x))
                    tx)))
 
+;; use the filesystem instead of S3
+(defn mock-s3-request [{:biff.pipe.s3/keys [input] :as ctx}]
+  (let [file (io/file "storage/mock-s3" (:key input))]
+    (case (:method input)
+      "PUT" (spit (doto file io/make-parents)
+                  (pr-str (select-keys input [:headers :body])))
+      "GET" (edn/read-string (slurp file))
+      "DELETE" (do (.delete file) nil))))
+
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
@@ -79,4 +91,5 @@
                                     :com.yakread.pipe.remus/output
                                     (update (remus/parse-url url opts) :response dissoc :http-client :body)))
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
-                   (assoc ctx :biff.pipe.s3/output (biff/s3-request ctx input)))})
+                   ;; TODO use config to decide whether to use s3 or filesystem
+                   (assoc ctx :biff.pipe.s3/output (mock-s3-request ctx) #_(biff/s3-request ctx input)))})
