@@ -1,6 +1,7 @@
 (ns com.yakread.lib.middleware
   (:require [clojure.edn :as edn]
-            [com.yakread.lib.route :as lib.route]))
+            [com.yakread.lib.route :as lib.route]
+            [com.wsscode.pathom3.error :as p.error]))
 
 (defn wrap-signed-in [handler]
   (fn [{:keys [session] :as ctx}]
@@ -23,3 +24,14 @@
       (if route-name
         (assoc-in response [:headers "location"] (lib.route/path router route-name params))
         response))))
+
+(defn wrap-pathom-error [handler]
+  (fn [ctx]
+    (try
+      (handler ctx)
+      (catch clojure.lang.ExceptionInfo e
+        (let [data (ex-data e)]
+          (if (and (= (::p.error/cause data) ::p.error/attribute-missing)
+                   (some #(= "params" (namespace %)) (keys (:missing data))))
+            {:status 400}
+            (throw e)))))))

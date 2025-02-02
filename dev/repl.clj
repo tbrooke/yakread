@@ -42,30 +42,39 @@
   (main/refresh)
 
   (tapped
-   (with-context
-     (fn [{:keys [biff/db session] :as ctx}]
-       (lib.pathom/process
-        (assoc ctx :path-params {:item-id "7CD1ilA9QyqOyM9sKIKByQ"})
-        {}
-        [{:params/item-unsafe [:xt/id
-                               (? :item/content)
-                               (? :item/content-key)
-                               {:item/sub [:xt/id
-                                           :sub/user]}]}]
-        #_[{:user/current [{:sub/_user
-                          [:sub/id
-                           :sub/title
-                           :sub/unread
-                           :sub/published-at
-                           {:sub/items [:xt/id
-                                        :item/title
-                                        ]}
-                           ;:sub.view/card
+   (try
+     (with-context
+       (fn [{:keys [biff/db session] :as ctx}]
+         (lib.pathom/process
+          (-> ctx
+              #_(assoc :path-params {:item-id "7CD1ilA9QyqOyM9sKIKByQ"})
+              (dissoc :session)
+              )
+          [{:user/current [:user/timezone]}]
+          #_[{:params/item-unsafe [:xt/id
+                                   (? :item/content)
+                                   (? :item/content-key)
+                                   {:item/sub [:xt/id
+                                               :sub/user]}]}]
+          #_[{:user/current [{:sub/_user
+                              [:sub/id
+                               :sub/title
+                               :sub/unread
+                               :sub/published-at
+                               {:sub/items [:xt/id
+                                            :item/title
+                                            ]}
+                               ;:sub.view/card
 
-                           ;(? :sub/published-at)
-                           ;(? :sub/pinned-at)
+                               ;(? :sub/published-at)
+                               ;(? :sub/pinned-at)
 
-                           ]}]}]))))
+                               ]}]}])))
+     (catch clojure.lang.ExceptionInfo e
+       (:missing (ex-data e))
+       )
+     )
+   )
 
 
   (with-context

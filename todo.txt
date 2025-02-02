@@ -1,4 +1,7 @@
-- move more stuff from config.edn to config.env
+- button bar: like, share (copy link), mark unread, not interested ;;, reply, subscribe, unsubscribe
+- track reading position
+- view sub page buttons: mark all as read, unsubscribe
+
 - subscriptions
   - read items
   - mutations for view sub page
@@ -25,6 +28,8 @@ misc
   outputs the requested key.
 - see how fulcro's datomic resolvers handle when you query for a ref attr without doing a join -- do they return a full
   map if another part of the query asks for the whole entity
+- optimize page load speed--e.g. use macros to precompile hiccup?
+- check :item/image-url gets set correctly for feed items
 
 
 video/blog topics:

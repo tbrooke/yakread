@@ -1,6 +1,8 @@
 (ns com.yakread.app.subscriptions.view
   (:require [clojure.string :as str]
             [com.biffweb :as biff :refer [<<-]]
+            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+            [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
             [com.yakread.lib.pipeline :as lib.pipe]
@@ -11,76 +13,142 @@
             [lambdaisland.uri :as uri]
             [xtdb.api :as xt]))
 
-;; TODO finish
+(defresolver button-bar [{:keys [item/ingested-at]}]
+  {:item/button-bar
+   [:div {:class '[bg-white
+                   flex
+                   sticky
+                   bottom-0
+                   bg-neut-50]
+          :style {:box-shadow "0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)"}}
+    #_[:.flex-1 "reply button" #_(like-button ctx)]
+    #_[:.flex-1 "subscribe button" #_(like-button ctx)]
+    [:.flex-1 "share button" #_(like-button ctx)]
+    [:.flex-1 "like button" #_(like-button ctx)]
+
+    ;;(when (:item/url item)
+    ;;  [:.flex-1 (share-button ctx)])
+    ;;(cond
+    ;;  (:item.email/reply-to item)
+    ;;  [:.flex-1 (reply-button ctx)]
+
+    ;;  (some (or item {}) [:item.rss/feed-url :item/inferred-feed-url])
+    ;;  [:.flex-1 (subscribe-button ctx)])
+
+
+    [:.relative.flex.items-center
+     {:class '["translate-y-[-100%]"]}
+     [:div#button-bar-dropdown.dropdown
+      {:class '[absolute
+                bg-white
+                border
+                bottom-0
+                hidden
+                mb-2
+                py-1
+                right-0
+                rounded
+                rounded
+                shadow-uniform]}
+      [:.flex-1 "mark unread" #_(like-button ctx)]
+      [:.flex-1 "not interested" #_(like-button ctx)]
+      #_[:.flex-1 "unsubscribe" #_(like-button ctx)]
+
+      #_(overflow-button (merge ctx {::text "Mark unread"
+                                   ::endpoint "mark-unread"}))
+      #_(overflow-button (merge ctx {::text "Not interested"
+                                   ::endpoint "dislike"}))
+      #_(unsubscribe-button ctx)
+      #_(ui/overflow-button
+       {:onclick "showModal(this)"
+        :data-url (str "/for-you/report?item=" (:xt/id item))}
+       "Report")]
+     [:button.flex.p-2.hover:bg-neut-50.flex-none.h-full.translate-y-full
+      {:_ "on click toggle .hidden on #button-bar-dropdown then halt"}
+      (lib.icons/base "ellipsis-vertical-regular"
+                      {:class '[w-8
+                                h-5
+                                flex-shrink-0
+                                "mt-[2px]"]})]]]})
+
 (def read-content-route
   ["/dev/sub-item/:item-id/content"
    {:name :app.subscriptions.view.read/content
     :get (lib.pathom/handler
-          [{(? :params/item) [:item/doc-type
+          [{(? :params/item) [:item/id
+                              :item/doc-type
                               (? :item/url)
                               (? :item/title)
                               (? :item/clean-html)
+                              (? :item/details)
                               {:item/sub [:sub/id
-                                          :sub/title]}]}]
+                                          :sub/title]}
+                              :item/button-bar]}]
           (fn [{:keys [biff/router]}
-               {{:item/keys [url doc-type title sub clean-html]} :params/item}]
-            [:<>
-             [:div #_{:_ (str "on load wait 200 ms then call window.scrollTo(0, " position ")")}
-              #_(biff/form {:class "hidden"
-                            :id "save-position"
-                            :hx-post (util/make-url base-url "save-position")
-                            :hx-trigger "save-position"
-                            :hidden {:position position
-                                     :item (:xt/id item)}})
-              [:div {:class '[text-sm
-                              max-sm:mx-4
-                              text-neut-800
-                              flex
-                              justify-between
-                              gap-6]}
-               ;[:div details]
-               (when url
-                 [:a {:class '[underline
-                               whitespace-nowrap
-                               max-sm:hidden]
-                      :href url :target "_blank"}
-                  "View original"])]
-              [:.h-1]
-              [:h1.font-bold.text-2xl.max-sm:mx-4.text-neut-900 title]
-              (when url
-                [:a.underline.whitespace-nowrap.sm:hidden.max-sm:mx-4.text-sm.text-neut-800
-                 {:class '[underline
-                           whitespace-nowrap
-                           sm:hidden
-                           max-sm:mx-4
-                           text-sm
-                           text-neut-800]
-                  :href url
-                  :target "_blank"}
-                 "View original"])
-              [:.h-6]
-              [:.px-4.bg-white.contain-content.overflow-hidden
-               [:div {:id "post-content"
-                      :data-contents clean-html
-                      :_ "on load call renderPost()"
-                      :class (if (= doc-type :item/email)
-                               '[py-4]
-                               '[prose-lg
-                                 prose-quoteless
-                                 prose-neut-900
-                                 prose-a:text-tealv-600
-                                 hover:prose-a:underline
-                                 prose-blockquote:border-l-tealv-500
-                                 prose-h1:text-3xl
-                                 lg:prose-h1:text-4xl])}]]
-              ;(button-bar ctx)
-              ]
+               {{:item/keys [id url details doc-type title sub clean-html button-bar]
+                 :as item} :params/item}]
+            (when item
+              [:<>
+               [:div {:hx-post (lib.route/path router :app.subscriptions.view.read/mark-read
+                                 {:item-id (lib.serialize/uuid->url id)})
+                      :hx-trigger "load"
+                      :hx-swap "outerHTML"}]
+               [:div #_{:_ (str "on load wait 200 ms then call window.scrollTo(0, " position ")")}
+                #_(biff/form {:class "hidden"
+                              :id "save-position"
+                              :hx-post (util/make-url base-url "save-position")
+                              :hx-trigger "save-position"
+                              :hidden {:position position
+                                       :item (:xt/id item)}})
+                [:div {:class '[text-sm
+                                max-sm:mx-4
+                                text-neut-800
+                                flex
+                                justify-between
+                                gap-6]}
+                 [:div details]
+                 (when url
+                   [:a {:class '[underline
+                                 whitespace-nowrap
+                                 max-sm:hidden]
+                        :href url :target "_blank"}
+                    "View original"])]
+                [:.h-1]
+                [:h1.font-bold.text-2xl.max-sm:mx-4.text-neut-900 title]
+                (when url
+                  [:a {:class '[max-sm:mx-4
+                                sm:hidden
+                                text-neut-800
+                                text-sm
+                                underline
+                                whitespace-nowrap]
+                       :href url
+                       :target "_blank"}
+                   "View original"])
+                [:.h-6]
+                [:.px-4.bg-white.contain-content.overflow-hidden
+                 [:div {:id "post-content"
+                        :data-contents clean-html
+                        :_ "on load call renderPost()"
+                        :class (if (= doc-type :item/email)
+                                 '[py-4]
+                                 '[hover:prose-a:underline
+                                   lg:prose-h1:text-4xl
+                                   prose-a:text-tealv-600
+                                   prose-blockquote:border-l-tealv-500
+                                   prose-h1:text-3xl
+                                   prose-lg
+                                   prose-neut-900
+                                   prose-quoteless
+                                   py-4])}]]
+                button-bar]
 
-             (lib.ui/page-header {:title     (:sub/title sub)
-                                  :back-href (lib.route/path router :app.subscriptions/page {})})
-             [:div#content (lib.ui/lazy-load-spaced router
-                                                    :app.subscriptions.view.page/content
-                                                    {:sub-id (lib.serialize/uuid->url (:sub/id sub))})]]))}])
+               [:div.h-10]
+               (lib.ui/page-header {:title     (:sub/title sub)
+                                    :back-href (lib.route/path router :app.subscriptions/page {})})
+               [:div#content (lib.ui/lazy-load-spaced router
+                                                      :app.subscriptions.view.page/content
+                                                      {:sub-id (lib.serialize/uuid->url (:sub/id sub))})]])))}])
 
 (def read-page-route
   ["/dev/sub-item/:item-id"
@@ -110,58 +178,6 @@
                #"\s+"
                " "))
 
-(defn- item-byline [{:item/keys [byline
-                                 author-name
-                                 site-name
-                                 url]}]
-  (some->> [(or author-name byline)
-            (or site-name
-                (when url
-                  (:host (uri/uri url))))]
-           (keep #(some-> % str/trim not-empty))
-           not-empty
-           (str/join " | ")))
-
-(defn- fancy-format-date [date]
-  (let [date (java.util.Date/from date)
-        date-fmt (if (apply = (map #(biff/crop-date % "yyyy") [date (java.util.Date.)]))
-                   "d MMM"
-                   "d MMM yyyy")]
-    (biff/format-date date date-fmt)))
-
-(defn- pluralize [n label]
-  (str n " " label (when (not= 1 n) "s")))
-
-(def ^:private interpunct " · ")
-
-(defn- reading-minutes [n-characters]
-  (max 1 (Math/round (/ n-characters 900.0))))
-
-(defn- item-details [{:item/keys [url
-                                  published-at
-                                  fetched-at
-                                  author-name
-                                  byline
-                                  site-name
-                                  length]
-                      :keys [item.extra/type
-                             item.extra/date]
-                      :as item}]
-  (->> [(item-byline item)
-        (fancy-format-date (or date published-at fetched-at))
-        (when length
-          (pluralize (reading-minutes length) "minute"))
-        (when-some [label ({:bookmark "Bookmarked"
-                            :subscription "Subscribed"
-                            :new-subscription "New subscription"
-                            :ad "Ad"
-                            :discover "Discover"
-                            :current "Continue reading"} type)]
-          [:span.underline label])]
-       (filter some?)
-       (map #(vector :span.inline-block %))
-       (biff/join interpunct)))
-
 (def page-content-route
   ["/dev/subscription/:sub-id/content"
    {:name :app.subscriptions.view.page/content
@@ -170,8 +186,9 @@
                              {:sub/items
                               [:item/id
                                :item/unread
+                               :item/details
                                (? :item/title)
-                               ;(? :item/image-with-default)
+                               (? :item/image-url)
                                (? :item/author-name)
                                (? :item/byline)
                                (? :item/excerpt)
@@ -180,12 +197,9 @@
                                (? :item/published-at)
                                (? :item/site-name)
                                (? :item/url)]}]}
-           ;{(? :params/item) [:xt/id
-           ;                   :item/title]}
            {:user/current [(? :user/use-original-links)]}]
           (fn [{:keys [biff/router session path-params]}
                {:keys [app.shell/app-shell]
-                current-item :params/item
                 {:keys [user/use-original-links]} :user/current
                 {:sub/keys [id items]} :params/sub}]
             (if-not id
@@ -194,9 +208,8 @@
                [:div {:class '[flex
                                flex-col
                                gap-6
-                               max-w-screen-sm
-                               "max-sm:-mx-4"]}
-                (for [{:item/keys [id title excerpt unread image-with-default url] :as item}
+                               max-w-screen-sm]}
+                (for [{:item/keys [id details title excerpt unread image-url url] :as item}
                       (sort-by :item/published-at #(compare %2 %1) items)]
                   [:a (if (and use-original-links url)
                         {:href url :target "_blank"}
@@ -211,7 +224,7 @@
                                              sm:border-l-4
                                              border-tealv-500]))}
                     [:.text-neut-600.text-sm.line-clamp-2
-                     (item-details item)]
+                     details]
                     [:.h-1]
                     [:h3 {:class '[font-bold
                                    text-xl
@@ -231,9 +244,9 @@
                                       hover:underline
                                       inline-block]}
                        "Read more."]]
-                     (when image-with-default
+                     (when image-url
                        [:.relative.flex-shrink-0
-                        [:img {:src (lib.ui/weserv {:url image-with-default
+                        [:img {:src (lib.ui/weserv {:url image-url
                                                     :w 150
                                                     :h 150
                                                     :fit "cover"
@@ -270,9 +283,26 @@
                                     :back-href (lib.route/path router :app.subscriptions/page {})})
                [:div#content (lib.ui/lazy-load-spaced router :app.subscriptions.view.page/content path-params)]))))}])
 
+(def mark-read-route
+  ["/dev/sub-item/:item-id/mark-read"
+   {:name :app.subscriptions.view.read/mark-read
+    :post (lib.pipe/make
+           :start (constantly {:biff.pipe/next [:biff.pipe/pathom :end]
+                               :biff.pipe.pathom/query [{:session/user [:xt/id]}
+                                                        {:params/item [:xt/id]}]})
+           :end (fn [{{:keys [session/user params/item]} :biff.pipe.pathom/output}]
+                  {:status 200
+                   :biff.pipe/next [:biff.pipe/tx]
+                   :biff.pipe.tx/input [{:db/doc-type :user-item
+                                         :db.op/upsert {:user-item/user (:xt/id user)
+                                                        :user-item/item (:xt/id item)}
+                                         :user-item/viewed-at [:db/default :db/now]}]}))}])
+
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}
              page-route
              page-content-route
              read-page-route
-             read-content-route]]})
+             read-content-route
+             mark-read-route]]
+   :resolvers [button-bar]})

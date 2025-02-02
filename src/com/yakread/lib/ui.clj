@@ -5,6 +5,8 @@
             [com.yakread.lib.route :as lib.route]
             [lambdaisland.uri :as uri]))
 
+(def interpunct " · ")
+
 (defn pluralize [n label]
   (str n " " label (when (not= 1 n) "s")))
 
@@ -12,7 +14,7 @@
   (str/replace (str x) #"[^a-zA-Z0-9-]" "_"))
 
 (defn page-header [& {:keys [title add-href back-href]}]
-  [:div
+  [:div.max-sm:px-4
    (when back-href
      [:a {:href back-href
           :class '[text-neut-600

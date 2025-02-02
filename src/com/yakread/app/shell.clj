@@ -6,6 +6,7 @@
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.route :as lib.route]
+            [com.yakread.lib.ui :as lib.ui]
             [ring.middleware.anti-forgery :as csrf]
             [ring.util.response :as ring-response]))
 
@@ -178,15 +179,13 @@
                                    "top-[1px]"
                                    text-neut-300]})]])]]})
 
-(def interpunct " · ")
-
 (defresolver footer [{current-user :user/current}]
   #::pco{:input [(? :user/current)]}
   {:app.shell/footer
    [:.text-sm.text-center.mt-10.text-neut-600
     [:div
      (biff/join
-      interpunct
+      lib.ui/interpunct
       ;; TODO use router?
       (for [[href label target] [["https://obryant.dev" "About"]
                                  ["/advertise" "Advertise" :same-tab]
@@ -269,9 +268,10 @@
                        {:x-csrf-token csrf/*anti-forgery-token*})
           :_ "on click add .hidden to .dropdown"}
          sidebar
+         [:.sm:w-8]
          [:div {:class (concat '[mx-auto
-                                 p-4
-                                 sm:p-8
+                                 py-4
+                                 sm:pt-8
                                  sm:pb-6
                                  flex
                                  flex-col
@@ -280,7 +280,8 @@
                                  '[max-w-screen-sm]))}
           content
           [:.grow]
-          footer]])))})
+          footer]
+         [:.sm:w-8]])))})
 
 (def module
   {:resolvers [app-shell

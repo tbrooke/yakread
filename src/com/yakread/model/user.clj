@@ -5,6 +5,12 @@
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.user :as lib.user]))
 
+(defresolver session-user [{:keys [session]} _]
+  #::pco{:output [{:session/user [:xt/id]}]}
+  (when (:uid session)
+    {:session/user {:xt/id (:uid session)}}))
+
+;; TODO switch everything to :session/user
 (defresolver current-user [{:keys [session]} _]
   #::pco{:output [{:user/current [:xt/id]}]}
   (when (:uid session)
@@ -23,5 +29,6 @@
       (when-not (some->> suggested (lib.user/email-username-taken? db))
         {:user/suggested-email-username suggested}))))
 
-(def module {:resolvers [current-user
+(def module {:resolvers [session-user
+                         current-user
                          suggested-email-username]})

@@ -34,7 +34,7 @@
     ([request]
      (lib.error/with-ex-data (lib.error/request-ex-data request)
        (handler* request (process request query))))
-    ([request output]
-     (f request output))))
+    ([request input]
+     (f request input))))
 
 (def plan-cache-kw :com.wsscode.pathom3.connect.planner/plan-cache*)

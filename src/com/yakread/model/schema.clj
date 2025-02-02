@@ -56,7 +56,7 @@
                 [:item/excerpt      ? ::string]
                 [:item/author-name  ? ::string]
                 [:item/author-url   ? ::string]
-                ;; An autodiscovered feed url, parsed from the item's content. Contrast with :item/feed -> :feed/url,
+                ;; An autodiscovered feed url, parsed from the item's content. Contrast with :item.feed/feed -> :feed/url,
                 ;; which is the feed URL from which this item was fetched.
                 [:item/feed-url     ? ::string]
                 [:item/lang         ? ::string]
@@ -75,6 +75,9 @@
                         [:item.email/unsubscribe        ?              ::string]
                         [:item.email/reply-to           ?              ::string]
                         [:item.email/maybe-confirmation ?              :boolean])
+   ;; Items fetched from a user-supplied URL (bookmarked or favorited)
+   :item/direct (inherit :item/base
+                         [:item/doc-type [:enum :item/direct]])
 
    :feed [:map {:closed true}
           [:xt/id                :uuid]

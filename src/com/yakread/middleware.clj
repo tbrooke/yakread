@@ -135,7 +135,8 @@
    biff/wrap-render-rum
    wrap-auth-aliases
    lib.middle/wrap-edn-json-params
-   lib.middle/wrap-router-response])
+   lib.middle/wrap-router-response
+   lib.middle/wrap-pathom-error])
 
 (defn wrap-options [handler options]
   (fn [ctx]

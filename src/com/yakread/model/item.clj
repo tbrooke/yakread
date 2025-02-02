@@ -3,12 +3,16 @@
             [com.biffweb :as biff :refer [q <<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.serialize :as lib.serialize]
+            [com.yakread.lib.ui :as lib.ui]
             [com.yakread.lib.user-item :as lib.user-item]
             [com.yakread.lib.s3 :as lib.s3]
             [clojure.set :as set]
+            [lambdaisland.uri :as uri]
             [xtdb.api :as xt]
             [rum.core :as rum])
-  (:import [org.jsoup Jsoup]))
+  (:import (org.jsoup Jsoup)
+           (java.time Instant ZoneId ZoneOffset)
+           (java.time.format DateTimeFormatter)))
 
 (defresolver user-item [{:keys [biff/db session]} items]
   #::pco{:input [:xt/id]
@@ -29,29 +33,22 @@
                             (hash-map :item/user-item))))
           items)))
 
-;; TODO make sure we're syncing :rss/image correctly
-(defresolver image [{:keys [biff/db]} items]
-  #::pco{:input [(? :item.rss/feed-url)
-                 (? :item/inferred-feed-url)
-                 (? :item/image)]
-         :output [:item/image-with-default]
+(defresolver image-from-feed [{:keys [biff/db]} items]
+  #::pco{:input [(? :item/feed-url)
+                 {(? :item.feed/feed) [:feed/image-url]}]
+         :output [:item/image-url]
          :batch? true}
   (let [url->image (into {} (q db
                                '{:find [url image]
                                  :in [[url ...]]
-                                 :where [[rss :rss/url url]
-                                         [rss :rss/image image]]}
-                               (distinct
-                                (concat
-                                 (keep :item.rss/feed-url items)
-                                 (keep :item/inferred-feed-url items)))))]
+                                 :where [[feed :feed/url url]
+                                         [feed :feed/image-url image]]}
+                               (keep :item/feed-url items)))]
     (vec
-     (for [{:keys [item.rss/feed-url
-                   item/inferred-feed-url
-                   item/image]
-            :as item} items
-           :let [image (or image (some url->image [feed-url inferred-feed-url]))]]
-       (merge (when image {:item/image-with-default image})
+     (for [{:keys [item.feed/feed item/feed-url] :as item} items]
+       (merge (when-some [image (or (:feed/image-url feed)
+                                    (url->image feed-url))]
+                {:item/image-url image})
               item)))))
 
 (defresolver unread [{:keys [item/user-item]}]
@@ -125,15 +122,58 @@
     feed {:item/doc-type :item/feed}
     user {:item/doc-type :item/email}))
 
+(defn- reading-minutes [n-characters]
+  (max 1 (Math/round (/ n-characters 900.0))))
+
+(defresolver details [{:item/keys [byline
+                                   author-name
+                                   site-name
+                                   url
+                                   published-at
+                                   ingested-at
+                                   length]}]
+  #::pco{:input [(? :item/byline)
+                 (? :item/author-name)
+                 (? :item/site-name)
+                 (? :item/url)
+                 (? :item/published-at)
+                 (? :item/ingested-at)
+                 (? :item/length)]}
+  {:item/details
+   (->> [(not-empty (str/trim (or author-name byline)))
+         (some-> url uri/uri :host str/trim not-empty)
+         (let [offset ZoneOffset/UTC ; TODO get timezone for user
+               odt (.atOffset (or published-at ingested-at) offset)
+               same-year (= (.getYear odt)
+                            (.getYear (.atOffset (Instant/now) offset)))
+               formatter (DateTimeFormatter/ofPattern (if same-year
+                                                        "d MMM"
+                                                        "d MMM yyyy"))]
+           (.format odt formatter))
+         (when length
+           (lib.ui/pluralize (reading-minutes length) "minute"))
+         ;; TODO implement this part when we get to the For You page
+         #_(when-some [label ({:bookmark "Bookmarked"
+                               :subscription "Subscribed"
+                               :new-subscription "New subscription"
+                               :ad "Ad"
+                               :discover "Discover"
+                               :current "Continue reading"} type)]
+             [:span.underline label])]
+        (filter some?)
+        (map #(vector :span.inline-block %))
+        (biff/join lib.ui/interpunct))})
+
 (def module
-  {:resolvers [doc-type
-               clean-html
+  {:resolvers [clean-html
                content
-               item-id
-               xt-id
-               user-item
-               unread
-               #_image
-               sub
+               details
+               doc-type
+               from-params
                from-params-unsafe
-               from-params]})
+               image-from-feed
+               item-id
+               sub
+               unread
+               user-item
+               xt-id]})
