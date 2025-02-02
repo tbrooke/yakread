@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [com.biffweb :as biff :refer [<<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+            [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
@@ -11,9 +12,38 @@
             [com.yakread.lib.ui :as lib.ui]
             [com.yakread.model.subscription :as model.sub]
             [lambdaisland.uri :as uri]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt]
+            [rum.core :as rum]))
 
-(defresolver button-bar [{:keys [item/ingested-at]}]
+(defresolver like-button [{:keys [biff/router]} {:item/keys [id user-item]}]
+  #::pco{:input [:item/id
+                 {(? :item/user-item) [(? :user-item/favorited-at)]}]}
+  {:item/like-button
+   (let [active (boolean (:user-item/favorited-at user-item))
+         active-icon "star-solid"
+         inactive-icon "star-regular"
+         text "Like"]
+     [:button {:hx-post (lib.route/path router :app.subscriptions.view.read/favorite
+                          {:item-id (lib.serialize/uuid->url id)})
+               :hx-swap "outerHTML"
+               :class (concat '[flex
+                                hover:bg-neut-50
+                                inter
+                                justify-center
+                                py-2
+                                w-full]
+                              (when active
+                                '[font-semibold]))}
+      (lib.icons/base (if active active-icon inactive-icon)
+                      {:class '[w-5
+                                h-5
+                                flex-shrink-0
+                                "mt-[2px]"]})
+      [:.w-1.sm:w-2]
+      text])})
+
+(defresolver button-bar [{:keys [biff/router]}
+                         {:item/keys [id like-button]}]
   {:item/button-bar
    [:div {:class '[bg-white
                    flex
@@ -24,7 +54,7 @@
     #_[:.flex-1 "reply button" #_(like-button ctx)]
     #_[:.flex-1 "subscribe button" #_(like-button ctx)]
     [:.flex-1 "share button" #_(like-button ctx)]
-    [:.flex-1 "like button" #_(like-button ctx)]
+    [:.flex-1 like-button]
 
     ;;(when (:item/url item)
     ;;  [:.flex-1 (share-button ctx)])
@@ -298,11 +328,42 @@
                                                         :user-item/item (:xt/id item)}
                                          :user-item/viewed-at [:db/default :db/now]}]}))}])
 
+(def favorite-route
+  ["/dev/sub-item/:item-id/favorite"
+   {:name :app.subscriptions.view.read/favorite
+    :post (lib.pipe/make
+           :start (constantly {:biff.pipe/next [:biff.pipe/pathom :end]
+                               :biff.pipe.pathom/query [{:params/item [:item/id
+                                                                       {:item/user-item [:xt/id
+                                                                                         (? :user-item/favorited-at)]}]}]})
+           :end (fn [{:keys [biff/router]
+                      {:keys [params/item]} :biff.pipe.pathom/output}]
+                  (let [user-item (:item/user-item item)]
+                    {:status 200
+                     :headers {"Content-Type" "text/html"}
+                     :body (rum/render-static-markup
+                            (:item/like-button
+                             (like-button {:biff/router router}
+                                          (update-in item [:item/user-item :user-item/favorited-at] not))))
+                     :biff.pipe/next [:biff.pipe/tx]
+                     :biff.pipe.tx/retry false
+                     :biff.pipe.tx/input [{:db/doc-type :user-item
+                                           :db/op :update
+                                           :xt/id (:xt/id user-item)
+                                           :user-item/favorited-at (if (:user-item/favorited-at user-item)
+                                                                     :db/dissoc
+                                                                     :db/now)
+                                           :user-item/disliked-at :db/dissoc
+                                           :user-item/reported-at :db/dissoc
+                                           :user-item/report-reason :db/dissoc}]})))}])
+
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}
              page-route
              page-content-route
              read-page-route
              read-content-route
-             mark-read-route]]
-   :resolvers [button-bar]})
+             mark-read-route
+             favorite-route]]
+   :resolvers [button-bar
+               like-button]})

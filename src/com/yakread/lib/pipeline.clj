@@ -58,8 +58,12 @@
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
                                                            (assoc :url (:url input))
                                                            (dissoc :http-client))))
-   :biff.pipe/tx (fn [{:keys [biff.pipe.tx/input] :as ctx}]
-                   (assoc ctx :biff.pipe.tx/output (biff/submit-tx ctx (replace-db-now input))))
+   :biff.pipe/tx (fn [{:biff.pipe.tx/keys [input retry] :as ctx}]
+                   (assoc ctx :biff.pipe.tx/output
+                          (biff/submit-tx
+                            (cond-> ctx
+                              retry (assoc :biff.xtdb/retry retry))
+                            (replace-db-now input))))
    :biff.pipe/pathom (fn [{:biff.pipe.pathom/keys [entity query] :as ctx}]
                        (assoc ctx
                               :biff.pipe.pathom/output
