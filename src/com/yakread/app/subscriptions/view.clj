@@ -15,35 +15,54 @@
             [xtdb.api :as xt]
             [rum.core :as rum]))
 
+(defn bar-button-icon-label [icon text]
+  [:.flex.justify-center
+   (lib.icons/base icon
+                   {:class '[w-5
+                             h-5
+                             flex-shrink-0
+                             "mt-[2px]"]})
+   [:.w-1.sm:w-2]
+   [:span text]])
+
+(def bar-button-classes '[hover:bg-neut-50
+                          inter
+                          py-2
+                          w-full])
+
 (defresolver like-button [{:keys [biff/router]} {:item/keys [id user-item]}]
   #::pco{:input [:item/id
                  {(? :item/user-item) [(? :user-item/favorited-at)]}]}
   {:item/like-button
-   (let [active (boolean (:user-item/favorited-at user-item))
-         active-icon "star-solid"
-         inactive-icon "star-regular"
-         text "Like"]
+   (let [active (boolean (:user-item/favorited-at user-item))]
      [:button {:hx-post (lib.route/path router :app.subscriptions.view.read/favorite
                           {:item-id (lib.serialize/uuid->url id)})
                :hx-swap "outerHTML"
-               :class (concat '[flex
-                                hover:bg-neut-50
-                                inter
-                                justify-center
-                                py-2
-                                w-full]
-                              (when active
-                                '[font-semibold]))}
-      (lib.icons/base (if active active-icon inactive-icon)
-                      {:class '[w-5
-                                h-5
-                                flex-shrink-0
-                                "mt-[2px]"]})
-      [:.w-1.sm:w-2]
-      text])})
+               :class (into bar-button-classes
+                            (when active
+                              '[font-semibold]))}
+      (bar-button-icon (if active
+                         "star-solid"
+                         "star-regular")
+                       "Like")])})
+
+(defresolver share-button [{:item/keys [url]}]
+  {:item/share-button
+   [:button {:data-url url
+             :_ "on click
+                 writeText(@data-url) on navigator.clipboard
+                 toggle .hidden on .toggle in me
+                 wait 1s
+                 toggle .hidden on .toggle in me"
+             :class bar-button-classes}
+    [:span.toggle (bar-button-icon "share-regular" "Share")]
+    [:span.toggle.hidden.text-gray-700 "Copied to clipboard."]]})
 
 (defresolver button-bar [{:keys [biff/router]}
-                         {:item/keys [id like-button]}]
+                         {:item/keys [id like-button share-button]}]
+  #::pco{:input [:item/id
+                 :item/like-button
+                 (? :item/share-button)]}
   {:item/button-bar
    [:div {:class '[bg-white
                    flex
@@ -51,19 +70,15 @@
                    bottom-0
                    bg-neut-50]
           :style {:box-shadow "0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)"}}
-    #_[:.flex-1 "reply button" #_(like-button ctx)]
-    #_[:.flex-1 "subscribe button" #_(like-button ctx)]
-    [:.flex-1 "share button" #_(like-button ctx)]
-    [:.flex-1 like-button]
-
-    ;;(when (:item/url item)
-    ;;  [:.flex-1 (share-button ctx)])
+    (when share-button
+      [:.flex-1 share-button])
     ;;(cond
     ;;  (:item.email/reply-to item)
     ;;  [:.flex-1 (reply-button ctx)]
 
     ;;  (some (or item {}) [:item.rss/feed-url :item/inferred-feed-url])
     ;;  [:.flex-1 (subscribe-button ctx)])
+    [:.flex-1 like-button]
 
 
     [:.relative.flex.items-center
@@ -368,4 +383,5 @@
              mark-read-route
              favorite-route]]
    :resolvers [button-bar
-               like-button]})
+               like-button
+               share-button]})
