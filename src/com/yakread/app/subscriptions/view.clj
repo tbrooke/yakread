@@ -317,9 +317,9 @@
   ["/dev/sub-item/:item-id/mark-read"
    {:name :app.subscriptions.view.read/mark-read
     :post (lib.pipe/make
-           :start (constantly {:biff.pipe/next [:biff.pipe/pathom :end]
-                               :biff.pipe.pathom/query [{:session/user [:xt/id]}
-                                                        {:params/item [:xt/id]}]})
+           :start (lib.pipe/pathom-query [{:session/user [:xt/id]}
+                                          {:params/item [:xt/id]}]
+                                         :end)
            :end (fn [{{:keys [session/user params/item]} :biff.pipe.pathom/output}]
                   {:status 200
                    :biff.pipe/next [:biff.pipe/tx]
@@ -332,10 +332,12 @@
   ["/dev/sub-item/:item-id/favorite"
    {:name :app.subscriptions.view.read/favorite
     :post (lib.pipe/make
-           :start (constantly {:biff.pipe/next [:biff.pipe/pathom :end]
-                               :biff.pipe.pathom/query [{:params/item [:item/id
-                                                                       {:item/user-item [:xt/id
-                                                                                         (? :user-item/favorited-at)]}]}]})
+           :start (lib.pipe/pathom-query [{:params/item
+                                           [:item/id
+                                            {:item/user-item
+                                             [:xt/id
+                                              (? :user-item/favorited-at)]}]}]
+                                         :end)
            :end (fn [{:keys [biff/router]
                       {:keys [params/item]} :biff.pipe.pathom/output}]
                   (let [user-item (:item/user-item item)]

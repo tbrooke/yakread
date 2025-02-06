@@ -52,7 +52,8 @@
 (defn- actual [{:keys [biff.test/fixtures
                        biff.test/empty-db
                        biff/modules
-                       biff/router]}
+                       biff/router]
+                :as ctx*}
                {:keys [route-name fn-sym index-id method handler-id ctx fixture db-contents]
                 :or {method :post}
                 :as example}]
@@ -69,7 +70,7 @@
         sut (if (contains? example :handler-id)
               #(sut* % handler-id)
               sut*)
-        ctx (merge ctx (some-> fixture fixtures))]
+        ctx (merge ctx* ctx (some-> fixture fixtures))]
     (if (not-empty db-contents)
       (with-open [node (xt/start-node {})]
         (xt/await-tx node (xt/submit-tx node (for [doc db-contents]

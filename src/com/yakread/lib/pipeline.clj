@@ -53,6 +53,11 @@
                        x))
                    tx)))
 
+(defn pathom-query [query next-state]
+  (constantly
+   {:biff.pipe/next [:biff.pipe/pathom next-state]
+    :biff.pipe.pathom/query query}))
+
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
