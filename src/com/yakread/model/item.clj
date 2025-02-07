@@ -63,10 +63,12 @@
                  (? :item.email/sub)
                  (? :item.feed/feed)]
          :output [{:item/sub [:xt/id]}]}
-  {:item/sub
-   (or sub
-       (some->> (biff/lookup-id db :sub/user (:uid session) :sub.feed/feed (:xt/id feed))
-                (hash-map :xt/id)))})
+  (when-some [sub (or sub
+                      (some->> (biff/lookup-id db
+                                               :sub/user (:uid session)
+                                               :sub.feed/feed (:xt/id feed))
+                               (hash-map :xt/id)))]
+    {:item/sub sub}))
 
 (defresolver from-params-unsafe [{:keys [path-params]} _]
   #::pco{:output [{:params/item-unsafe [:xt/id]}]}

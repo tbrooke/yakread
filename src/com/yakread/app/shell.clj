@@ -22,31 +22,33 @@
     (str "/css/main.css?t=" last-modified)
     "/css/main.css"))
 
-(defresolver pages [{:keys [biff/router uri]} {{:keys [user/roles]} :user/current}]
+(defresolver pages [{:keys [biff/router uri reitit.core/match]} {{:keys [user/roles]} :user/current}]
   #::pco{:input [{(? :user/current) [:user/roles]}]}
   {:app.shell/pages
-   (->> (cond-> [#:app.shell.page{:route-name :app.for-you/page
-                                  :title "For you"
-                                  :icon "house"}
-                 #:app.shell.page{:route-name :app.subscriptions/page
-                                  :title "Subscriptions"
-                                  :icon "rss"}
-                 #:app.shell.page{:route-name :app.read-later/page
-                                  :title "Read later"
-                                  :icon "bookmark"}
-                 #:app.shell.page{:route-name :app.favorites/page
-                                  :title "Favorites"
-                                  :icon "star"}
-                 #:app.shell.page{:route-name :app.settings/page
-                                  :title "Settings"
-                                  :icon "gear"}]
-          (contains? roles :admin) (conj #:app.shell.page{:route-name :app.admin/page
-                                                          :title "Admin"
-                                                          :icon "lock"}))
-        (mapv (fn [{:keys [app.shell.page/route-name] :as page}]
-                (let [href (lib.route/path router route-name {})]
-                  (merge page #:app.shell.page{:href href
-                                               :active (str/starts-with? uri href)})))))})
+   (let [route-ns (-> match :data :name namespace)]
+     (->> (cond-> [#:app.shell.page{:route-name :app.for-you/page
+                                    :title "For you"
+                                    :icon "house"}
+                   #:app.shell.page{:route-name :app.subscriptions/page
+                                    :title "Subscriptions"
+                                    :icon "rss"}
+                   #:app.shell.page{:route-name :app.read-later/page
+                                    :title "Read later"
+                                    :icon "bookmark"}
+                   #:app.shell.page{:route-name :app.favorites/page
+                                    :title "Favorites"
+                                    :icon "star"}
+                   #:app.shell.page{:route-name :app.settings/page
+                                    :title "Settings"
+                                    :icon "gear"}]
+            (contains? roles :admin) (conj #:app.shell.page{:route-name :app.admin/page
+                                                            :title "Admin"
+                                                            :icon "lock"}))
+          (mapv (fn [{:keys [app.shell.page/route-name] :as page}]
+                  (let [href (lib.route/path router route-name {})]
+                    (prn (namespace route-name))
+                    (merge page #:app.shell.page{:href href
+                                                 :active (doto (str/starts-with? route-ns (namespace route-name)) prn)}))))))})
 
 (defresolver app-head [{:keys [app.shell/include-plausible
                                app.shell/include-recaptcha]}
@@ -66,7 +68,8 @@
                 :data-domain "yakread.com"}])
     (when (and (nil? user) include-recaptcha)
       [:script {:src "https://www.google.com/recaptcha/api.js" :async "async" :defer "defer"}])
-    [:link {:rel "manifest", :href "/site.webmanifest?a"}]
+    ;; TODO
+    ;[:link {:rel "manifest", :href "/site.webmanifest?a"}]
     [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
     [:link {:rel "icon", :type "image/png", :sizes "32x32", :href "/favicon-32x32.png"}]
     [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
@@ -115,10 +118,10 @@
             :class '[flex
                      flex-col
                      gap-1]}
-      (for [{:app.shell.page/keys [route-name title icon]} pages
+      (for [{:app.shell.page/keys [route-name title icon active]} pages
             :let [href (lib.route/path router route-name {})]]
         [:a {:href href
-             :class (concat (if (str/starts-with? uri href)
+             :class (concat (if active
                               '[bg-neut-800
                                 text-white]
                               '[text-neut-200

@@ -47,29 +47,17 @@
        (fn [{:keys [biff/db session] :as ctx}]
          (lib.pathom/process
           (-> ctx
-              #_(assoc :path-params {:item-id "7CD1ilA9QyqOyM9sKIKByQ"})
-              (dissoc :session)
-              )
-          [{:user/current [:user/timezone]}]
-          #_[{:params/item-unsafe [:xt/id
-                                   (? :item/content)
-                                   (? :item/content-key)
-                                   {:item/sub [:xt/id
-                                               :sub/user]}]}]
-          #_[{:user/current [{:sub/_user
-                              [:sub/id
-                               :sub/title
-                               :sub/unread
-                               :sub/published-at
-                               {:sub/items [:xt/id
-                                            :item/title
+              (assoc :path-params {:item-id "eWrwK063TYypMDhtG0NP0Q"})
+              #_(dissoc :session))
+          [{:session/user [:xt/id]}
+           {:params/item [:xt/id
+                          {(? :item/sub) [:xt/id]}
+                          {:item/user-item [(? :user-item/disliked-at)
+                                            (? :user-item/favorited-at)
                                             ]}
-                               ;:sub.view/card
-
-                               ;(? :sub/published-at)
-                               ;(? :sub/pinned-at)
-
-                               ]}]}])))
+                          ]}]
+          
+          )))
      (catch clojure.lang.ExceptionInfo e
        (:missing (ex-data e))
        )
@@ -79,10 +67,9 @@
 
   (with-context
     (fn [{:keys [biff/db]}]
-      (for [feed-id (q db
-                       '{:find doc
-                         :where [[doc :feed/url]]})]
-        [feed-id (biff/index-get db :last-published feed-id)])))
+      (xt/pull db '[*] #uuid "796af02b-4eb7-4d8c-a930-386d1b434fd1")
+
+      ))
 
 (java.time.Instant/parse "1970-01-01T00:00:00Z")
 

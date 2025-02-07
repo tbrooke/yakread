@@ -41,10 +41,10 @@
                :class (into bar-button-classes
                             (when active
                               '[font-semibold]))}
-      (bar-button-icon (if active
-                         "star-solid"
-                         "star-regular")
-                       "Like")])})
+      (bar-button-icon-label (if active
+                               "star-solid"
+                               "star-regular")
+                             "Like")])})
 
 (defresolver share-button [{:item/keys [url]}]
   {:item/share-button
@@ -55,14 +55,15 @@
                  wait 1s
                  toggle .hidden on .toggle in me"
              :class bar-button-classes}
-    [:span.toggle (bar-button-icon "share-regular" "Share")]
+    [:span.toggle (bar-button-icon-label "share-regular" "Share")]
     [:span.toggle.hidden.text-gray-700 "Copied to clipboard."]]})
 
 (defresolver button-bar [{:keys [biff/router]}
-                         {:item/keys [id like-button share-button]}]
+                         {:item/keys [id sub like-button share-button]}]
   #::pco{:input [:item/id
                  :item/like-button
-                 (? :item/share-button)]}
+                 (? :item/share-button)
+                 {(? :item/sub) [:xt/id]}]}
   {:item/button-bar
    [:div {:class '[bg-white
                    flex
@@ -95,19 +96,16 @@
                 rounded
                 rounded
                 shadow-uniform]}
-      [:.flex-1 "mark unread" #_(like-button ctx)]
-      [:.flex-1 "not interested" #_(like-button ctx)]
-      #_[:.flex-1 "unsubscribe" #_(like-button ctx)]
-
-      #_(overflow-button (merge ctx {::text "Mark unread"
-                                   ::endpoint "mark-unread"}))
-      #_(overflow-button (merge ctx {::text "Not interested"
-                                   ::endpoint "dislike"}))
-      #_(unsubscribe-button ctx)
-      #_(ui/overflow-button
-       {:onclick "showModal(this)"
-        :data-url (str "/for-you/report?item=" (:xt/id item))}
-       "Report")]
+      (for [[route-name label]
+            (concat [[:app.subscriptions.view.read/mark-unread "Mark unread"]
+                     [:app.subscriptions.view.read/not-interested "Not interested"]]
+                    (when sub
+                      [[:app.subscriptions.view.read/unsubscribe "Unsubscribe"]])
+                     ;; TODO report
+                     )]
+        (biff/form
+          {:hx-post (lib.route/path router route-name {:item-id (lib.serialize/uuid->url id)})}
+          (lib.ui/overflow-button {:type "submit"} label)))]
      [:button.flex.p-2.hover:bg-neut-50.flex-none.h-full.translate-y-full
       {:_ "on click toggle .hidden on #button-bar-dropdown then halt"}
       (lib.icons/base "ellipsis-vertical-regular"
@@ -138,13 +136,13 @@
                                  {:item-id (lib.serialize/uuid->url id)})
                       :hx-trigger "load"
                       :hx-swap "outerHTML"}]
-               [:div #_{:_ (str "on load wait 200 ms then call window.scrollTo(0, " position ")")}
-                #_(biff/form {:class "hidden"
-                              :id "save-position"
-                              :hx-post (util/make-url base-url "save-position")
-                              :hx-trigger "save-position"
-                              :hidden {:position position
-                                       :item (:xt/id item)}})
+               [:div {:_ (str "on load wait 100 ms then call resumePosition(me) then "
+                              ;; TODO figure out how to not make this global
+                              "set window.elt to me "
+                              "js document.addEventListener('scroll', (e) => { "
+                              "  savePosition(elt); "
+                              "});")
+                      :data-item-id id}
                 [:div {:class '[text-sm
                                 max-sm:mx-4
                                 text-neut-800
@@ -316,7 +314,7 @@
     :get (lib.pathom/handler
           [:app.shell/app-shell
            {(? :params/sub) [:sub/title]}]
-          (fn [{:keys [biff/router session path-params]}
+          (fn [{:keys [biff/router session path-params] :as ctx}
                {:keys [app.shell/app-shell]
                 {:sub/keys [title]} :params/sub}]
             (if (nil? title)
@@ -342,6 +340,35 @@
                                          :db.op/upsert {:user-item/user (:xt/id user)
                                                         :user-item/item (:xt/id item)}
                                          :user-item/viewed-at [:db/default :db/now]}]}))}])
+
+(defn- redirect-to-sub [router sub-id]
+  (if sub-id
+    (lib.route/path router :app.subscriptions.view/page
+      {:sub-id (lib.serialize/uuid->url sub-id)})
+    (lib.route/path router :app.subscriptions/page {})))
+
+(def mark-unread-route
+  ["/dev/sub-item/:item-id/mark-unread"
+   {:name :app.subscriptions.view.read/mark-unread
+    :post (lib.pipe/make
+           :start (lib.pipe/pathom-query [{:session/user [:xt/id]}
+                                          {:params/item [:xt/id
+                                                         {(? :item/sub) [:xt/id]}]}]
+                                         :end)
+           :end (fn [{:keys [biff/router]
+                      {:keys [session/user params/item]} :biff.pipe.pathom/output}]
+                  {:status 204
+                   :headers {"HX-Location"
+                             (redirect-to-sub router (get-in item [:item/sub :xt/id]))}
+                   :biff.pipe/next [:biff.pipe/tx]
+                   :biff.pipe.tx/input [{:db/doc-type :user-item
+                                         :db.op/upsert {:user-item/user (:xt/id user)
+                                                        :user-item/item (:xt/id item)}
+                                         :user-item/viewed-at :db/dissoc
+                                         :user-item/favorited-at :db/dissoc
+                                         :user-item/disliked-at :db/dissoc
+                                         :user-item/reported-at :db/dissoc
+                                         :user-item/report-reason :db/dissoc}]}))}])
 
 (def favorite-route
   ["/dev/sub-item/:item-id/favorite"
@@ -374,6 +401,52 @@
                                            :user-item/reported-at :db/dissoc
                                            :user-item/report-reason :db/dissoc}]})))}])
 
+(def not-interested-route
+  ["/dev/sub-item/:item-id/not-interested"
+   {:name :app.subscriptions.view.read/not-interested
+    :post (lib.pipe/make
+           :start (lib.pipe/pathom-query [{:params/item [{(? :item/sub) [:xt/id]}
+                                                         {:item/user-item [:xt/id]}]}]
+                                         :end)
+           :end (fn [{:keys [biff/router]
+                      {:keys [params/item]} :biff.pipe.pathom/output}]
+                  (let [user-item (:item/user-item item)]
+                    {:status 204
+                     :headers {"HX-Location"
+                               (redirect-to-sub router (get-in item [:item/sub :xt/id]))}
+                     :biff.pipe/next [:biff.pipe/tx]
+                     :biff.pipe.tx/retry false
+                     :biff.pipe.tx/input [{:db/doc-type :user-item
+                                           :db/op :update
+                                           :xt/id (:xt/id user-item)
+                                           :user-item/favorited-at :db/dissoc
+                                           :user-item/disliked-at :db/now}]})))}])
+
+(def unsubscribe-route
+  ["/dev/sub-item/:item-id/unsubscribe"
+   {:name :app.subscriptions.view.read/unsubscribe
+    :post (lib.pipe/make
+           :start (lib.pipe/pathom-query [{:params/item [{:item/sub [:sub/id
+                                                                     :sub/doc-type]}]}]
+                                         :end)
+           :end (fn [{:keys [biff/router]
+                      {{{:sub/keys [id doc-type]}
+                        :item/sub}
+                       :params/item}
+                      :biff.pipe.pathom/output}]
+                  {:status 204
+                   :headers {"HX-Location"
+                             (lib.route/path router :app.subscriptions/page {})}
+                   :biff.pipe/next [:biff.pipe/tx]
+                   :biff.pipe.tx/retry false
+                   :biff.pipe.tx/input [(if (= doc-type :sub/email)
+                                          ;; TODO actually unsubscribe from the mailing list
+                                          {:db/doc-type :sub/email
+                                           :db/op :update
+                                           :xt/id id
+                                           :sub.email/unsubscribed-at :db/now}
+                                          [::xt/delete id])]}))}])
+
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}
              page-route
@@ -381,7 +454,10 @@
              read-page-route
              read-content-route
              mark-read-route
-             favorite-route]]
+             mark-unread-route
+             favorite-route
+             not-interested-route
+             unsubscribe-route]]
    :resolvers [button-bar
                like-button
                share-button]})

@@ -9,12 +9,12 @@
   (edn/read-string (String. (biff/base64-decode base64))))
 
 (defn uuid->url [uuid]
-  (biff/catchall
-   (let [ba (.. (java.nio.ByteBuffer/allocate 16)
-                (putLong (.getMostSignificantBits uuid))
-                (putLong (.getLeastSignificantBits uuid))
-                array)]
-     (subs (.encodeToString (java.util.Base64/getUrlEncoder) ba) 0 22))))
+  (assert (uuid? uuid))
+  (let [ba (.. (java.nio.ByteBuffer/allocate 16)
+               (putLong (.getMostSignificantBits uuid))
+               (putLong (.getLeastSignificantBits uuid))
+               array)]
+    (subs (.encodeToString (java.util.Base64/getUrlEncoder) ba) 0 22)))
 
 (defn url->uuid [s]
   (biff/catchall
