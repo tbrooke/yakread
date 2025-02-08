@@ -46,9 +46,8 @@
                                                             :icon "lock"}))
           (mapv (fn [{:keys [app.shell.page/route-name] :as page}]
                   (let [href (lib.route/path router route-name {})]
-                    (prn (namespace route-name))
                     (merge page #:app.shell.page{:href href
-                                                 :active (doto (str/starts-with? route-ns (namespace route-name)) prn)}))))))})
+                                                 :active (str/starts-with? route-ns (namespace route-name))}))))))})
 
 (defresolver app-head [{:keys [app.shell/include-plausible
                                app.shell/include-recaptcha]}

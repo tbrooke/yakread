@@ -81,6 +81,19 @@
    (lazy-load router route-name params)
    [:.grow]])
 
+(defn lazy-load* [route & args]
+  [:.flex.justify-center
+   {:hx-get (apply lib.route/path* route args)
+    :hx-trigger "intersect once"
+    :hx-swap "outerHTML"}
+   [:img.h-10 {:src "/img/spinner2.gif"}]])
+
+(defn lazy-load-spaced* [route & args]
+  [:<>
+   [:.grow]
+   (apply lazy-load* route args)
+   [:.grow]])
+
 #_(defn button [{:keys [href ::type ::size ::min-w]
                  :or {size :base}
                  :as opts} & contents]

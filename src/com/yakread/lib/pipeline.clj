@@ -58,6 +58,14 @@
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
 
+(defmacro defmutation [sym & pipe-args]
+  `(defn ~sym
+     {:biff/mutation (lib.pipe/make ~@pipe-args)}
+     ([] (~sym {}))
+     ([params#]
+      {:hx-post ~(str "/dev/api/" *ns* "/" sym)
+       :hx-vals (lib.htmx/edn-hx-vals params#)})))
+
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)

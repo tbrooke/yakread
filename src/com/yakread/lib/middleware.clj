@@ -31,7 +31,14 @@
       (handler ctx)
       (catch clojure.lang.ExceptionInfo e
         (let [data (ex-data e)]
-          (if (and (= (::p.error/cause data) ::p.error/attribute-missing)
-                   (some #(= "params" (namespace %)) (keys (:missing data))))
+          (cond
+            (and (= (::p.error/cause data) ::p.error/attribute-missing)
+                 (some #(= "params" (namespace %)) (keys (:missing data))))
             {:status 400}
+
+            (and (= (::p.error/cause data) ::p.error/attribute-missing)
+                 (some #(= "session" (namespace %)) (keys (:missing data))))
+            {:status 401}
+
+            :else
             (throw e)))))))

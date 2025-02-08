@@ -1,6 +1,5 @@
 [
-{:route-name :app.subscriptions.view.read/mark-read,
- :method :post,
+{:mutation com.yakread.app.subscriptions.view/mark-read,
  :handler-id :end,
  :ctx
  #:biff.pipe.pathom{:output
@@ -14,8 +13,7 @@
     :db.op/upsert #:user-item{:user 1, :item 2},
     :user-item/viewed-at [:db/default :db/now]}]}}
 
-{:route-name :app.subscriptions.view.read/mark-unread,
- :method :post,
+{:mutation com.yakread.app.subscriptions.view/mark-unread,
  :handler-id :end,
  :ctx
  #:biff.pipe.pathom{:output
@@ -38,8 +36,7 @@
     :user-item/reported-at :db/dissoc,
     :user-item/report-reason :db/dissoc}]}}
 
-{:route-name :app.subscriptions.view.read/favorite,
- :method :post,
+{:mutation com.yakread.app.subscriptions.view/toggle-favorite,
  :handler-id :end,
  :ctx
  #:biff.pipe.pathom{:output
@@ -51,7 +48,7 @@
  {:status 200,
   :headers {"Content-Type" "text/html"},
   :body
-  "<button hx-post=\"/dev/sub-item/RuW_TNxWQCqtfQNhAnTAZw/favorite\" hx-swap=\"outerHTML\" class=\"hover:bg-neut-50 inter py-2 w-full font-semibold\"><div class=\"flex justify-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 576 512\" class=\"flex-shrink-0 inline w-5 h-5 flex-shrink-0 mt-[2px]\"><path fill=\"currentColor\" d=\"M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z\"></path></svg><div class=\"w-1 sm:w-2\"></div><span>Like</span></div></button>",
+  "<button hx-vals=\"{&quot;edn&quot;:&quot;#:item{:id #uuid \\&quot;46e5bf4c-dc56-402a-ad7d-03610274c067\\&quot;}&quot;}\" hx-post=\"/dev/api/com.yakread.app.subscriptions.view/toggle-favorite\" hx-swap=\"outerHTML\" class=\"hover:bg-neut-50 inter py-2 w-full font-semibold\"><div class=\"flex justify-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 576 512\" class=\"flex-shrink-0 inline w-5 h-5 flex-shrink-0 mt-[2px]\"><path fill=\"currentColor\" d=\"M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z\"></path></svg><div class=\"w-1 sm:w-2\"></div><span>Like</span></div></button>",
   :biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/retry false,
   :biff.pipe.tx/input
@@ -63,8 +60,7 @@
     :user-item/reported-at :db/dissoc,
     :user-item/report-reason :db/dissoc}]}}
 
-{:route-name :app.subscriptions.view.read/not-interested,
- :method :post,
+{:mutation com.yakread.app.subscriptions.view/not-interested,
  :handler-id :end,
  :ctx
  #:biff.pipe.pathom{:output
@@ -85,8 +81,7 @@
     :user-item/favorited-at :db/dissoc,
     :user-item/disliked-at :db/now}]}}
 
-{:route-name :app.subscriptions.view.read/unsubscribe,
- :method :post,
+{:mutation com.yakread.app.subscriptions.view/unsubscribe,
  :handler-id :end,
  :ctx
  #:biff.pipe.pathom{:output
@@ -105,8 +100,7 @@
     :xt/id 1,
     :sub.email/unsubscribed-at :db/now}]}}
 
-{:route-name :app.subscriptions.view.read/unsubscribe,
- :method :post,
+{:mutation com.yakread.app.subscriptions.view/unsubscribe,
  :handler-id :end,
  :ctx
  #:biff.pipe.pathom{:output

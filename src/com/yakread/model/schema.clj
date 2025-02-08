@@ -5,7 +5,7 @@
 
 (def ? {:optional true})
 (defn r [target] {:biff/ref (if (coll? target) target #{target})})
-(def ?r {:biff/ref true, :optional true})
+(defn ?r [target] (assoc (r target) :optional true))
 
 (def schema
   {::string  [:string {:max 1000}]
@@ -103,10 +103,12 @@
                [:user-item/item          (r [:item/feed
                                              :item/email]) :uuid]
                [:user-item/viewed-at     ?                 :time/instant]
+               ;; User clicked "mark all as read"
+               [:user-item/skipped-at    ?                 :time/instant]
                [:user-item/bookmarked-at ?                 :time/instant]
                [:user-item/favorited-at  ?                 :time/instant]
                [:user-item/digested-at   ?                 :time/instant]
-               [:user-item/position      ?r                :uuid]
+               [:user-item/position      (?r :position)    :uuid]
                ;; User clicked thumbs-down. Mutually exclusive with :user-item/favorited-at
                [:user-item/disliked-at   ?                 :time/instant]
                ;; This item was recommended in For You and the user reported it.

@@ -54,12 +54,14 @@
                        biff/modules
                        biff/router]
                 :as ctx*}
-               {:keys [route-name fn-sym index-id method handler-id ctx fixture db-contents]
+               {:keys [route-name mutation fn-sym index-id method handler-id ctx fixture db-contents]
                 :or {method :post}
                 :as example}]
   (let [sut* (cond
                route-name (lib.route/handler router route-name method)
                fn-sym (requiring-resolve fn-sym)
+               ;; TODO do a helpful error message if this is missing
+               mutation (:biff/mutation (meta (resolve mutation)))
                index-id (->> @modules
                              (mapcat :indexes)
                              (filterv (comp #{index-id} :id))
@@ -109,7 +111,8 @@
       (read-string* (slurp file)))))
 
 (defn write-examples! [{:biff.test/keys [current-ns examples] :as ctx}]
-  (binding [gen/*rnd* (java.util.Random. 0)]
+  (binding [gen/*rnd* (java.util.Random. 0)
+            *print-namespace-maps* true]
     (with-open [node (xt/start-node {})]
       (let [ctx (assoc ctx :biff.test/empty-db (xt/db node))
             examples (mapv #(assoc % :expected (actual ctx %)) examples)
@@ -124,7 +127,8 @@
             (println "]")))))))
 
 (defn check-examples! [{:biff.test/keys [examples current-ns] :as ctx}]
-  (binding [gen/*rnd* (java.util.Random. 0)]
+  (binding [gen/*rnd* (java.util.Random. 0)
+            *print-namespace-maps* true]
     (let [written-examples (read-examples! current-ns)]
       (if (not= examples (mapv #(dissoc % :expected) written-examples))
         (test/report {:type :fail
@@ -150,6 +154,13 @@
         example examples]
     (merge {:route-name route-name
             :method method
+            :handler-id handler-id}
+           example)))
+
+(defn mutation-examples [& {:as examples}]
+  (for [[[mutation-sym handler-id] examples] examples
+        example examples]
+    (merge {:mutation mutation-sym
             :handler-id handler-id}
            example)))
 

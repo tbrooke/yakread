@@ -10,6 +10,7 @@
             [com.wsscode.pathom3.connect.planner :as pcp]
             [com.wsscode.pathom3.connect.runner :as pcr]
             [com.yakread.app.admin :as app.admin]
+            [com.yakread.app.api :as app.api]
             [com.yakread.app.auth :as app.auth]
             [com.yakread.app.favorites :as app.favorites]
             [com.yakread.app.for-you :as app.for-you]
@@ -43,6 +44,7 @@
 
 (def modules
   [app.admin/module
+   app.api/module
    app.auth/module
    app.favorites/module
    app.for-you/module

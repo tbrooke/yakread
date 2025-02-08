@@ -53,6 +53,7 @@
 
 (defresolver unread [{:keys [item/user-item]}]
   #::pco{:input [{(? :item/user-item) [:user-item/viewed-at
+                                       :user-item/skipped-at
                                        :user-item/favorited-at
                                        :user-item/disliked-at
                                        :user-item/reported-at]}]}
@@ -70,9 +71,10 @@
                                (hash-map :xt/id)))]
     {:item/sub sub}))
 
-(defresolver from-params-unsafe [{:keys [path-params]} _]
+(defresolver from-params-unsafe [{:keys [path-params params]} _]
   #::pco{:output [{:params/item-unsafe [:xt/id]}]}
-  (when-some [item-id (lib.serialize/url->uuid (:item-id path-params))]
+  (when-some [item-id (or (some-> (:item-id path-params) lib.serialize/url->uuid)
+                          (:item/id params))]
     {:params/item-unsafe {:xt/id item-id}}))
 
 (defresolver from-params [{:keys [biff/db session path-params]} {:keys [params/item-unsafe]}]
