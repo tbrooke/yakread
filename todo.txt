@@ -1,4 +1,3 @@
-
 - subscriptions
   - view sub page buttons: mark all as read, unsubscribe
   - email subs
@@ -28,6 +27,8 @@ misc
   map if another part of the query asks for the whole entity
 - optimize page load speed--e.g. use macros to precompile hiccup?
 - check :item/image-url gets set correctly for feed items
+- maybe include wrap-signed-in as part of defget/defpost
+- autogenerate tests for all defgets, defposts, defresolvers
 
 
 video/blog topics:

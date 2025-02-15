@@ -5,6 +5,20 @@
             [com.yakread.lib.route :as lib.route]
             [lambdaisland.uri :as uri]))
 
+(defn- dissoc-ns [m ns-str]
+  (into {}
+        (remove #(= ns-str (namespace (key %))))
+        m))
+
+(defn- with-classes [opts & classes]
+  (-> opts
+      (update :class concat (flatten classes))
+      (dissoc-ns "ui")))
+
+;;;; Utilities
+
+(def spinner-gif "/img/spinner2.gif")
+
 (def interpunct " · ")
 
 (defn pluralize [n label]
@@ -12,6 +26,222 @@
 
 (defn dom-id [x]
   (str/replace (str x) #"[^a-zA-Z0-9-]" "_"))
+
+(defn weserv [opts]
+  (str (apply uri/assoc-query "https://images.weserv.nl/"
+              (apply concat opts))))
+
+(defn signup-error [params]
+  (case (not-empty (:error params))
+    nil nil
+    "recaptcha" (str "You failed the recaptcha test. Try again, "
+                     "and make sure you aren't blocking scripts from Google.")
+    "invalid-email" "Invalid email. Try again with a different address."
+    "send-failed" (str "We weren't able to send an email to that address. "
+                       "If the problem persists, try another address.")
+    "There was an error."))
+
+;;;; Spinners
+
+(defn lazy-load [href]
+  [:.flex.justify-center
+   {:hx-get href
+    :hx-trigger "intersect once"
+    :hx-swap "outerHTML"}
+   [:img.h-10 {:src spinner-gif}]])
+
+(defn lazy-load-spaced [href]
+  [:<>
+   [:.grow]
+   (lazy-load href)
+   [:.grow]])
+
+;;;; Buttons
+
+(defn button [{:ui/keys [size] type_ :ui/type :as opts} & contents]
+  [(if (contains? opts :href) :a :button)
+   (with-classes opts
+     '[rounded-md
+       inter font-medium
+       disabled:opacity-70
+       "min-w-[5rem]"]
+     (case type_
+       :primary '[bg-tealv-500 hover:bg-tealv-600 disabled:hover:bg-tealv-500
+                  text-neut-50]
+       :secondary '[border
+                    text-white
+                    bg-neut-500 hover:bg-neut-400 disabled:hover:bg-neut-500]
+       :danger '[bg-redv-700 hover:bg-redv-800 disabled:bg-redv-200 disabled:hover:bg-redv-200
+                 text-neut-50 disabled:text-white]
+       '[bg-neut-700 hover:bg-neut-800 disabled:hover:bg-neut-700
+         text-neut-50])
+     (case size
+       :small '[text-sm
+                px-3 py-1]
+       :large '[max-sm:text-sm
+                px-3 py-2]
+       '[text-sm
+         px-3 py-2]))
+   contents])
+
+(defn overflow-button [{:keys [href] :as opts} & contents]
+  [(if href :a :button)
+   (update opts
+           :class
+           concat
+           '[block
+             w-full
+             px-4 py-2
+             hover:bg-neut-75
+             font-medium inter
+             whitespace-nowrap text-left])
+   contents])
+
+(defn overflow-menu [{:ui/keys [direction icon rounded]
+                      :or {direction :down
+                           icon "ellipsis-vertical-regular"}
+                      :as opts}
+                     & contents]
+  [:.relative.flex.items-center
+   {:class [(case direction
+              :up "translate-y-[-100%]"
+              :down 'translate-y-full)]}
+   (cond->> (list [:button (-> opts
+                               (with-classes
+                                 '[flex flex-none
+                                   px-1 py-2
+                                   h-full
+                                   hover:bg-neut-50
+                                   text-neut-600]
+                                 (when rounded
+                                   '[rounded-full])
+                                 (case direction
+                                   :up 'translate-y-full
+                                   :down "translate-y-[-100%]"))
+                               (merge {:_ (str "on click toggle .hidden on the "
+                                               (if (= direction :down)
+                                                 "next"
+                                                 "previous")
+                                               " .dropdown then halt")}))
+                   (lib.icons/base icon
+                                   {:class '[w-8
+                                             h-5
+                                             flex-shrink-0]})]
+                  [:div {:class (concat
+                                 '[dropdown
+                                   rounded
+                                   absolute right-0
+                                   hidden
+                                   bg-white
+                                   py-1
+                                   border shadow-uniform]
+                                 (if (= direction :down)
+                                   '[top-0
+                                     mt-2]
+                                   '[bottom-0
+                                     mb-2]))}
+                   contents])
+     (= direction :up) reverse)])
+
+;;;; Inputs
+
+(defn- text-input* [element {:ui/keys [size] type_ :type :as opts}]
+  [element
+   (with-classes opts
+     '[w-full
+       rounded-md
+       shadow-inner
+       border-0
+       ring-1 ring-inset ring-neut-100
+       text-black inter leading-6
+       bg-neut-50 disabled:opacity-70]
+     (case type_
+       "file" '["file:py-[11.5px]" file:px-3
+                file:border-0 focus:outline-tealv-600
+                file:bg-neut-100
+                file:text-neut-800 text-neut-600]
+       '[focus:ring-inset
+         focus:ring-tealv-600
+         py-2])
+     (case size
+       :large '[max-sm:text-sm]
+       '[text-sm]))])
+
+(defn text-input [opts]
+  (text-input* :input (merge {:type "text"} opts)))
+
+(defn textarea [opts]
+  (text-input* :textarea opts))
+
+(defn overlay-text-input [{:ui/keys [icon postfix size] :as opts}]
+  [:.relative
+   [:div {:class '[absolute
+                   inset-0
+                   flex items-center
+                   pointer-events-none]}
+    (when icon
+      (lib.icons/base icon {:class '[size-4
+                                     ml-4
+                                     text-stone-600]}))
+    [:.grow]
+    [:div {:class (concat
+                   '[h-full
+                     text-neut-600
+                     flex items-center
+                     p-3]
+                   (case size
+                     :large '[max-sm:text-sm]
+                     '[text-sm]))}
+     postfix]]
+   (text-input (cond-> opts
+                 icon (update :class concat '[pl-10])))])
+
+(defn input-label [opts & contents]
+  [:label.block.mb-2 opts
+   [:div {:class '[inter font-medium tracking-wide
+                   text-sm
+                   text-neut-900]}
+    contents]])
+
+(defn input-description [& contents]
+  (into [:.text-sm.text-gray-600.mt-1] contents))
+
+(defn input-error [& contents]
+  (into [:.text-sm.text-redv-500.mt-1] contents))
+
+(defn form-input [{name_ :name :as opts}]
+  (let [{:ui/keys [label error description
+                   size indicator-id
+                   submit-opts submit-text]
+         :keys [id required] :as opts} (merge {:id name_} opts)]
+    [:div.w-full
+     (when label
+       (input-label
+        {:for id
+         :required required}
+        [:.flex.items-center.gap-2
+         label
+         (when indicator-id
+           [:img.h-5.htmx-indicator.hidden
+            {:id indicator-id
+             :src spinner-gif}])]))
+     (if-not submit-text
+       (overlay-text-input opts)
+       [:.flex.gap-3.w-full
+        [:.grow (overlay-text-input opts)]
+        [:.flex-shrink-0
+         (button (-> {:type "submit"
+                      :ui/size size}
+                     (merge submit-opts)
+                     (update :class concat '[leading-6]))
+           submit-text)]])
+     (case size
+       :large [:.h-1]
+       nil)
+     (some->> error input-error)
+     (some->> description input-description)]))
+
+;;;; Layout
 
 (defn page-header [& {:keys [title add-href back-href]}]
   [:div.max-sm:px-4
@@ -68,410 +298,11 @@
    [:.flex.flex-col.gap-6
     contents]])
 
-(defn lazy-load [router route-name params]
-  [:.flex.justify-center
-   {:hx-get (lib.route/path router route-name params)
-    :hx-trigger "intersect once"
-    :hx-swap "outerHTML"}
-   [:img.h-10 {:src "/img/spinner2.gif"}]])
-
-(defn lazy-load-spaced [router route-name params]
-  [:<>
-   [:.grow]
-   (lazy-load router route-name params)
-   [:.grow]])
-
-(defn lazy-load* [route & args]
-  [:.flex.justify-center
-   {:hx-get (apply lib.route/path* route args)
-    :hx-trigger "intersect once"
-    :hx-swap "outerHTML"}
-   [:img.h-10 {:src "/img/spinner2.gif"}]])
-
-(defn lazy-load-spaced* [route & args]
-  [:<>
-   [:.grow]
-   (apply lazy-load* route args)
-   [:.grow]])
-
-#_(defn button [{:keys [href ::type ::size ::min-w]
-                 :or {size :base}
-                 :as opts} & contents]
-    (let [cls (concat
-               '[rounded-md
-                 inter
-                 disabled:opacity-70
-                 font-medium]
-               [(or min-w "min-w-[5rem]")]
-               (when-not type
-                 '[bg-neut-700
-                   hover:bg-neut-800
-                   disabled:hover:bg-neut-700
-                   text-neut-50])
-               (when (= type :primary)
-                 '[bg-tealv-500
-                   hover:bg-tealv-600
-                   disabled:hover:bg-tealv-500
-                   text-neut-50])
-               (when (= type :secondary)
-                 '[border
-                   text-white
-                   bg-neut-500
-                   hover:bg-neut-400
-                   disabled:hover:bg-neut-500])
-               (when (= type :danger)
-                 '[bg-redv-700
-                   hover:bg-redv-800
-                   text-neut-50
-                   disabled:bg-redv-200
-                   disabled:hover:bg-redv-200
-                   disabled:text-white
-                   ])
-               (if (= size :small)
-                 '[text-sm
-                   px-3
-                   py-1]
-                 '[text-sm
-                   px-3
-                   py-2]))
-          opts (-> opts
-                   (update :class concat cls)
-                   (dissoc ::type ::size))]
-      [(if (contains? opts :href)
-         :a
-         :button)
-       opts
-       contents]))
-
-(defn btn-primary [{:keys [href size] btn-type :type} & contents]
-  (let [classes (concat
-                 '[rounded-md
-                   inter
-                   disabled:opacity-70
-                   font-medium
-                   bg-tealv-500
-                   hover:bg-tealv-600
-                   disabled:hover:bg-tealv-500
-                   text-neut-50
-                   "min-w-[5rem]"]
-                 (if (= size :small)
-                   '[text-sm
-                     px-3
-                     py-1]
-                   '[text-sm
-                     px-3
-                     py-2]))]
-    (if href
-      [:a {:href href :class classes} contents]
-      [:button (merge {:class classes}
-                      (when btn-type
-                        {:type btn-type}))
-       contents])))
-
-(defn empty-page-state [{:keys [icons text btn-label btn-href]}]
-  [:.flex.flex-col.grow
-   [:.grow]
-   [:.flex.justify-center.gap-8.text-neut-800
-    (for [icon icons]
-      (lib.icons/base icon {:class '[h-12 w-12]}))]
-   [:.h-4]
-   [:p.text-center.text-neut-800.mb-0.text-lg
-    text]
-   [:.h-6]
-   [:.flex.justify-center
-    (btn-primary {:href btn-href}
-                 btn-label)]
-   [:.grow]])
-
-(defn overflow-button [{:keys [href] :as opts} & contents]
-  (let [cls '[block
-              py-2
-              px-4
-              hover:bg-neut-75
-              font-medium
-              inter
-              whitespace-nowrap
-              w-full
-              text-left]]
-    [(if href :a :button) (update opts :class concat cls) contents]))
-
-(defn overflow-menu [{:keys [direction icon]
-                      :or {direction :down
-                           icon "ellipsis-regular"}}
-                     & contents]
-  [:.relative.flex.items-center
-   {:class [(case direction
-              :up "translate-y-[-100%]"
-              :down 'translate-y-full)]}
-   (cond->> (list [:button {:class (concat
-                                    '[flex
-                                      py-2
-                                      px-1
-                                      hover:bg-neut-50
-                                      flex-none
-                                      h-full
-                                      rounded-full
-                                      text-neut-600]
-                                    [(case direction
-                                       :up 'translate-y-full
-                                       :down "translate-y-[-100%]")])
-                            :_ (str "on click toggle .hidden on the "
-                                    (if (= direction :down)
-                                      "next"
-                                      "previous")
-                                    " .dropdown then halt")}
-                   (lib.icons/base icon
-                                   {:class '[w-8
-                                             h-5
-                                             flex-shrink-0]})]
-                  [:div {:class (concat
-                                 '[dropdown
-                                   rounded
-                                   absolute
-                                   right-0
-                                   hidden
-                                   bg-white
-                                   py-1
-                                   rounded
-                                   border
-                                   shadow-uniform]
-                                 (if (= direction :down)
-                                   '[top-0
-                                     mt-2]
-                                   '[bottom-0
-                                     mb-2]))}
-                   contents])
-     (= direction :up) reverse)])
-
-(defn signup-error [params]
-  (case (not-empty (:error params))
-    nil nil
-    "recaptcha" (str "You failed the recaptcha test. Try again, "
-                     "and make sure you aren't blocking scripts from Google.")
-    "invalid-email" "Invalid email. Try again with a different address."
-    "send-failed" (str "We weren't able to send an email to that address. "
-                       "If the problem persists, try another address.")
-    "There was an error."))
-
-(defn input-description [& contents]
-  (into [:.text-sm.text-gray-600.mt-1] contents))
-
-(defn input-error [& contents]
-  (into [:.text-sm.text-redv-500.mt-1] contents))
-
-(defn signup-box [{:keys [biff/router
-                          recaptcha/site-key
-                          params]}
-                  {:keys [on-success on-error title description]
-                   :or {on-success "/home"
-                        on-error "/"
-                        title "Read stuff that matters."
-                        description (str "Get a selection of trending articles in your inbox daily "
-                                         "and unlock the full reading experience.")}}]
-  [:div {:class '[max-sm:p-3
-                  max-w-screen-sm]}
-   (when title
-     [:h1 {:class '[text-2xl
-                    sm:text-3xl
-                    font-bold
-                    proximanova-bold
-                    underline]}
-      title])
-   (when (and title description) [:.h-1])
-   (when description
-     [:.sm:text-xl description])
-   (when (or title description) [:.h-5])
-   (biff/form
-     {:id "signup-form"
-      :action "/auth/send-link"
-      :hx-boost "false"
-      ;; TODO always use router
-      :hidden {:on-error (if (keyword? on-error)
-                           (lib.route/path router on-error {})
-                           on-error)
-               :redirect (if (keyword? on-success)
-                           (lib.route/path router on-success {})
-                           on-success)}}
-     [:input {:type "hidden" :name "href" :_ "on load set my value to window.location.href"}]
-     [:input {:type "hidden" :name "referrer" :_ "on load set my value to document.referrer"}]
-     (biff/recaptcha-callback "onSubscribe" "signup-form")
-     [:.flex.gap-3.w-full
-      [:input {:type "email"
-               :id "email"
-               :name "email"
-               :placeholder "Enter your email"
-               :class '[w-full
-                        shadow
-                        leading-6
-                        border-0
-                        text-black
-                        disabled:opacity-70
-                        bg-neut-50
-                        inter
-                        focus:ring-inset
-                        focus:ring-tealv-600
-                        py-1.5
-                        sm:text-lg
-                        grow
-                        rounded]}]
-      [:div
-       [:button {:type "submit"
-                 :class '[g-recaptcha
-                          px-5
-                          py-2
-                          bg-tealv-500
-                          hover:bg-tealv-600
-                          text-neut-50
-                          inter
-                          font-medium
-                          leading-6
-                          disabled:opacity-70
-                          disabled:bg-tealv-500
-                          sm:text-lg
-                          whitespace-nowrap
-                          shadow
-                          rounded]
-                 ;:_ "on click toggle @disabled until htmx:afterOnLoad"
-                 :data-sitekey site-key
-                 :data-callback "onSubscribe"
-                 :data-action "subscribe"}
-        "Sign up"]]]
-     [:.h-1]
-     (if-some [error (signup-error params)]
-       (input-error error)
-       (input-description
-        "(Already have an account? "
-        ;; TODO use router
-        [:a.link {:href "/signin"} "Sign in"] ")"))
-     [:.h-3])])
-
-(defn base-text-input [{:keys [type textarea size] :as opts}]
-  [(if textarea
-     :textarea
-     :input)
-   (-> (merge (when-not textarea
-                {:type "text"})
-              {:id (:name opts)}
-              opts)
-       (dissoc :textarea :size)
-       (update :class
-               concat
-               '[w-full
-                 rounded-md
-                 shadow-inner
-                 leading-6
-                 border-0
-                 ring-1
-                 ring-inset
-                 ring-neut-100
-                 text-black
-                 disabled:opacity-70
-                 bg-neut-50
-                 inter]
-               (if-not (= type "file")
-                 '[focus:ring-inset
-                   focus:ring-tealv-600
-                   py-2]
-                 '["file:py-[11.5px]"
-                   file:px-3
-                   file:border-0
-                   file:bg-neut-100
-                   focus:outline-tealv-600
-                   file:text-neut-800
-                   text-neut-600])
-               (case size
-                 :large '[max-sm:text-sm]
-                 '[text-sm])))])
-
-(defn overlay-text-input [{:keys [icon postfix size] :as opts}]
-  [:.relative
-   [:div {:class '[absolute
-                   inset-0
-                   flex
-                   items-center
-                   pointer-events-none]}
-    (when icon
-      (lib.icons/base icon {:class '[w-4
-                                     h-4
-                                     ml-4
-                                     text-stone-600]}))
-    [:.grow]
-    [:div {:class (concat
-                   '[h-full
-                     text-neut-600
-                     flex
-                     items-center
-                     p-3]
-                   (case size
-                     :large '[max-sm:text-sm]
-                     '[text-sm]))}
-     postfix]]
-   (base-text-input (cond-> opts
-                      true (dissoc :icon :postfix)
-                      icon (update :class concat '[pl-10])))])
-
-(defn input-label [opts & contents]
-  [:label.block.mb-2 opts
-   [:div {:class '[inter
-                   font-medium
-                   text-sm
-                   text-neut-900
-                   tracking-wide]}
-    contents]])
-
-(defn input-submit [{:keys [size] :as opts} & contents]
-  [:button (-> {:type "submit"
-                :class (concat
-                        '[px-3
-                          py-2
-                          rounded-md
-                          bg-neut-700
-                          hover:bg-neut-800
-                          text-neut-50
-                          inter
-                          font-medium
-                          leading-6
-                          disabled:opacity-70]
-                        (case size
-                          :large '[max-sm:text-sm]
-                          '[text-sm]))}
-               (update :class concat (:class opts))
-               (merge (dissoc opts :class :size)))
-   contents])
-
-(defn uber-input [{:keys [id name label description error submit-opts submit-text
-                          indicator-id size required] :as opts}]
-  (let [opts (dissoc opts :label :description :error :submit-opts :submit-text)]
-    [:div.w-full
-     (when label
-       (input-label
-        {:for (or id name)
-         :required required}
-        [:.flex.items-center.gap-2
-         label
-         (when indicator-id
-           [:img.h-5.htmx-indicator.hidden
-            {:id indicator-id
-             :src "/img/spinner2.gif"}])]))
-     (if submit-text
-       [:.flex.gap-3.w-full
-        [:.grow (overlay-text-input opts)]
-        [:.flex-shrink-0 (input-submit (assoc submit-opts :size size) submit-text)]]
-       (overlay-text-input opts))
-     (case size
-       :large [:.h-1]
-       nil)
-     (some->> error input-error)
-     (some->> description input-description)]))
-
 (defn modal [{:keys [id title]} & content]
   [:div {:id id
-         :class '[fixed
-                  flex
-                  flex-col
+         :class '[fixed inset-0
+                  flex flex-col items-center
                   hidden
-                  inset-0
-                  items-center
                   overflow-y-auto
                   p-4
                   z-30]
@@ -491,9 +322,85 @@
     content]
    [:.grow]])
 
-(defn weserv [opts]
-  (str (apply uri/assoc-query "https://images.weserv.nl/"
-              (apply concat opts))))
+;;;; Composites
+
+(defn signup-box [{:keys [recaptcha/site-key
+                          params]}
+                  {:keys [on-success on-error title description]
+                   :or {on-success "/home"
+                        on-error "/"
+                        title "Read stuff that matters."
+                        description (str "Get a selection of trending articles in your inbox daily "
+                                         "and unlock the full reading experience.")}}]
+  [:div {:class '[max-sm:p-3
+                  max-w-screen-sm]}
+   (when title
+     [:h1 {:class '[text-2xl sm:text-3xl
+                    font-bold proximanova-bold underline]}
+      title])
+   (when (and title description) [:.h-1])
+   (when description
+     [:.sm:text-xl description])
+   (when (or title description) [:.h-5])
+   (biff/form
+     {:id "signup-form"
+      :action "/auth/send-link"
+      :hx-boost "false"
+      :hidden {:on-error on-error
+               :redirect on-success}}
+     [:input {:type "hidden" :name "href" :_ "on load set my value to window.location.href"}]
+     [:input {:type "hidden" :name "referrer" :_ "on load set my value to document.referrer"}]
+     (biff/recaptcha-callback "onSubscribe" "signup-form")
+     [:.flex.gap-3.w-full
+      [:input {:type "email"
+               :id "email"
+               :name "email"
+               :placeholder "Enter your email"
+               :class '[w-full
+                        shadow
+                        border-0 rounded
+                        text-black inter leading-6
+                        bg-neut-50 disabled:opacity-70
+                        focus:ring-inset focus:ring-tealv-600
+                        py-1.5
+                        sm:text-lg
+                        grow]}]
+      [:div
+       [:button {:type "submit"
+                 :class '[g-recaptcha
+                          px-5 py-2
+                          bg-tealv-500 hover:bg-tealv-600 disabled:bg-tealv-500 disabled:opacity-70
+                          text-neut-50 inter font-medium leading-6
+                          sm:text-lg
+                          whitespace-nowrap
+                          shadow
+                          rounded]
+                 ;:_ "on click toggle @disabled until htmx:afterOnLoad"
+                 :data-sitekey site-key
+                 :data-callback "onSubscribe"
+                 :data-action "subscribe"}
+        "Sign up"]]]
+     [:.h-1]
+     (if-some [error (signup-error params)]
+       (input-error error)
+       (input-description
+        "(Already have an account? "
+        [:a.link {:href "/signin"} "Sign in"] ")"))
+     [:.h-3])])
+
+(defn empty-page-state [{:keys [icons text btn-label btn-href]}]
+  [:.flex.flex-col.grow
+   [:.grow]
+   [:.flex.justify-center.gap-8.text-neut-800
+    (for [icon icons]
+      (lib.icons/base icon {:class '[h-12 w-12]}))]
+   [:.h-4]
+   [:p.text-center.text-neut-800.mb-0.text-lg
+    text]
+   [:.h-6]
+   [:.flex.justify-center.gap-4
+    (button {:href btn-href :ui/type :primary} btn-label)]
+   [:.grow]])
 
 (defn on-error-page [ctx]
   (biff/render [:h1 "TODO"]))

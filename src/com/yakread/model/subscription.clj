@@ -66,9 +66,10 @@
                       'source]]}
             source-id))})
 
-(defresolver from-params [{:keys [biff/db biff/malli-opts session path-params]} _]
+(defresolver from-params [{:keys [biff/db biff/malli-opts session path-params params]} _]
   #::pco{:output [{:params/sub [:xt/id]}]}
-  (let [sub-id (lib.serialize/url->uuid (:sub-id path-params))
+  (let [sub-id (or (:sub/id params)
+                   (lib.serialize/url->uuid (:sub-id path-params)))
         sub (when (some? sub-id)
               (xt/entity db sub-id))]
     (when (and sub (= (:uid session) (:sub/user sub)))

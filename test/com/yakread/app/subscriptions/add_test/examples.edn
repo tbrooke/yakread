@@ -1,13 +1,13 @@
 [
-{:route-name :app.subscriptions.add/username,
+{:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
  :handler-id :start,
  :doc "already has a username",
  :db-contents #{{:xt/id 1, :user/email-username "abc"}},
  :ctx {:session {:uid 1}, :params {:username "123"}},
- :expected {:status 303, :biff.router/name :app.subscriptions.add/page}}
+ :expected {:status 303, :headers ["/dev/subscriptions/add" nil]}}
 
-{:route-name :app.subscriptions.add/username,
+{:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
  :handler-id :start,
  :doc "invalid username",
@@ -15,11 +15,11 @@
  :ctx {:session {:uid 1}, :params {:username "admin"}},
  :expected
  {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "username-unavailable", :email-username "admin"}}}
+  :headers
+  ["/dev/subscriptions/add"
+   {:error "username-unavailable", :email-username "admin"}]}}
 
-{:route-name :app.subscriptions.add/username,
+{:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
  :handler-id :start,
  :doc "username taken",
@@ -27,11 +27,11 @@
  :ctx {:session {:uid 1}, :params {:username "abc"}},
  :expected
  {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "username-unavailable", :email-username "abc"}}}
+  :headers
+  ["/dev/subscriptions/add"
+   {:error "username-unavailable", :email-username "abc"}]}}
 
-{:route-name :app.subscriptions.add/username,
+{:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
  :handler-id :start,
  :doc "username not taken",
@@ -47,7 +47,7 @@
   :biff.pipe/catch :biff.pipe/tx,
   :com.yakread.app.subscriptions.add/username "abc"}}
 
-{:route-name :app.subscriptions.add/username,
+{:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
  :handler-id :end,
  :doc "fail",
@@ -56,18 +56,18 @@
   :biff.pipe/exception true},
  :expected
  {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "username-unavailable", :email-username "hello"}}}
+  :headers
+  ["/dev/subscriptions/add"
+   {:error "username-unavailable", :email-username "hello"}]}}
 
-{:route-name :app.subscriptions.add/username,
+{:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
  :handler-id :end,
  :doc "succeed",
  :ctx #:com.yakread.app.subscriptions.add{:username "hello"},
- :expected {:status 303, :biff.router/name :app.subscriptions.add/page}}
+ :expected {:status 303, :headers ["/dev/subscriptions/add" nil]}}
 
-{:route-name :app.subscriptions.add/rss,
+{:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
  :handler-id :start,
  :doc "fix the url",
@@ -80,7 +80,7 @@
    :headers {"User-Agent" "https://yakread.com/"}},
   :biff.pipe/catch :biff.pipe/http}}
 
-{:route-name :app.subscriptions.add/rss,
+{:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
  :handler-id :add-urls,
  :doc "invalid url",
@@ -88,11 +88,12 @@
  :ctx {:session {:uid 1}},
  :expected
  {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params
-  {:error "invalid-rss-feed", :url "https://example.com"}}}
+  :headers
+  {"Location"
+   ["/dev/subscriptions/add"
+    {:error "invalid-rss-feed", :url "https://example.com"}]}}}
 
-{:route-name :app.subscriptions.add/rss,
+{:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
  :handler-id :add-urls,
  :doc "auto-discovery",
@@ -118,10 +119,9 @@
     :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params {:added-feeds 1}}}
+  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 1}]}}}
 
-{:route-name :app.subscriptions.add/rss,
+{:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
  :handler-id :add-urls,
  :doc "direct url",
@@ -147,10 +147,9 @@
     :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params {:added-feeds 1}}}
+  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 1}]}}}
 
-{:route-name :app.subscriptions.add/rss,
+{:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
  :handler-id :add-urls,
  :doc "don't create feed doc if someone already subscribes",
@@ -165,10 +164,9 @@
     :sub/created-at [:db/default :db/now]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params {:added-feeds 1}}}
+  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 1}]}}}
 
-{:route-name :app.subscriptions.add/opml,
+{:route-name :com.yakread.app.subscriptions.add/add-opml,
  :method :post,
  :handler-id :start,
  :doc "slurp the uploaded file",
@@ -177,7 +175,7 @@
  {:biff.pipe/next [:biff.pipe/slurp :end],
   :biff.pipe.slurp/input "/tmp/some-file"}}
 
-{:route-name :app.subscriptions.add/opml,
+{:route-name :com.yakread.app.subscriptions.add/add-opml,
  :method :post,
  :handler-id :end,
  :doc "extract and save the opml urls",
@@ -234,17 +232,16 @@
     [:db/unique "https://www.clojuriststogether.org/index.xml"]}),
   :biff.pipe.tx/retry :end,
   :status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params {:added-feeds 3}}}
+  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 3}]}}}
 
-{:route-name :app.subscriptions.add/opml,
+{:route-name :com.yakread.app.subscriptions.add/add-opml,
  :method :post,
  :handler-id :end,
  :doc "no urls found, show an error",
  :ctx {:session {:uid 1}, :biff.pipe.slurp/output ""},
  :expected
  {:status 303,
-  :biff.router/name :app.subscriptions.add/page,
-  :biff.router/params {:error "invalid-opml-file"}}}
+  :headers
+  {"Location" ["/dev/subscriptions/add" {:error "invalid-opml-file"}]}}}
 
 ]

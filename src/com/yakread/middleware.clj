@@ -132,10 +132,9 @@
 
 (def default-site-middleware
   [biff/wrap-site-defaults
-   biff/wrap-render-rum
+   lib.middle/wrap-render-rum
    wrap-auth-aliases
    lib.middle/wrap-edn-json-params
-   lib.middle/wrap-router-response
    lib.middle/wrap-pathom-error])
 
 (defn wrap-options [handler options]

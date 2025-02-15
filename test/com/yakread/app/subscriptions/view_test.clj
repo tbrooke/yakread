@@ -4,31 +4,36 @@
             [com.yakread.lib.test :as lib.test]
             [com.yakread :as main]))
 
-(def mutation-examples
-  (lib.test/mutation-examples
-   [`sut/mark-read :end]
+(def route-examples
+  (lib.test/route-examples
+   [::sut/mark-read :post :start*]
    [{:ctx {:biff.pipe.pathom/output {:session/user {:xt/id 1}
                                      :params/item {:xt/id 2}}}}]
 
-   [`sut/mark-unread :end]
+   [::sut/mark-unread :post :start*]
    [{:ctx {:biff.pipe.pathom/output
            {:session/user {:xt/id 1}
             :params/item {:xt/id 2
                           :item/sub {:xt/id #uuid "d6c955e8-68d2-4779-84d6-abd823b2f20b"}}}}}]
 
-   [`sut/toggle-favorite :end]
+   [::sut/toggle-favorite :post :start*]
    [{:ctx {:biff.pipe.pathom/output
            {:params/item
-            {:item/id #uuid "46e5bf4c-dc56-402a-ad7d-03610274c067"
-             :item/user-item {:xt/id 2}}}}}]
+            {:item/like-button* :active
+             :item/user-item {:xt/id 2}}}}}
+    {:ctx {:biff.pipe.pathom/output
+           {:params/item
+            {:item/like-button* :active
+             :item/user-item {:xt/id 2
+                              :user-item/favorited-at #inst "1970"}}}}}]
 
-   [`sut/not-interested :end]
+   [::sut/not-interested :post :start*]
    [{:ctx {:biff.pipe.pathom/output
            {:params/item
             {:item/sub {:xt/id #uuid "46e5bf4c-dc56-402a-ad7d-03610274c067"}
              :item/user-item {:xt/id 1}}}}}]
 
-   [`sut/unsubscribe :end]
+   [::sut/unsubscribe :post :start*]
    [{:ctx {:biff.pipe.pathom/output
            {:params/item
             {:item/sub {:sub/id 1
@@ -41,7 +46,7 @@
 (defn get-context []
   {:biff/router          main/router
    :biff.test/current-ns (lib.test/current-ns)
-   :biff.test/examples   mutation-examples})
+   :biff.test/examples   route-examples})
 
 (deftest examples
   (lib.test/check-examples! (get-context)))

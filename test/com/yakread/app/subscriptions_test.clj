@@ -6,13 +6,18 @@
 
 (def pin-examples
   (lib.test/route-examples
-   [:app.subscriptions.page/pin :put :start]
+   [::sut/toggle-pin :post :start*]
    [{:doc "pin"
-     :ctx {:params {:sub/id 1}}}]
-
-   [:app.subscriptions.page/pin :delete :start]
-   [{:doc "unpin"
-     :ctx {:params {:sub/id 1}}}]))
+     :ctx {:biff.pipe.pathom/output
+           {:params/sub
+            {:sub/id 1
+             :sub/doc-type :sub/feed}}}}
+    {:doc "unpin"
+     :ctx {:biff.pipe.pathom/output
+           {:params/sub
+            {:sub/id 1
+             :sub/pinned-at "now"
+             :sub/doc-type :sub/feed}}}}]))
 
 (defn get-context []
   {:biff/router          main/router

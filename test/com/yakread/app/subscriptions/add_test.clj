@@ -13,9 +13,9 @@
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.test :as lib.test]))
 
-(def username-route-examples
+(def username-examples
   (lib.test/route-examples
-   [:app.subscriptions.add/username :post :start]
+   [::sut/set-username :post :start]
    [{:doc         "already has a username"
      :db-contents #{{:xt/id 1
                      :user/email-username "abc"}}
@@ -35,7 +35,7 @@
      :ctx         {:session {:uid 1}
                    :params {:username "abc"}}}]
 
-   [:app.subscriptions.add/username :post :end]
+   [::sut/set-username :post :end]
    [{:doc        "fail"
      :handler-id :end
      :ctx        {::sut/username "hello"
@@ -44,13 +44,13 @@
      :handler-id :end
      :ctx        {::sut/username "hello"}}]))
 
-(def rss-route-examples
+(def rss-examples
   (lib.test/route-examples
-   [:app.subscriptions.add/rss :post :start]
+   [::sut/add-rss :post :start]
    [{:doc "fix the url"
      :ctx {:params {:url "example.com"}}}]
 
-   [:app.subscriptions.add/rss :post :add-urls]
+   [::sut/add-rss :post :add-urls]
    [{:doc     "invalid url"
      :fixture :example-com
      :ctx     {:session {:uid 1}}}
@@ -66,13 +66,13 @@
      :db-contents #{{:xt/id 2
                      :feed/url "https://obryant.dev/feed.xml"}}}]))
 
-(def opml-route-examples
+(def opml-examples
   (lib.test/route-examples
-   [:app.subscriptions.add/opml :post :start]
+   [::sut/add-opml :post :start]
    [{:doc "slurp the uploaded file"
      :ctx {:params {:opml {:tempfile "/tmp/some-file"}}}}]
 
-   [:app.subscriptions.add/opml :post :end]
+   [::sut/add-opml :post :end]
    [{:doc     "extract and save the opml urls"
      :fixture :sample-opml
      :ctx     {:session {:uid 1}}}
@@ -88,9 +88,9 @@
     {:biff/router          main/router
      :biff.test/current-ns current-ns
      :biff.test/fixtures   fixtures
-     :biff.test/examples   (concat username-route-examples
-                                   rss-route-examples
-                                   opml-route-examples)}))
+     :biff.test/examples   (concat username-examples
+                                   rss-examples
+                                   opml-examples)}))
 
 (deftest examples
   (lib.test/check-examples! (get-context)))

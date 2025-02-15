@@ -5,8 +5,8 @@
             [clojure.walk :as walk]
             [com.biffweb :as biff]
             [com.yakread.lib.error :as lib.error]
+            [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.pathom :as lib.pathom]
-            [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.s3 :as lib.s3]
             [clojure.tools.logging :as log]
             [remus]
@@ -58,14 +58,6 @@
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
 
-(defmacro defmutation [sym & pipe-args]
-  `(defn ~sym
-     {:biff/mutation (lib.pipe/make ~@pipe-args)}
-     ([] (~sym {}))
-     ([params#]
-      {:hx-post ~(str "/dev/api/" *ns* "/" sym)
-       :hx-vals (lib.htmx/edn-hx-vals params#)})))
-
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
@@ -84,7 +76,9 @@
    :biff.pipe/slurp (fn [{:keys [biff.pipe.slurp/input] :as ctx}]
                       (assoc ctx :biff.pipe.slurp/output (slurp input)))
    :biff.pipe/render (fn [{:keys [biff/router biff.pipe.render/route-name] :as ctx}]
-                       (lib.route/call router route-name :get ctx))
+                       #_(lib.route/call router route-name :get ctx))
+   :biff.pipe/render* (fn [{:keys [biff.pipe.render/route] :as ctx}]
+                        ((get-in @(resolve route) [1 :get]) ctx))
    :biff.pipe/queue (fn [{:biff.pipe.queue/keys [id job wait-for-result] :as ctx}]
                       (assoc ctx
                              :biff.pipe.queue/output

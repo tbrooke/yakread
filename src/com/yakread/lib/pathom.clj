@@ -14,13 +14,16 @@
 
 (def ? pco/?)
 
-;; TODO maybe include db basis somewhere
 (defn process [ctx & args]
   (try
     (with-open [db (if (:biff.index/indexes ctx)
                      (biff/open-db-with-index ctx)
                      (xt/open-db (:biff.xtdb/node ctx)))]
-      (apply eql/process (assoc ctx :biff/db db) args))
+      (apply eql/process
+             (-> ctx
+                 (assoc :biff/db db :biff.db/basis (xt/db-basis db))
+                 (runner/with-resolver-cache (atom {})))
+             args))
     (catch Exception e
       (if-some [unreachable (get-in (ex-data e)
                                     [:com.wsscode.pathom3.connect.planner/graph

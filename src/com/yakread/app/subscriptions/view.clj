@@ -5,145 +5,118 @@
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.middleware :as lib.middle]
-            [com.yakread.lib.pathom :as lib.pathom :refer [?]]
-            [com.yakread.lib.pipeline :as lib.pipe :refer [defmutation]]
-            [com.yakread.lib.route :as lib.route]
+            [com.yakread.lib.pipeline :as lib.pipe]
+            [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.routes :as routes]
             [com.yakread.model.subscription :as model.sub]
             [lambdaisland.uri :as uri]
             [xtdb.api :as xt]
             [rum.core :as rum]))
 
-(def subs-page-route 'com.yakread.app.subscriptions/page-route)
-
-(declare like-button)
-(declare page-route)
-(declare page-content-route)
-(declare read-content-route)
-
-(defmutation mark-read
-  :start (lib.pipe/pathom-query
-           [{:session/user [:xt/id]}
-            {:params/item [:xt/id]}]
-           :end)
-  :end (fn [{{:keys [session/user params/item]} :biff.pipe.pathom/output}]
-         {:status 200
-          :biff.pipe/next [:biff.pipe/tx]
-          :biff.pipe.tx/input [{:db/doc-type :user-item
-                                :db.op/upsert {:user-item/user (:xt/id user)
-                                               :user-item/item (:xt/id item)}
-                                :user-item/viewed-at [:db/default :db/now]}]}))
-
 (defn- redirect-to-sub [sub-id]
   (if sub-id
-    (lib.route/path* page-route sub-id)
-    (lib.route/path* subs-page-route)))
+    (href `page-route sub-id)
+    (href routes/subs-page)))
 
-(defmutation mark-unread
-  :start (lib.pipe/pathom-query
-           [{:session/user [:xt/id]}
-            {:params/item [:xt/id
-                           {(? :item/sub) [:xt/id]}]}]
-           :end)
-  :end (fn [{{:keys [session/user params/item]} :biff.pipe.pathom/output}]
-         {:status 204
-          :headers {"HX-Location" (redirect-to-sub (get-in item [:item/sub :xt/id]))}
-          :biff.pipe/next [:biff.pipe/tx]
-          :biff.pipe.tx/input [{:db/doc-type :user-item
-                                :db.op/upsert {:user-item/user (:xt/id user)
-                                               :user-item/item (:xt/id item)}
-                                :user-item/viewed-at :db/dissoc
-                                :user-item/favorited-at :db/dissoc
-                                :user-item/disliked-at :db/dissoc
-                                :user-item/reported-at :db/dissoc
-                                :user-item/report-reason :db/dissoc}]}))
+(defpost-pathom mark-read
+  [{:session/user [:xt/id]}
+   {:params/item [:xt/id]}]
+  (fn [_ {:keys [session/user params/item]}]
+    {:status 200
+     :biff.pipe/next [:biff.pipe/tx]
+     :biff.pipe.tx/input [{:db/doc-type :user-item
+                           :db.op/upsert {:user-item/user (:xt/id user)
+                                          :user-item/item (:xt/id item)}
+                           :user-item/viewed-at [:db/default :db/now]}]}))
 
-(defmutation toggle-favorite
-  :start (lib.pipe/pathom-query
-           [{:params/item
-             [:item/id
-              {:item/user-item
-               [:xt/id
-                (? :user-item/favorited-at)]}]}]
-           :end)
-  :end (fn [{{:keys [params/item]} :biff.pipe.pathom/output}]
-         (let [user-item (:item/user-item item)]
-           {:status 200
-            :headers {"Content-Type" "text/html"}
-            :body (rum/render-static-markup
-                   (:item/like-button
-                    (like-button (update-in item [:item/user-item :user-item/favorited-at] not))))
-            :biff.pipe/next [:biff.pipe/tx]
-            :biff.pipe.tx/retry false
-            :biff.pipe.tx/input [{:db/doc-type :user-item
-                                  :db/op :update
-                                  :xt/id (:xt/id user-item)
-                                  :user-item/favorited-at (if (:user-item/favorited-at user-item)
-                                                            :db/dissoc
-                                                            :db/now)
-                                  :user-item/disliked-at :db/dissoc
-                                  :user-item/reported-at :db/dissoc
-                                  :user-item/report-reason :db/dissoc}]})))
+(defpost-pathom mark-unread
+  [{:session/user [:xt/id]}
+   {:params/item [:xt/id
+                  {(? :item/sub) [:xt/id]}]}]
+  (fn [_ {:keys [session/user params/item]}]
+    {:status 204
+     :headers {"HX-Location" (redirect-to-sub (get-in item [:item/sub :xt/id]))}
+     :biff.pipe/next [:biff.pipe/tx]
+     :biff.pipe.tx/input [{:db/doc-type :user-item
+                           :db.op/upsert {:user-item/user (:xt/id user)
+                                          :user-item/item (:xt/id item)}
+                           :user-item/viewed-at :db/dissoc
+                           :user-item/favorited-at :db/dissoc
+                           :user-item/disliked-at :db/dissoc
+                           :user-item/reported-at :db/dissoc
+                           :user-item/report-reason :db/dissoc}]}))
 
-(defmutation not-interested
-  :start (lib.pipe/pathom-query
-           [{:params/item [{(? :item/sub) [:xt/id]}
-                           {:item/user-item [:xt/id]}]}]
-           :end)
-  :end (fn [{{:keys [params/item]} :biff.pipe.pathom/output}]
-         (let [user-item (:item/user-item item)]
-           {:status 204
-            :headers {"HX-Location"
-                      (redirect-to-sub (get-in item [:item/sub :xt/id]))}
-            :biff.pipe/next [:biff.pipe/tx]
-            :biff.pipe.tx/retry false
-            :biff.pipe.tx/input [{:db/doc-type :user-item
-                                  :db/op :update
-                                  :xt/id (:xt/id user-item)
-                                  :user-item/favorited-at :db/dissoc
-                                  :user-item/disliked-at :db/now}]})))
+(defpost-pathom toggle-favorite
+  [{:params/item
+    [:item/like-button*
+     {:item/user-item
+      [:xt/id
+       (? :user-item/favorited-at)]}]}]
+  (fn [_ {:keys [params/item]}]
+    (let [user-item (:item/user-item item)
+          favorited (boolean (:user-item/favorited-at user-item))]
+      {:status 200
+       :headers {"Content-Type" "text/html"}
+       :body ((:item/like-button* item) {:active (not favorited)})
+       :biff.pipe/next [:biff.pipe/tx]
+       :biff.pipe.tx/retry false
+       :biff.pipe.tx/input [{:db/doc-type :user-item
+                             :db/op :update
+                             :xt/id (:xt/id user-item)
+                             :user-item/favorited-at (if favorited :db/dissoc :db/now)
+                             :user-item/disliked-at :db/dissoc
+                             :user-item/reported-at :db/dissoc
+                             :user-item/report-reason :db/dissoc}]})))
 
-(defmutation unsubscribe
-  :start (lib.pipe/pathom-query
-           [{:params/item [{:item/sub [:sub/id
+(defpost-pathom not-interested
+  [{:params/item [{(? :item/sub) [:xt/id]}
+                  {:item/user-item [:xt/id]}]}]
+  (fn [_ {:keys [params/item]}]
+    (let [user-item (:item/user-item item)]
+      {:status 204
+       :headers {"HX-Location" (redirect-to-sub (get-in item [:item/sub :xt/id]))}
+       :biff.pipe/next [:biff.pipe/tx]
+       :biff.pipe.tx/retry false
+       :biff.pipe.tx/input [{:db/doc-type :user-item
+                             :db/op :update
+                             :xt/id (:xt/id user-item)
+                             :user-item/favorited-at :db/dissoc
+                             :user-item/disliked-at :db/now}]})))
+
+(defpost-pathom unsubscribe
+  [{:params/item [{:item/sub [:sub/id
                                        :sub/doc-type]}]}]
-           :end)
-  :end (fn [{{{{:sub/keys [id doc-type]}
-               :item/sub}
-              :params/item}
-             :biff.pipe.pathom/output}]
-         {:status 204
-          :headers {"HX-Location"
-                    (lib.route/path* subs-page-route)}
-          :biff.pipe/next [:biff.pipe/tx]
-          :biff.pipe.tx/retry false
-          :biff.pipe.tx/input [(if (= doc-type :sub/email)
-                                 ;; TODO actually unsubscribe from the mailing list
-                                 {:db/doc-type :sub/email
-                                  :db/op :update
-                                  :xt/id id
-                                  :sub.email/unsubscribed-at :db/now}
-                                 [::xt/delete id])]}))
+  (fn [_ {{{:sub/keys [id doc-type]} :item/sub} :params/item}]
+    {:status 204
+     :headers {"HX-Location" (href routes/subs-page)}
+     :biff.pipe/next [:biff.pipe/tx]
+     :biff.pipe.tx/retry false
+     :biff.pipe.tx/input [(if (= doc-type :sub/email)
+                            ;; TODO actually unsubscribe from the mailing list
+                            {:db/doc-type :sub/email
+                             :db/op :update
+                             :xt/id id
+                             :sub.email/unsubscribed-at :db/now}
+                            [::xt/delete id])]}))
 
-(defmutation mark-all-read
-  :start (lib.pipe/pathom-query
-           [{:session/user [:xt/id]}
+(defpost-pathom mark-all-read
+  [{:session/user [:xt/id]}
             {:params/sub [:sub/id
                           {:sub/items [:item/id
                                        :item/unread]}]}]
-           :end)
-  :end (fn [{{:keys [session/user params/sub]} :biff.pipe.pathom/output}]
-         {:status 303
-          :headers {"Location" (lib.route/path* page-route (:sub/id sub))}
-          :biff.pipe/next [:biff.pipe/tx]
-          :biff.pipe.tx/input
-          (for [{:item/keys [id unread]} (:sub/items sub)
-                :when (not unread)]
-            {:db/doc-type :user-item
-             :db.op/upsert {:user-item/user (:xt/id user)
-                            :user-item/item id}
-             :user-item/skipped-at [:db/default :db/now]})}))
+  (fn [_ {:keys [session/user params/sub]}]
+    {:status 303
+     :headers {"Location" (href `page-route (:sub/id sub))}
+     :biff.pipe/next [:biff.pipe/tx]
+     :biff.pipe.tx/input
+     (for [{:item/keys [id unread]} (:sub/items sub)
+           :when (not unread)]
+       {:db/doc-type :user-item
+        :db.op/upsert {:user-item/user (:xt/id user)
+                       :user-item/item id}
+        :user-item/skipped-at [:db/default :db/now]})}))
 
 (defn bar-button-icon-label [icon text]
   [:.flex.justify-center
@@ -160,20 +133,23 @@
                           py-2
                           w-full])
 
-(defresolver like-button [{:item/keys [id user-item]}]
-  #::pco{:input [{(? :item/user-item) [(? :user-item/favorited-at)]}]}
-  {:item/like-button
-   (let [active (boolean (:user-item/favorited-at user-item))]
-     [:button (merge
-               (toggle-favorite {:item/id id})
-               {:hx-swap "outerHTML"
-                :class (into bar-button-classes
-                             (when active
-                               '[font-semibold]))})
+(defresolver like-button* [{:item/keys [id]}]
+  {:item/like-button*
+   (fn [{:keys [active]}]
+     [:button {:hx-post (href toggle-favorite {:item/id id})
+               :hx-swap "outerHTML"
+               :class (into bar-button-classes
+                            (when active
+                              '[font-semibold]))}
       (bar-button-icon-label (if active
                                "star-solid"
                                "star-regular")
                              "Like")])})
+
+(defresolver like-button [{:item/keys [like-button* user-item]}]
+  #::pco{:input [{(? :item/user-item) [(? :user-item/favorited-at)]}]}
+  {:item/like-button
+   (like-button* {:active (boolean (:user-item/favorited-at user-item))})})
 
 (defresolver share-button [{:item/keys [url]}]
   {:item/share-button
@@ -210,130 +186,105 @@
     [:.flex-1 like-button]
 
 
-    [:.relative.flex.items-center
-     {:class '["translate-y-[-100%]"]}
-     [:div#button-bar-dropdown.dropdown
-      {:class '[absolute
-                bg-white
-                border
-                bottom-0
-                hidden
-                mb-2
-                py-1
-                right-0
-                rounded
-                rounded
-                shadow-uniform]}
-      (for [[mutation label]
-            (concat [[mark-unread "Mark unread"]
-                     [not-interested "Not interested"]]
-                    (when sub
-                      [[unsubscribe "Unsubscribe"]])
-                     ;; TODO report
-                     )]
-        (biff/form
-          (mutation {:item/id id})
-          (lib.ui/overflow-button {:type "submit"} label)))]
-     [:button.flex.p-2.hover:bg-neut-50.flex-none.h-full.translate-y-full
-      {:_ "on click toggle .hidden on #button-bar-dropdown then halt"}
-      (lib.icons/base "ellipsis-vertical-regular"
-                      {:class '[w-8
-                                h-5
-                                flex-shrink-0
-                                "mt-[2px]"]})]]]})
+    (lib.ui/overflow-menu
+     {:ui/direction :up}
+     (for [[post-route label]
+           (concat [[mark-unread "Mark unread"]
+                    [not-interested "Not interested"]]
+                   (when sub
+                     [[unsubscribe "Unsubscribe"]])
+                   ;; TODO report
+                   )]
+       (lib.ui/overflow-button
+        {:hx-post (href post-route {:item/id id})}
+        label)))]})
 
-(def read-content-route
-  ["/dev/sub-item/:item-id/content"
-   {:name :app.subscriptions.view.read/content
-    :get (lib.pathom/handler
-          [{(? :params/item) [:item/id
-                              :item/doc-type
-                              (? :item/url)
-                              (? :item/title)
-                              (? :item/clean-html)
-                              (? :item/details)
-                              {:item/sub [:sub/id
-                                          :sub/title]}
-                              :item/button-bar]}]
-          (fn [_ {{:item/keys [id url details doc-type title sub clean-html button-bar]
-                   :as item} :params/item}]
-            (when item
-              [:<>
-               [:div (merge (mark-read {:item/id id})
-                            {:hx-trigger "load"
-                             :hx-swap "outerHTML"})]
-               [:div {:_ (str "on load wait 100 ms then call resumePosition(me) then "
-                              ;; TODO figure out how to not make this global
-                              "set window.elt to me "
-                              "js document.addEventListener('scroll', (e) => { "
-                              "  savePosition(elt); "
-                              "});")
-                      :data-item-id id}
-                [:div {:class '[text-sm
-                                max-sm:mx-4
-                                text-neut-800
-                                flex
-                                justify-between
-                                gap-6]}
-                 [:div details]
-                 (when url
-                   [:a {:class '[underline
-                                 whitespace-nowrap
-                                 max-sm:hidden]
-                        :href url :target "_blank"}
-                    "View original"])]
-                [:.h-1]
-                [:h1.font-bold.text-2xl.max-sm:mx-4.text-neut-900 title]
-                (when url
-                  [:a {:class '[max-sm:mx-4
-                                sm:hidden
-                                text-neut-800
-                                text-sm
-                                underline
-                                whitespace-nowrap]
-                       :href url
-                       :target "_blank"}
-                   "View original"])
-                [:.h-6]
-                [:.px-4.bg-white.contain-content.overflow-hidden
-                 [:div {:id "post-content"
-                        :data-contents clean-html
-                        :_ "on load call renderPost()"
-                        :class (if (= doc-type :item/email)
-                                 '[py-4]
-                                 '[hover:prose-a:underline
-                                   lg:prose-h1:text-4xl
-                                   prose-a:text-tealv-600
-                                   prose-blockquote:border-l-tealv-500
-                                   prose-h1:text-3xl
-                                   prose-lg
-                                   prose-neut-900
-                                   prose-quoteless
-                                   py-4])}]]
-                button-bar]
+(defget read-content-route "/dev/sub-item/:item-id/content"
+  [{(? :params/item) [:item/id
+                      :item/doc-type
+                      (? :item/url)
+                      (? :item/title)
+                      (? :item/clean-html)
+                      (? :item/details)
+                      {:item/sub [:sub/id
+                                  :sub/title]}
+                      :item/button-bar]}]
+  (fn [_ {{:item/keys [id url details doc-type title sub clean-html button-bar]
+           :as item} :params/item}]
+    (when item
+      [:<>
+       [:div {:hx-post (href mark-read {:item/id id})
+              :hx-trigger "load"
+              :hx-swap "outerHTML"}]
+       [:div {:_ (str "on load wait 100 ms then call resumePosition(me) then "
+                      ;; TODO figure out how to not make this global
+                      "set window.elt to me "
+                      "js document.addEventListener('scroll', (e) => { "
+                      "  savePosition(elt); "
+                      "});")
+              :data-item-id id}
+        [:div {:class '[text-sm
+                        max-sm:mx-4
+                        text-neut-800
+                        flex
+                        justify-between
+                        gap-6]}
+         [:div details]
+         (when url
+           [:a {:class '[underline
+                         whitespace-nowrap
+                         max-sm:hidden]
+                :href url :target "_blank"}
+            "View original"])]
+        [:.h-1]
+        [:h1.font-bold.text-2xl.max-sm:mx-4.text-neut-900 title]
+        (when url
+          [:a {:class '[max-sm:mx-4
+                        sm:hidden
+                        text-neut-800
+                        text-sm
+                        underline
+                        whitespace-nowrap]
+               :href url
+               :target "_blank"}
+           "View original"])
+        [:.h-6]
+        [:.px-4.bg-white.contain-content.overflow-hidden
+         [:div {:id "post-content"
+                :data-contents clean-html
+                :_ "on load call renderPost()"
+                :class (if (= doc-type :item/email)
+                         '[py-4]
+                         '[hover:prose-a:underline
+                           lg:prose-h1:text-4xl
+                           prose-a:text-tealv-600
+                           prose-blockquote:border-l-tealv-500
+                           prose-h1:text-3xl
+                           prose-lg
+                           prose-neut-900
+                           prose-quoteless
+                           py-4])}]]
+        button-bar]
 
-               [:div.h-10]
-               (lib.ui/page-header {:title     (:sub/title sub)
-                                    :back-href (lib.route/path* subs-page-route)})
-               [:div#content (lib.ui/lazy-load-spaced* page-content-route (:sub/id sub))]])))}])
+       [:div.h-10]
+       (lib.ui/page-header {:title     (:sub/title sub)
+                            :back-href (href routes/subs-page)})
+       [:div#content (lib.ui/lazy-load-spaced (href `page-content-route (:sub/id sub)))]])))
 
-(def read-page-route
-  ["/dev/sub-item/:item-id"
-   {:name :app.subscriptions.view/read
-    :get (lib.pathom/handler
-          [:app.shell/app-shell
-           {(? :params/item) [:item/id
-                              :item/title
-                              {:item/sub [:sub/id
-                                          :sub/title]}]}]
-          (fn [_ {:keys [app.shell/app-shell]
-                  {:item/keys [id title sub content] :as item} :params/item}]
-            (if (nil? item)
-              {:status 303
-               :headers {"Location" (lib.route/path* subs-page-route)}}
-              (app-shell
-               {:title title}
-               (lib.ui/lazy-load-spaced* read-content-route id)))))}])
+(defget read-page-route "/dev/sub-item/:item-id"
+  [:app.shell/app-shell
+   {(? :params/item) [:item/id
+                      :item/title
+                      {:item/sub [:sub/id
+                                  :sub/title]}]}]
+  (fn [_ {:keys [app.shell/app-shell]
+          {:item/keys [id title sub content] :as item} :params/item}]
+    (if (nil? item)
+      {:status 303
+       :headers {"Location" (href routes/subs-page)}}
+      (app-shell
+       {:title title}
+       (lib.ui/lazy-load-spaced (href read-content-route id))))))
 
 (defn- clean-string [s]
   (str/replace (apply str (remove #{\newline
@@ -344,116 +295,110 @@
                #"\s+"
                " "))
 
-(def page-content-route
-  ["/dev/subscription/:sub-id/content"
-   {:name :app.subscriptions.view.page/content
-    :get (lib.pathom/handler
-          [{(? :params/sub) [:sub/id
-                             {:sub/items
-                              [:item/id
-                               :item/unread
-                               :item/details
-                               (? :item/title)
-                               (? :item/image-url)
-                               (? :item/author-name)
-                               (? :item/byline)
-                               (? :item/excerpt)
-                               (? :item/fetched-at)
-                               (? :item/length)
-                               (? :item/published-at)
-                               (? :item/site-name)
-                               (? :item/url)]}]}
-           {:user/current [(? :user/use-original-links)]}]
-          (fn [_ {:keys [app.shell/app-shell]
-                  {:keys [user/use-original-links]} :user/current
-                  {:sub/keys [id items]} :params/sub}]
-            (if-not id
-              {:status 404 :body ""}
-              [:<>
-               [:div {:class '[flex
-                               flex-col
-                               gap-6
-                               max-w-screen-sm]}
-                (for [{:item/keys [id details title excerpt unread image-url url] :as item}
-                      (sort-by :item/published-at #(compare %2 %1) items)]
-                  [:a (if (and use-original-links url)
-                        {:href url :target "_blank"}
-                        {:href (lib.route/path* read-page-route id)})
-                   [:div {:class (concat '[bg-white
-                                           hover:bg-neut-50
-                                           p-4
-                                           sm:shadow]
-                                         (when unread
-                                           '[max-sm:border-t-4
-                                             sm:border-l-4
-                                             border-tealv-500]))}
-                    [:.text-neut-600.text-sm.line-clamp-2
-                     details]
-                    [:.h-1]
-                    [:h3 {:class '[font-bold
-                                   text-xl
-                                   text-neut-800
-                                   leading-tight
-                                   line-clamp-2]}
-                     title]
-                    [:.h-2]
-                    [:.flex.gap-3.justify-between
-                     [:div
-                      (when (not= excerpt "Read more")
-                        [:.line-clamp-4.text-neut-600.mb-1
-                         {:style {:overflow-wrap "anywhere"}}
-                         (clean-string excerpt)])
-                      [:div {:class '[text-tealv-600
-                                      font-semibold
-                                      hover:underline
-                                      inline-block]}
-                       "Read more."]]
-                     (when image-url
-                       [:.relative.flex-shrink-0
-                        [:img {:src (lib.ui/weserv {:url image-url
-                                                    :w 150
-                                                    :h 150
-                                                    :fit "cover"
-                                                    :a "attention"})
-                               :_ "on error remove me"
-                               :class '[rounded
-                                        object-cover
-                                        object-center
-                                        "mt-[6px]"
-                                        "w-[5.5rem]"
-                                        "h-[5.5rem]"]}]
-                        [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
-                               :class '[absolute
-                                        inset-x-0
-                                        "top-[6px]"
-                                        "h-[5.5rem]"
-                                        rounded]}]])]]])]])))}])
+(defget page-content-route "/dev/subscription/:sub-id/content"
+  [{:params/sub [:sub/id
+                 {:sub/items
+                  [:item/id
+                   :item/unread
+                   :item/details
+                   (? :item/title)
+                   (? :item/image-url)
+                   (? :item/author-name)
+                   (? :item/byline)
+                   (? :item/excerpt)
+                   (? :item/fetched-at)
+                   (? :item/length)
+                   (? :item/published-at)
+                   (? :item/site-name)
+                   (? :item/url)]}]}
+   {:user/current [(? :user/use-original-links)]}]
+  (fn [_ {:keys [app.shell/app-shell]
+          {:keys [user/use-original-links]} :user/current
+          {:sub/keys [id items]} :params/sub}]
+    [:div {:class '[flex
+                    flex-col
+                    gap-6
+                    max-w-screen-sm]}
+     (for [{:item/keys [id details title excerpt unread image-url url] :as item}
+           (sort-by :item/published-at #(compare %2 %1) items)]
+       [:a (if (and use-original-links url)
+             {:href url :target "_blank"}
+             {:href (href read-page-route id)})
+        [:div {:class (concat '[bg-white
+                                hover:bg-neut-50
+                                p-4
+                                sm:shadow]
+                              (when unread
+                                '[max-sm:border-t-4
+                                  sm:border-l-4
+                                  border-tealv-500]))}
+         [:.text-neut-600.text-sm.line-clamp-2
+          details]
+         [:.h-1]
+         [:h3 {:class '[font-bold
+                        text-xl
+                        text-neut-800
+                        leading-tight
+                        line-clamp-2]}
+          title]
+         [:.h-2]
+         [:.flex.gap-3.justify-between
+          [:div
+           (when (not= excerpt "Read more")
+             [:.line-clamp-4.text-neut-600.mb-1
+              {:style {:overflow-wrap "anywhere"}}
+              (clean-string excerpt)])
+           [:div {:class '[text-tealv-600
+                           font-semibold
+                           hover:underline
+                           inline-block]}
+            "Read more."]]
+          (when image-url
+            [:.relative.flex-shrink-0
+             [:img {:src (lib.ui/weserv {:url image-url
+                                         :w 150
+                                         :h 150
+                                         :fit "cover"
+                                         :a "attention"})
+                    :_ "on error remove me"
+                    :class '[rounded
+                             object-cover
+                             object-center
+                             "mt-[6px]"
+                             "w-[5.5rem]"
+                             "h-[5.5rem]"]}]
+             [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
+                    :class '[absolute
+                             inset-x-0
+                             "top-[6px]"
+                             "h-[5.5rem]"
+                             rounded]}]])]]])]))
 
-(def page-route
-  ["/dev/subscription/:sub-id"
-   {:name :app.subscriptions.view/page
-    :get (lib.pathom/handler
-          [:app.shell/app-shell
-           {(? :params/sub) [:sub/id
-                             :sub/title]}]
-          (fn [_ {:keys [app.shell/app-shell]
-                  {:sub/keys [id title]} :params/sub}]
-            (if (nil? title)
-              {:status 303
-               :headers {"Location" (lib.route/path* subs-page-route)}}
-              (app-shell
-               {:title title}
-               (lib.ui/page-header {:title     title
-                                    :back-href (lib.route/path* subs-page-route)})
-
-               [:div#content (lib.ui/lazy-load-spaced* page-content-route id)]))))}])
+(defget page-route "/dev/subscription/:sub-id"
+  [:app.shell/app-shell
+   {:params/sub [:sub/id
+                 :sub/title]}]
+  (fn [_ {:keys [app.shell/app-shell]
+          {:sub/keys [id title]} :params/sub}]
+    (app-shell
+     {:title title}
+     (lib.ui/page-header {:title     title
+                          :back-href (href routes/subs-page)})
+     [:div#content (lib.ui/lazy-load-spaced (href page-content-route id))])))
 
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}
              page-route
              page-content-route
              read-page-route
-             read-content-route]]
+             read-content-route
+             mark-read
+             mark-unread
+             toggle-favorite
+             not-interested
+             unsubscribe
+             mark-all-read]]
    :resolvers [button-bar
+               like-button*
                like-button
                share-button]})

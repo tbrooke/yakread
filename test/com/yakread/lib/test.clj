@@ -58,10 +58,13 @@
                 :or {method :post}
                 :as example}]
   (let [sut* (cond
+               ;; TODO take the route directly instead of using router
                route-name (lib.route/handler router route-name method)
                fn-sym (requiring-resolve fn-sym)
                ;; TODO do a helpful error message if this is missing
-               mutation (:biff/mutation (meta (resolve mutation)))
+               mutation (if-some [mutation-var (resolve mutation)]
+                          (:biff/mutation (meta mutation-var))
+                          (throw (ex-info (str "Couldn't resolve mutation: " mutation) {})))
                index-id (->> @modules
                              (mapcat :indexes)
                              (filterv (comp #{index-id} :id))
@@ -112,7 +115,8 @@
 
 (defn write-examples! [{:biff.test/keys [current-ns examples] :as ctx}]
   (binding [gen/*rnd* (java.util.Random. 0)
-            *print-namespace-maps* true]
+            *print-namespace-maps* true
+            lib.route/*testing* true]
     (with-open [node (xt/start-node {})]
       (let [ctx (assoc ctx :biff.test/empty-db (xt/db node))
             examples (mapv #(assoc % :expected (actual ctx %)) examples)
@@ -128,7 +132,8 @@
 
 (defn check-examples! [{:biff.test/keys [examples current-ns] :as ctx}]
   (binding [gen/*rnd* (java.util.Random. 0)
-            *print-namespace-maps* true]
+            *print-namespace-maps* true
+            lib.route/*testing* true]
     (let [written-examples (read-examples! current-ns)]
       (if (not= examples (mapv #(dissoc % :expected) written-examples))
         (test/report {:type :fail

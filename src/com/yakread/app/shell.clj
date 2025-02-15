@@ -5,7 +5,7 @@
             [com.biffweb :as biff]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.icons :as lib.icons]
-            [com.yakread.lib.route :as lib.route]
+            [com.yakread.lib.route :as lib.route :refer [href]]
             [com.yakread.lib.ui :as lib.ui]
             [ring.middleware.anti-forgery :as csrf]
             [ring.util.response :as ring-response]))
@@ -22,32 +22,31 @@
     (str "/css/main.css?t=" last-modified)
     "/css/main.css"))
 
-(defresolver pages [{:keys [biff/router uri reitit.core/match]} {{:keys [user/roles]} :user/current}]
+(defresolver pages [{:keys [reitit.core/match]} {{:keys [user/roles]} :user/current}]
   #::pco{:input [{(? :user/current) [:user/roles]}]}
   {:app.shell/pages
    (let [route-ns (-> match :data :name namespace)]
-     (->> (cond-> [#:app.shell.page{:route-name :app.for-you/page
+     (->> (cond-> [#:app.shell.page{:route-sym 'com.yakread.app.for-you/page
                                     :title "For you"
                                     :icon "house"}
-                   #:app.shell.page{:route-name :app.subscriptions/page
+                   #:app.shell.page{:route-sym 'com.yakread.app.subscriptions/page-route
                                     :title "Subscriptions"
                                     :icon "rss"}
-                   #:app.shell.page{:route-name :app.read-later/page
+                   #:app.shell.page{:route-sym 'com.yakread.app.read-later/page
                                     :title "Read later"
                                     :icon "bookmark"}
-                   #:app.shell.page{:route-name :app.favorites/page
+                   #:app.shell.page{:route-sym 'com.yakread.app.favorites/page
                                     :title "Favorites"
                                     :icon "star"}
-                   #:app.shell.page{:route-name :app.settings/page
+                   #:app.shell.page{:route-sym 'com.yakread.app.settings/page
                                     :title "Settings"
                                     :icon "gear"}]
-            (contains? roles :admin) (conj #:app.shell.page{:route-name :app.admin/page
+            (contains? roles :admin) (conj #:app.shell.page{:route-sym 'com.yakread.app.admin/page-route
                                                             :title "Admin"
                                                             :icon "lock"}))
-          (mapv (fn [{:keys [app.shell.page/route-name] :as page}]
-                  (let [href (lib.route/path router route-name {})]
-                    (merge page #:app.shell.page{:href href
-                                                 :active (str/starts-with? route-ns (namespace route-name))}))))))})
+          (mapv (fn [{:keys [app.shell.page/route-sym] :as page}]
+                  (merge page #:app.shell.page{:href (href route-sym)
+                                               :active (str/starts-with? route-ns (namespace route-sym))})))))})
 
 (defresolver app-head [{:keys [app.shell/include-plausible
                                app.shell/include-recaptcha]}
@@ -83,7 +82,7 @@
          :image "https://platypub.sfo3.cdn.digitaloceanspaces.com/270d320a-d9d8-4cdf-bbed-2078ca595b16"
          :font-families ["Inter:wght@400;500;600;700"]})
 
-(defresolver sidebar [{:keys [biff/router uri]} {current-user :user/current :keys [app.shell/pages]}]
+(defresolver sidebar [{current-user :user/current :keys [app.shell/pages]}]
   #::pco{:input [{(? :user/current) [:user/email]}
                  :app.shell/pages]}
   {:app.shell/sidebar
@@ -117,8 +116,7 @@
             :class '[flex
                      flex-col
                      gap-1]}
-      (for [{:app.shell.page/keys [route-name title icon active]} pages
-            :let [href (lib.route/path router route-name {})]]
+      (for [{:app.shell.page/keys [href title icon active]} pages]
         [:a {:href href
              :class (concat (if active
                               '[bg-neut-800

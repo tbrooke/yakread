@@ -1,30 +1,39 @@
 [
-{:route-name :app.subscriptions.page/pin,
- :method :put,
- :handler-id :start,
+{:route-name :com.yakread.app.subscriptions/toggle-pin,
+ :method :post,
+ :handler-id :start*,
  :doc "pin",
- :ctx {:params #:sub{:id 1}},
+ :ctx
+ #:biff.pipe.pathom{:output
+                    #:params{:sub #:sub{:id 1, :doc-type :sub/feed}}},
  :expected
- {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render],
+ {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render*],
   :biff.pipe.tx/input
-  [{:db/doc-type :sub/any,
+  [{:db/doc-type :sub/feed,
     :db/op :update,
     :xt/id 1,
     :sub/pinned-at :db/now}],
-  :biff.pipe.render/route-name :app.subscriptions.page/content}}
+  :biff.pipe.render/route
+  com.yakread.app.subscriptions/page-content-route}}
 
-{:route-name :app.subscriptions.page/pin,
- :method :delete,
- :handler-id :start,
+{:route-name :com.yakread.app.subscriptions/toggle-pin,
+ :method :post,
+ :handler-id :start*,
  :doc "unpin",
- :ctx {:params #:sub{:id 1}},
+ :ctx
+ #:biff.pipe.pathom{:output
+                    #:params{:sub
+                             #:sub{:id 1,
+                                   :pinned-at "now",
+                                   :doc-type :sub/feed}}},
  :expected
- {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render],
+ {:biff.pipe/next [:biff.pipe/tx :biff.pipe/render*],
   :biff.pipe.tx/input
-  [{:db/doc-type :sub/any,
+  [{:db/doc-type :sub/feed,
     :db/op :update,
     :xt/id 1,
     :sub/pinned-at :db/dissoc}],
-  :biff.pipe.render/route-name :app.subscriptions.page/content}}
+  :biff.pipe.render/route
+  com.yakread.app.subscriptions/page-content-route}}
 
 ]

@@ -8,7 +8,6 @@
             [com.biffweb :as biff]
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.planner :as pcp]
-            [com.wsscode.pathom3.connect.runner :as pcr]
             [com.yakread.app.admin :as app.admin]
             [com.yakread.app.api :as app.api]
             [com.yakread.app.auth :as app.auth]
@@ -120,8 +119,7 @@
                 ;:biff/db (:biff/db snapshots)
                 ;:biff.index/snapshots snapshots
                 :biff/now (java.time.Instant/now)})
-        (pcp/with-plan-cache (atom {}))
-        (pcr/with-resolver-cache (atom {})))))
+        (pcp/with-plan-cache (atom {})))))
 
 (defonce system (atom {}))
 
