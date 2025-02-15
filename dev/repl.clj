@@ -47,10 +47,12 @@
        (fn [{:keys [biff/db session] :as ctx}]
          (lib.pathom/process
           (-> ctx
-              (assoc :path-params {:item-id "eWrwK063TYypMDhtG0NP0Q"})
+              (assoc :path-params {:item-id "eWrwK063TYypMDhtG0NP0Q"
+                                   :sub-id "l0irZnG-ST2DzldKN_A6AQ"})
               #_(dissoc :session))
           [{:session/user [:xt/id]}
-           {:params/item [:xt/id
+           {:params/sub [{:sub/items [:item/id :item/unread]}]}
+           #_{:params/item [:xt/id
                           {(? :item/sub) [:xt/id]}
                           {:item/user-item [(? :user-item/disliked-at)
                                             (? :user-item/favorited-at)

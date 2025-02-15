@@ -8,12 +8,17 @@
             [com.yakread.lib.pipeline :as lib.pipe]
             [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
             [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.lib.ui :as ui]
             [com.yakread.routes :as routes]
             [com.yakread.model.subscription :as model.sub]
             [lambdaisland.uri :as uri]
             [xtdb.api :as xt]
             [rum.core :as rum]))
+
+(defn- confirm-unsub-msg [title]
+  (str "Unsubscribe from "
+       (-> title str/trim (str/replace #"\s+" " "))
+       "?"))
 
 (defn- redirect-to-sub [sub-id]
   (if sub-id
@@ -46,7 +51,8 @@
                            :user-item/favorited-at :db/dissoc
                            :user-item/disliked-at :db/dissoc
                            :user-item/reported-at :db/dissoc
-                           :user-item/report-reason :db/dissoc}]}))
+                           :user-item/report-reason :db/dissoc
+                           :user-item/skipped-at :db/dissoc}]}))
 
 (defpost-pathom toggle-favorite
   [{:params/item
@@ -86,9 +92,8 @@
                              :user-item/disliked-at :db/now}]})))
 
 (defpost-pathom unsubscribe
-  [{:params/item [{:item/sub [:sub/id
-                                       :sub/doc-type]}]}]
-  (fn [_ {{{:sub/keys [id doc-type]} :item/sub} :params/item}]
+  [{:params/sub [:sub/id :sub/doc-type]}]
+  (fn [_ {{:sub/keys [id doc-type]} :params/sub}]
     {:status 204
      :headers {"HX-Location" (href routes/subs-page)}
      :biff.pipe/next [:biff.pipe/tx]
@@ -103,16 +108,18 @@
 
 (defpost-pathom mark-all-read
   [{:session/user [:xt/id]}
-            {:params/sub [:sub/id
-                          {:sub/items [:item/id
-                                       :item/unread]}]}]
+   {:params/sub [:sub/id
+                 {:sub/items [:item/id
+                              :item/unread
+                              {(? :item/user-item) [:xt/id
+                                                    (? :user-item/skipped-at)]}]}]}]
   (fn [_ {:keys [session/user params/sub]}]
     {:status 303
-     :headers {"Location" (href `page-route (:sub/id sub))}
+     :headers {"HX-Location" (href `page-route (:sub/id sub))}
      :biff.pipe/next [:biff.pipe/tx]
      :biff.pipe.tx/input
      (for [{:item/keys [id unread]} (:sub/items sub)
-           :when (not unread)]
+           :when unread]
        {:db/doc-type :user-item
         :db.op/upsert {:user-item/user (:xt/id user)
                        :user-item/item id}
@@ -167,7 +174,7 @@
   #::pco{:input [:item/id
                  :item/like-button
                  (? :item/share-button)
-                 {(? :item/sub) [:xt/id]}]}
+                 {(? :item/sub) [:sub/id :sub/title]}]}
   {:item/button-bar
    [:div {:class '[bg-white
                    flex
@@ -186,18 +193,21 @@
     [:.flex-1 like-button]
 
 
-    (lib.ui/overflow-menu
+    (ui/overflow-menu
      {:ui/direction :up}
-     (for [[post-route label]
-           (concat [[mark-unread "Mark unread"]
-                    [not-interested "Not interested"]]
-                   (when sub
-                     [[unsubscribe "Unsubscribe"]])
-                   ;; TODO report
-                   )]
-       (lib.ui/overflow-button
-        {:hx-post (href post-route {:item/id id})}
-        label)))]})
+     (ui/overflow-button
+      {:hx-post (href mark-unread {:item/id id})}
+      "Mark unread")
+     (ui/overflow-button
+      {:hx-post (href not-interested {:item/id id})}
+      "Not interested")
+     (when sub
+       (ui/overflow-button
+        {:hx-post (href unsubscribe {:sub/id (:sub/id sub)})
+         :hx-confirm (confirm-unsub-msg (:sub/title sub))}
+        "Unsubscribe"))
+     ;; TODO report button
+     )]})
 
 (defget read-content-route "/dev/sub-item/:item-id/content"
   [{(? :params/item) [:item/id
@@ -267,9 +277,9 @@
         button-bar]
 
        [:div.h-10]
-       (lib.ui/page-header {:title     (:sub/title sub)
-                            :back-href (href routes/subs-page)})
-       [:div#content (lib.ui/lazy-load-spaced (href `page-content-route (:sub/id sub)))]])))
+       (ui/page-header {:title     (:sub/title sub)
+                        :back-href (href routes/subs-page)})
+       [:div#content (ui/lazy-load-spaced (href `page-content-route (:sub/id sub)))]])))
 
 (defget read-page-route "/dev/sub-item/:item-id"
   [:app.shell/app-shell
@@ -284,7 +294,7 @@
        :headers {"Location" (href routes/subs-page)}}
       (app-shell
        {:title title}
-       (lib.ui/lazy-load-spaced (href read-content-route id))))))
+       (ui/lazy-load-spaced (href read-content-route id))))))
 
 (defn- clean-string [s]
   (str/replace (apply str (remove #{\newline
@@ -297,6 +307,7 @@
 
 (defget page-content-route "/dev/subscription/:sub-id/content"
   [{:params/sub [:sub/id
+                 :sub/title
                  {:sub/items
                   [:item/id
                    :item/unread
@@ -314,65 +325,77 @@
    {:user/current [(? :user/use-original-links)]}]
   (fn [_ {:keys [app.shell/app-shell]
           {:keys [user/use-original-links]} :user/current
-          {:sub/keys [id items]} :params/sub}]
-    [:div {:class '[flex
-                    flex-col
-                    gap-6
-                    max-w-screen-sm]}
-     (for [{:item/keys [id details title excerpt unread image-url url] :as item}
-           (sort-by :item/published-at #(compare %2 %1) items)]
-       [:a (if (and use-original-links url)
-             {:href url :target "_blank"}
-             {:href (href read-page-route id)})
-        [:div {:class (concat '[bg-white
-                                hover:bg-neut-50
-                                p-4
-                                sm:shadow]
-                              (when unread
-                                '[max-sm:border-t-4
-                                  sm:border-l-4
-                                  border-tealv-500]))}
-         [:.text-neut-600.text-sm.line-clamp-2
-          details]
-         [:.h-1]
-         [:h3 {:class '[font-bold
-                        text-xl
-                        text-neut-800
-                        leading-tight
-                        line-clamp-2]}
-          title]
-         [:.h-2]
-         [:.flex.gap-3.justify-between
-          [:div
-           (when (not= excerpt "Read more")
-             [:.line-clamp-4.text-neut-600.mb-1
-              {:style {:overflow-wrap "anywhere"}}
-              (clean-string excerpt)])
-           [:div {:class '[text-tealv-600
-                           font-semibold
-                           hover:underline
-                           inline-block]}
-            "Read more."]]
-          (when image-url
-            [:.relative.flex-shrink-0
-             [:img {:src (lib.ui/weserv {:url image-url
-                                         :w 150
-                                         :h 150
-                                         :fit "cover"
-                                         :a "attention"})
-                    :_ "on error remove me"
-                    :class '[rounded
-                             object-cover
-                             object-center
-                             "mt-[6px]"
-                             "w-[5.5rem]"
-                             "h-[5.5rem]"]}]
-             [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
-                    :class '[absolute
-                             inset-x-0
-                             "top-[6px]"
-                             "h-[5.5rem]"
-                             rounded]}]])]]])]))
+          {:sub/keys [id title items]} :params/sub}]
+    [:<>
+     [:.flex.gap-4
+      {:class '["-mt-4" mb-8]}
+      (ui/button {:ui/type :secondary
+                  :ui/size :small
+                  :hx-post (href mark-all-read {:sub/id id})}
+        "Mark all as read")
+      (ui/button {:ui/type :secondary
+                  :ui/size :small
+                  :hx-post (href unsubscribe {:sub/id id})
+                  :hx-confirm (confirm-unsub-msg title)}
+        "Unsubscribe")]
+     [:div {:class '[flex
+                     flex-col
+                     gap-6
+                     max-w-screen-sm]}
+      (for [{:item/keys [id details title excerpt unread image-url url] :as item}
+            (sort-by :item/published-at #(compare %2 %1) items)]
+        [:a (if (and use-original-links url)
+              {:href url :target "_blank"}
+              {:href (href read-page-route id)})
+         [:div {:class (concat '[bg-white
+                                 hover:bg-neut-50
+                                 p-4
+                                 sm:shadow]
+                               (when unread
+                                 '[max-sm:border-t-4
+                                   sm:border-l-4
+                                   border-tealv-500]))}
+          [:.text-neut-600.text-sm.line-clamp-2
+           details]
+          [:.h-1]
+          [:h3 {:class '[font-bold
+                         text-xl
+                         text-neut-800
+                         leading-tight
+                         line-clamp-2]}
+           title]
+          [:.h-2]
+          [:.flex.gap-3.justify-between
+           [:div
+            (when (not= excerpt "Read more")
+              [:.line-clamp-4.text-neut-600.mb-1
+               {:style {:overflow-wrap "anywhere"}}
+               (clean-string excerpt)])
+            [:div {:class '[text-tealv-600
+                            font-semibold
+                            hover:underline
+                            inline-block]}
+             "Read more."]]
+           (when image-url
+             [:.relative.flex-shrink-0
+              [:img {:src (ui/weserv {:url image-url
+                                      :w 150
+                                      :h 150
+                                      :fit "cover"
+                                      :a "attention"})
+                     :_ "on error remove me"
+                     :class '[rounded
+                              object-cover
+                              object-center
+                              "mt-[6px]"
+                              "w-[5.5rem]"
+                              "h-[5.5rem]"]}]
+              [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
+                     :class '[absolute
+                              inset-x-0
+                              "top-[6px]"
+                              "h-[5.5rem]"
+                              rounded]}]])]]])]]))
 
 (defget page-route "/dev/subscription/:sub-id"
   [:app.shell/app-shell
@@ -382,9 +405,9 @@
           {:sub/keys [id title]} :params/sub}]
     (app-shell
      {:title title}
-     (lib.ui/page-header {:title     title
-                          :back-href (href routes/subs-page)})
-     [:div#content (lib.ui/lazy-load-spaced (href page-content-route id))])))
+     (ui/page-header {:title     title
+                      :back-href (href routes/subs-page)})
+     [:div#content (ui/lazy-load-spaced (href page-content-route id))])))
 
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}

@@ -23,7 +23,7 @@
             [com.yakread.email :as email]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
-            [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.lib.ui :as ui]
             [com.yakread.middleware :as mid]
             [com.yakread.model.item :as model.item]
             [com.yakread.model.subscription :as model.sub]
@@ -78,7 +78,7 @@
               ["" {:middleware [biff/wrap-api-defaults]}
                (keep :api-routes modules)]]))
 
-(def handler (-> (biff/reitit-handler {:router router :on-error lib.ui/on-error-page})
+(def handler (-> (biff/reitit-handler {:router router :on-error ui/on-error-page})
                  biff/wrap-base-defaults
                  #_premium/wrap-stripe-event))
 

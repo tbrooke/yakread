@@ -1,5 +1,4 @@
 - subscriptions
-  - view sub page buttons: mark all as read, unsubscribe
   - email subs
     - ingest
     - button bar: reply, unsubscribe
@@ -29,6 +28,7 @@ misc
 - check :item/image-url gets set correctly for feed items
 - maybe include wrap-signed-in as part of defget/defpost
 - autogenerate tests for all defgets, defposts, defresolvers
+- nicer not-found page
 
 
 video/blog topics:

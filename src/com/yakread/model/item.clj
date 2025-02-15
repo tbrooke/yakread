@@ -3,7 +3,7 @@
             [com.biffweb :as biff :refer [q <<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.lib.ui :as ui]
             [com.yakread.lib.user-item :as lib.user-item]
             [com.yakread.lib.s3 :as lib.s3]
             [clojure.set :as set]
@@ -155,7 +155,7 @@
                                                         "d MMM yyyy"))]
            (.format odt formatter))
          (when length
-           (lib.ui/pluralize (reading-minutes length) "minute"))
+           (ui/pluralize (reading-minutes length) "minute"))
          ;; TODO implement this part when we get to the For You page
          #_(when-some [label ({:bookmark "Bookmarked"
                                :subscription "Subscribed"
@@ -166,7 +166,7 @@
              [:span.underline label])]
         (filter some?)
         (map #(vector :span.inline-block %))
-        (biff/join lib.ui/interpunct))})
+        (biff/join ui/interpunct))})
 
 (def module
   {:resolvers [clean-html

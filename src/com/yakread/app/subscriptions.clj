@@ -10,7 +10,7 @@
             [com.yakread.lib.pipeline :as lib.pipe]
             [com.yakread.lib.route :as lib.route :refer [href defget defpost-pathom]]
             [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.lib.ui :as ui]
             [com.yakread.middleware :as mid]
             [com.yakread.routes :as routes]
             [com.yakread.util :as util]
@@ -21,8 +21,8 @@
 
 (defpost-pathom toggle-pin
   [{:params/sub [:sub/id
-                         :sub/doc-type
-                         (? :sub/pinned-at)]}]
+                 :sub/doc-type
+                 (? :sub/pinned-at)]}]
   (fn [_ {{:sub/keys [id pinned-at doc-type]}
           :params/sub}]
     {:biff.pipe/next              [:biff.pipe/tx :biff.pipe/render*]
@@ -45,12 +45,12 @@
     [:div {:class '[absolute
                     top-1.5
                     right-0]}
-     (lib.ui/overflow-menu
+     (ui/overflow-menu
       {:ui/rounded true}
       (let [[hx-method label] (if pinned-at
                                 [:hx-delete "Unpin"]
                                 [:hx-put "Pin"])]
-        (lib.ui/overflow-button
+        (ui/overflow-button
          {:hx-post (href toggle-pin {:sub/id id})
           :hx-target "#content"
           :hx-on:htmx:before-request "this.closest('.sub-card').remove()"}
@@ -69,13 +69,13 @@
      [:.text-neut-800.mr-6 unread " unread posts"]]]})
 
 (defn- empty-state []
-  (lib.ui/empty-page-state {:icons ["envelope-regular-sharp"
-                                    "square-rss-regular-sharp"]
-                            :text [:span {:class '["max-w-[22rem]"
-                                                   inline-block]}
-                                   "Customize your experience by subscribing to newsletters and RSS feeds."]
-                            :btn-label "Add subscriptions"
-                            :btn-href (href routes/add-sub-page)}))
+  (ui/empty-page-state {:icons ["envelope-regular-sharp"
+                                "square-rss-regular-sharp"]
+                        :text [:span {:class '["max-w-[22rem]"
+                                               inline-block]}
+                               "Customize your experience by subscribing to newsletters and RSS feeds."]
+                        :btn-label "Add subscriptions"
+                        :btn-href (href routes/add-sub-page)}))
 
 (defget page-content-route "/dev/subscriptions/content"
   [{:user/current [{:sub/_user
@@ -115,10 +115,10 @@
   (fn [_ {:keys [app.shell/app-shell] user :user/current}]
     (app-shell
      {:wide true}
-     (lib.ui/page-header {:title    "Subscriptions"
-                          :add-href (href routes/add-sub-page)})
+     (ui/page-header {:title    "Subscriptions"
+                      :add-href (href routes/add-sub-page)})
      (if user
-       [:div#content (lib.ui/lazy-load-spaced (href page-content-route))]
+       [:div#content (ui/lazy-load-spaced (href page-content-route))]
        (empty-state)))))
 
 (def module

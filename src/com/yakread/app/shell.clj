@@ -6,7 +6,7 @@
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.route :as lib.route :refer [href]]
-            [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.lib.ui :as ui]
             [ring.middleware.anti-forgery :as csrf]
             [ring.util.response :as ring-response]))
 
@@ -185,7 +185,7 @@
    [:.text-sm.text-center.mt-10.text-neut-600
     [:div
      (biff/join
-      lib.ui/interpunct
+      ui/interpunct
       ;; TODO use router?
       (for [[href label target] [["https://obryant.dev" "About"]
                                  ["/advertise" "Advertise" :same-tab]

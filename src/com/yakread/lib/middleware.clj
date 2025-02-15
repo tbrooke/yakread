@@ -27,7 +27,7 @@
           (cond
             (and (= (::p.error/cause data) ::p.error/attribute-missing)
                  (some #(= "params" (namespace %)) (keys (:missing data))))
-            {:status 400}
+            {:status 404 :body "not found" :headers {"Content-type" "text/plain"}}
 
             (and (= (::p.error/cause data) ::p.error/attribute-missing)
                  (some #(= "session" (namespace %)) (keys (:missing data))))

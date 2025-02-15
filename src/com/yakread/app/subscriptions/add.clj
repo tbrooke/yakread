@@ -3,9 +3,9 @@
             [com.biffweb :as biff :refer [q <<-]]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
-            [com.yakread.lib.route :refer [defget defpost href]]
+            [com.yakread.lib.route :refer [defget defpost href redirect]]
             [com.yakread.lib.rss :as lib.rss]
-            [com.yakread.lib.ui :as lib.ui]
+            [com.yakread.lib.ui :as ui]
             [com.yakread.lib.user :as lib.user]
             [com.yakread.routes :as routes]
             [xtdb.api :as xt]))
@@ -85,8 +85,7 @@
                              vec)
           tx (subscribe-feeds-tx db (:uid session) feed-urls)]
       (if (empty? feed-urls)
-        {:status  303
-         :headers {"Location" (href `page-route {:error "invalid-rss-feed" :url (:url output)})}}
+        (redirect `page-route {:error "invalid-rss-feed" :url (:url output)})
         {:biff.pipe/next     (into [:biff.pipe/tx] (sync-rss-jobs tx 0))
          :biff.pipe.tx/input tx
          :biff.pipe.tx/retry :add-urls ; TODO implement
@@ -108,8 +107,7 @@
          :biff.pipe.tx/retry :end ; TODO implement
          :status             303
          :headers            {"Location" (href `page-route {:added-feeds (count urls)})}})
-      {:status  303
-       :headers {"Location" (href `page-route {:error "invalid-opml-file"})}})))
+      (redirect `page-route {:error "invalid-opml-file"}))))
 
 (defget page-route "/dev/subscriptions/add"
   [:app.shell/app-shell
@@ -121,21 +119,21 @@
        {:keys [app.shell/app-shell] user :user/current}]
     (app-shell
      {:title "Add subscriptions"}
-     (lib.ui/page-header {:title     "Add subscriptions"
-                          :back-href (href routes/subs-page)})
+     (ui/page-header {:title     "Add subscriptions"
+                      :back-href (href routes/subs-page)})
      (when-not user
        [:div {:class '["max-sm:-mx-4"
                        mb-6]}
-        (lib.ui/signup-box ctx
-                           {:on-success  (href page-route)
-                            :on-error    (href page-route)
-                            :title       nil
-                            :description (str "Create a Yakread account to subscribe to "
-                                              "newsletters and RSS feeds.")})])
+        (ui/signup-box ctx
+                       {:on-success  (href page-route)
+                        :on-error    (href page-route)
+                        :title       nil
+                        :description (str "Create a Yakread account to subscribe to "
+                                          "newsletters and RSS feeds.")})])
      [:fieldset.disabled:opacity-60
       {:disabled (when-not user "disabled")}
-      (lib.ui/page-well
-       (lib.ui/section
+      (ui/page-well
+       (ui/section
         {:title "Newsletters"}
         (if-some [username (:user/email-username user)]
           [:div "Sign up for newsletters with "
@@ -143,7 +141,7 @@
           (biff/form
             {:action (href set-username)
              :hx-indicator "#username-indicator"}
-            (lib.ui/form-input
+            (ui/form-input
              {:ui/label "Username"
               :ui/description "You can subscribe to newsletters after you pick a username."
               :ui/postfix "@yakread.com"
@@ -155,32 +153,32 @@
               :value (or (:email-username params)
                          (:user/suggested-email-username user))
               :required true}))))
-       (lib.ui/section
+       (ui/section
         {:title "RSS feeds"}
-        (when-some [n (some-> (:added-feeds params) parse-long)]
+        (when-some [n (:added-feeds params)]
           [:div {:class '[bg-tealv-50
                           border-l-4
                           border-tealv-200
                           p-3
                           text-neut-800]}
-           "Subscribed to " (lib.ui/pluralize n "feed") "."])
+           "Subscribed to " (ui/pluralize n "feed") "."])
         (biff/form
           {:action (href add-rss)
-           :hx-indicator (str "#" (lib.ui/dom-id ::rss-indicator))}
-          (lib.ui/form-input
+           :hx-indicator (str "#" (ui/dom-id ::rss-indicator))}
+          (ui/form-input
            {:ui/label "Website or feed URL" ; TODO spinner icon
             :ui/submit-text "Subscribe"
             :ui/description [:<> "You can also "
                              [:button.link {:_ "on click toggle .hidden on #bookmarklet-modal"
                                             :type "button"}
                               "subscribe via bookmarklet"] "."]
-            :ui/indicator-id (lib.ui/dom-id ::rss-indicator)
+            :ui/indicator-id (ui/dom-id ::rss-indicator)
             :ui/error (when (= (:error params) "invalid-rss-feed")
                         "We weren't able to subscribe to that URL.")
             :name "url"
             :value (:url params)
             :required true})
-          (lib.ui/modal
+          (ui/modal
            {:id "bookmarklet-modal"
             :title "Subscribe via bookmarklet"}
            [:.p-4
@@ -192,15 +190,15 @@
             [:p.mb-0 "Then click the bookmarklet to subscribe to the RSS feed for the current page."]]))
         (biff/form
           {:action (href add-opml)
-           :hx-indicator (str "#" (lib.ui/dom-id ::opml-indicator))
+           :hx-indicator (str "#" (ui/dom-id ::opml-indicator))
            :enctype "multipart/form-data"}
-          (lib.ui/form-input
+          (ui/form-input
            {:ui/label "OPML file"
             :ui/submit-text "Import"
             :ui/submit-opts {:class '["w-[92px]"]}
-            :ui/indicator-id (lib.ui/dom-id ::opml-indicator)
+            :ui/indicator-id (ui/dom-id ::opml-indicator)
             :ui/error (when (= (:error params) "invalid-opml-file")
-                     "We weren't able to import that file.")
+                        "We weren't able to import that file.")
             :name "opml"
             :type "file"
             :accept ".opml"
