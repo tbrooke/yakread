@@ -39,27 +39,24 @@
 (defmacro tapped [& body]
   `(tapped* (fn [] ~@body)))
 
-(def dev-promise (atom (promise)))
-
-(defn send-local! [opts]
-  (reset! smtp/dev-promise (promise))
-  (lib.smtp/send-local! opts)
-  @@smtp/dev-promise)
-
 (comment
 
   (main/refresh)
 
+  (lib.smtp/send-local!
+   {:path "resources/emails/tangle1.txt"
+    :to "whatup@yakread.com"})
 
-  (send-local! {:path "emails/group1.txt"
-                :to "hello@localhost"})
-
-  (send-local! {:from "hello@obryant.dev"
-                :to "hello@localhost"
-                :subject "test message"
-                :rum [:html
-                      [:body
-                       [:p "how do you do"]]]})
+  (lib.smtp/send-local!
+   {:from "hello@obryant.dev"
+    :to "whatup@yakread.com"
+    :subject "test message"
+    :rum [:html
+          [:head
+           [:style (biff/unsafe "p { color: red; }")]]
+          [:body
+           [:p "how do you do "
+            [:a {:href "https://example.com/"} "click me"]]]]})
 
   (tapped
    (try
@@ -93,7 +90,7 @@
 
       ))
 
-(java.time.Instant/parse "1970-01-01T00:00:00Z")
+  (java.time.Instant/parse "1970-01-01T00:00:00Z")
 
 
   (com.yakread.app.subscriptions.add-test/get-current-ns)

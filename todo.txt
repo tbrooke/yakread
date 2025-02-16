@@ -1,5 +1,8 @@
+look at failing tests
+
 email subscriptions
 - com.yakread.smtp
+    juicing is done; next, save to s3 and submit tx
 - model.subscriptions ?
 - app.* - e.g. unsubscribe
 

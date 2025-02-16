@@ -1,5 +1,6 @@
 (ns com.yakread.lib.pipeline
-  (:require [clj-http.client :as http]
+  (:require [cheshire.core :as cheshire]
+            [clj-http.client :as http]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.walk :as walk]
@@ -58,6 +59,15 @@
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
 
+(defn- call-js [fn-name opts]
+  (:body
+   (cheshire/parse-string
+    (biff/sh
+     "node" "-e" "console.log(JSON.stringify(require('./main.js').main(JSON.parse(fs.readFileSync(0)))))"
+     :dir (str "cloud-fns/packages/yakread/" fn-name)
+     :in (cheshire/generate-string opts))
+    true)))
+
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
@@ -93,6 +103,9 @@
                              (assoc ctx
                                     :com.yakread.pipe.remus/output
                                     (update (remus/parse-url url opts) :response dissoc :http-client :body)))
+   :yakread.pipe/js (fn [{:yakread.pipe.js/keys [fn-name input] :as ctx}]
+                      ;; TODO use "the cloud" if configured
+                      (assoc ctx :yakread.pipe.js/output (call-js fn-name input)))
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
                    ;; TODO use config to decide whether to use s3 or filesystem
-                   (assoc ctx :biff.pipe.s3/output  (lib.s3/mock-request #_biff/s3-request ctx input)))})
+                   (assoc ctx :biff.pipe.s3/output (lib.s3/mock-request #_biff/s3-request ctx input)))})

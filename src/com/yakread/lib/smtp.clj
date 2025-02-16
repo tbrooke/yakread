@@ -88,20 +88,25 @@
     :else
     content))
 
+(defn- to-details [to]
+  (let [[username domain] (str/split to #"@")]
+    {:to to
+     :username username
+     :domain domain}))
+
 (defn- deliver-opts [from to raw]
   (let [msg (parse raw)
         headers (datafy-headers msg)]
     (lib.core/some-vals
-     {:subetha/from from
-      :subetha/to to
-      :raw raw
-      :headers headers
-      :from (not-empty (mapv datafy-address (.getFrom msg)))
-      :reply-to (not-empty (mapv datafy-address (.getReplyTo msg)))
-      :sender (some-> (.getSender msg) datafy-address)
-      :recipients (not-empty (mapv datafy-address (.getAllRecipients msg)))
-      :subject (first (get headers "subject"))
-      :content (not-empty (datafy-content (.getContent msg)))})))
+     (merge {:raw raw
+             :headers headers
+             :sender (some-> (.getSender msg) datafy-address)
+             :from (not-empty (mapv datafy-address (.getFrom msg)))
+             :reply-to (not-empty (mapv datafy-address (.getReplyTo msg)))
+             :recipients (not-empty (mapv datafy-address (.getAllRecipients msg)))
+             :subject (first (get headers "subject"))
+             :content (not-empty (datafy-content (.getContent msg)))}
+            (to-details to)))))
 
 (defn use-server [{:biff.smtp/keys [port accept?]
                    deliver* :biff.smtp/deliver
@@ -111,17 +116,19 @@
                 (SimpleMessageListenerAdapter.
                  (proxy [SimpleMessageListener] []
                    (accept [from to]
-                     (let [[username domain] (str/split to #"@")]
-                       (accept? (biff/merge-context ctx)
-                                {:from from
-                                 :to to
-                                 :username username
-                                 :domain domain})))
+                     (accept? (assoc (biff/merge-context ctx)
+                                     :biff.smtp/message
+                                     (to-details to))))
                    (deliver [from to data]
-                     (deliver* (biff/merge-context ctx)
-                               (deliver-opts from to (slurp data)))))))]
+                     (deliver* (assoc (biff/merge-context ctx)
+                                      :biff.smtp/message
+                                      (deliver-opts from to (slurp data))))))))]
     (.setPort server port)
     (.start server)
     (-> ctx
         (assoc :biff.smtp/server server)
         (update :biff/stop conj #(.stop server)))))
+
+(defn parts-seq [message]
+  (->> (tree-seq map? #(get-in % [:content :parts]) message)
+       (map #(assoc % :content-type (get-in % [:headers "content-type" 0] "")))))

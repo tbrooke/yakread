@@ -37,7 +37,8 @@
     :user-item/favorited-at :db/dissoc,
     :user-item/disliked-at :db/dissoc,
     :user-item/reported-at :db/dissoc,
-    :user-item/report-reason :db/dissoc}]}}
+    :user-item/report-reason :db/dissoc,
+    :user-item/skipped-at :db/dissoc}]}}
 
 {:route-name :com.yakread.app.subscriptions.view/toggle-favorite,
  :method :post,

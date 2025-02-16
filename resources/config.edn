@@ -30,4 +30,5 @@
  :biff.s3/bucket "yakread"
  :biff.s3/edge "https://yakread.nyc3.cdn.digitaloceanspaces.com"
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
- :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY}
+ :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY
+ :yakread/domain #biff/env DOMAIN}
