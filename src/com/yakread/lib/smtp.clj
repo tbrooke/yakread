@@ -1,0 +1,127 @@
+(ns com.yakread.lib.smtp
+  (:require [com.biffweb :as biff]
+            [clojure.string :as str]
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
+            [com.yakread.lib.core :as lib.core]
+            [rum.core :as rum]
+            [clojure.stacktrace :as st])
+  (:import [javax.mail.internet MimeMessage MimeMultipart MimeBodyPart InternetAddress]
+           [javax.mail Authenticator PasswordAuthentication Session Message$RecipientType Transport]
+           [org.subethamail.smtp.helper
+            SimpleMessageListenerAdapter
+            SimpleMessageListener]
+           [org.subethamail.smtp.server SMTPServer]))
+
+(defn session [{:keys [host port username password]}]
+  (let [props (merge {"mail.smtp.host" host
+                      "mail.smtp.port" (str port)}
+                     (when password
+                       {"mail.smtp.auth" "true"
+                        "mail.smtp.starttls.enable" "true"
+                        "mail.smtp.ssl.protocols" "TLSv1.2"
+                        "mail.smtp.user" username
+                        "mail.smtp.password" password}))
+        java-props (java.util.Properties.)
+        _ (doseq [[k v] props]
+            (.put java-props k v))
+        auth (when password
+               (proxy [Authenticator] []
+                 (getPasswordAuthentication []
+                   (PasswordAuthentication. username password))))]
+    (Session/getInstance java-props auth)))
+
+(defn parse
+  ([raw]
+   (parse raw (Session/getInstance (java.util.Properties.))))
+  ([raw session]
+   (MimeMessage. session (io/input-stream (.getBytes raw)))))
+
+(defn send-local! [{:keys [path from to subject rum port]
+                    :or {port 2525}}]
+  (let [session* (session {:host "localhost" :port (str port)})
+        msg (if path
+              (parse (slurp path) session*)
+              (MimeMessage. session*))]
+    (when from
+      (.setFrom msg (InternetAddress. from))
+      (.setReplyTo msg (into-array [(InternetAddress. from)])))
+    (when to
+      (.setRecipients msg Message$RecipientType/TO to))
+    (when subject
+      (.setSubject msg subject))
+    (when rum
+      (.setContent msg (doto (MimeMultipart.)
+                         (.addBodyPart (doto (MimeBodyPart.)
+                                         (.setContent (rum/render-static-markup rum)
+                                                      "text/html; charset=utf-8"))))))
+    (Transport/send msg)))
+
+(defn- datafy-headers [part]
+  (lib.core/group-by-to #(str/lower-case (.getName %))
+                        #(.getValue %)
+                        (enumeration-seq (.getAllHeaders part))))
+
+(defn- datafy-address [address]
+  (lib.core/some-vals
+   {:address (.getAddress address)
+    :personal (.getPersonal address)
+    :type (.getType address)}))
+
+(defn- datafy-content [content]
+  (cond
+    (string? content)
+    content
+
+    (instance? MimeMultipart content)
+    (lib.core/some-vals
+     {:preamble (.getPreamble content)
+      :parts (mapv #(datafy-content (.getBodyPart content %))
+                   (range (.getCount content)))})
+
+    (instance? MimeBodyPart content)
+    (lib.core/some-vals
+     {:headers (datafy-headers content)
+      :file-name (.getFileName content)
+      :content (datafy-content (.getContent content))})
+
+    :else
+    content))
+
+(defn- deliver-opts [from to raw]
+  (let [msg (parse raw)
+        headers (datafy-headers msg)]
+    (lib.core/some-vals
+     {:subetha/from from
+      :subetha/to to
+      :raw raw
+      :headers headers
+      :from (not-empty (mapv datafy-address (.getFrom msg)))
+      :reply-to (not-empty (mapv datafy-address (.getReplyTo msg)))
+      :sender (some-> (.getSender msg) datafy-address)
+      :recipients (not-empty (mapv datafy-address (.getAllRecipients msg)))
+      :subject (first (get headers "subject"))
+      :content (not-empty (datafy-content (.getContent msg)))})))
+
+(defn use-server [{:biff.smtp/keys [port accept?]
+                   deliver* :biff.smtp/deliver
+                   :or {port 2525}
+                   :as ctx}]
+  (let [server (SMTPServer.
+                (SimpleMessageListenerAdapter.
+                 (proxy [SimpleMessageListener] []
+                   (accept [from to]
+                     (let [[username domain] (str/split to #"@")]
+                       (accept? (biff/merge-context ctx)
+                                {:from from
+                                 :to to
+                                 :username username
+                                 :domain domain})))
+                   (deliver [from to data]
+                     (deliver* (biff/merge-context ctx)
+                               (deliver-opts from to (slurp data)))))))]
+    (.setPort server port)
+    (.start server)
+    (-> ctx
+        (assoc :biff.smtp/server server)
+        (update :biff/stop conj #(.stop server)))))

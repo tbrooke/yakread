@@ -1,8 +1,10 @@
 (ns repl
   (:require [com.biffweb :as biff :refer [q]]
             [com.yakread :as main]
+            [com.yakread.smtp :as smtp]
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
+            [com.yakread.lib.smtp :as lib.smtp]
             [reitit.core :as reitit]
             [xtdb.api :as xt]))
 
@@ -37,9 +39,27 @@
 (defmacro tapped [& body]
   `(tapped* (fn [] ~@body)))
 
+(def dev-promise (atom (promise)))
+
+(defn send-local! [opts]
+  (reset! smtp/dev-promise (promise))
+  (lib.smtp/send-local! opts)
+  @@smtp/dev-promise)
+
 (comment
 
   (main/refresh)
+
+
+  (send-local! {:path "emails/group1.txt"
+                :to "hello@localhost"})
+
+  (send-local! {:from "hello@obryant.dev"
+                :to "hello@localhost"
+                :subject "test message"
+                :rum [:html
+                      [:body
+                       [:p "how do you do"]]]})
 
   (tapped
    (try

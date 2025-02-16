@@ -24,11 +24,13 @@
             [com.yakread.lib.middleware :as lib.middleware]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
+            [com.yakread.lib.smtp :as lib.smtp]
             [com.yakread.lib.ui :as ui]
             [com.yakread.model.item :as model.item]
             [com.yakread.model.subscription :as model.sub]
             [com.yakread.model.user :as model.user]
             [com.yakread.model.schema :as model.schema]
+            [com.yakread.smtp :as smtp]
             [com.yakread.work.subscription :as work.sub]
             [com.yakread.util.biff-staging :as biffs]
             [malli.core :as malli]
@@ -132,7 +134,7 @@
    biff/use-jetty
    biff/use-chime
    biff/use-beholder
-   #_components/use-subetha])
+   lib.smtp/use-server])
 
 (def initial-system {:biff/modules #'modules
                      :biff/merge-context-fn #'merge-context
@@ -148,6 +150,8 @@
                      #_#_:com.yakread.subetha/deliver #'ingest/deliver-email
                      :com.yakread/home-feed-cache (atom {})
                      lib.pathom/plan-cache-kw (atom {})
+                     :biff.smtp/accept? #'smtp/accept?
+                     :biff.smtp/deliver #'smtp/deliver*
                      :biff/components components})
 
 (defn start []

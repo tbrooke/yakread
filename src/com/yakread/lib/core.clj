@@ -29,3 +29,11 @@
    (lazy-seq
     (let [ss (filter identity (map seq (conj colls c2 c1)))]
       (concat (map first ss) (apply interleave-all (map rest ss)))))))
+
+(defn group-by-to [f g xs]
+  (update-vals (group-by f xs) #(mapv g %)))
+
+(defn some-vals [m]
+  (into {}
+        (remove (comp nil? val))
+        m))
