@@ -5,13 +5,12 @@
             [com.biffweb :as biff]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
             [com.yakread.lib.htmx :as lib.htmx]
-            [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipe]
             [com.yakread.lib.route :as lib.route :refer [href defget defpost-pathom]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.ui :as ui]
-            [com.yakread.middleware :as mid]
+            [com.yakread.lib.middleware :as lib.mid]
             [com.yakread.routes :as routes]
             [com.yakread.util :as util]
             [xtdb.api :as xt]
@@ -124,6 +123,6 @@
 (def module
   {:resolvers [sub-card]
    :routes [page-route
-            ["" {:middleware [lib.middle/wrap-signed-in]}
+            ["" {:middleware [lib.mid/wrap-signed-in]}
              page-content-route
              toggle-pin]]})

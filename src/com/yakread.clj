@@ -21,10 +21,10 @@
             [com.yakread.app.subscriptions.add :as app.subs.add]
             [com.yakread.app.subscriptions.view :as app.subs.view]
             [com.yakread.email :as email]
+            [com.yakread.lib.middleware :as lib.middleware]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
             [com.yakread.lib.ui :as ui]
-            [com.yakread.middleware :as mid]
             [com.yakread.model.item :as model.item]
             [com.yakread.model.subscription :as model.sub]
             [com.yakread.model.user :as model.user]
@@ -73,7 +73,7 @@
                                      "/dev/subscriptions/add"}})])
 
 (def router (reitit-ring/router
-             [["" {:middleware mid/default-site-middleware}
+             [["" {:middleware lib.middleware/default-site-middleware}
                (keep :routes modules)]
               ["" {:middleware [biff/wrap-api-defaults]}
                (keep :api-routes modules)]]))

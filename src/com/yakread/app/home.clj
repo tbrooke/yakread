@@ -5,7 +5,7 @@
 (def home-page-route
   ["/"
    {:name :app.home/page
-    :get (constantly (redirect routes/subs-page))}])
+    :get (fn [_] (redirect routes/subs-page))}])
 
 (def module
   {:routes [home-page-route]})

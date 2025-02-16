@@ -1,6 +1,6 @@
 (ns com.yakread.app.settings
   (:require [com.biffweb :as biff]
-            [com.yakread.middleware :as mid]))
+            [com.yakread.lib.middleware :as lib.mid]))
 
 (def page
   ["/dev/settings"
