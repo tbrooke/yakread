@@ -117,10 +117,7 @@
  :handler-id :start*,
  :ctx
  #:biff.pipe.pathom{:output
-                    #:params{:item
-                             #:item{:sub
-                                    #:sub{:id 1,
-                                          :doc-type :sub/email}}}},
+                    #:params{:sub #:sub{:id 1, :doc-type :sub/email}}},
  :expected
  {:status 204,
   :headers {"HX-Location" ["/dev/subscriptions" nil]},
@@ -137,10 +134,7 @@
  :handler-id :start*,
  :ctx
  #:biff.pipe.pathom{:output
-                    #:params{:item
-                             #:item{:sub
-                                    #:sub{:id 1,
-                                          :doc-type :sub/feed}}}},
+                    #:params{:sub #:sub{:id 1, :doc-type :sub/feed}}},
  :expected
  {:status 204,
   :headers {"HX-Location" ["/dev/subscriptions" nil]},

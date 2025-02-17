@@ -35,13 +35,13 @@
 
    [::sut/unsubscribe :post :start*]
    [{:ctx {:biff.pipe.pathom/output
-           {:params/item
-            {:item/sub {:sub/id 1
-                        :sub/doc-type :sub/email}}}}}
+           {:params/sub
+            {:sub/id 1
+             :sub/doc-type :sub/email}}}}
     {:ctx {:biff.pipe.pathom/output
-           {:params/item
-            {:item/sub {:sub/id 1
-                        :sub/doc-type :sub/feed}}}}}]))
+           {:params/sub
+            {:sub/id 1
+             :sub/doc-type :sub/feed}}}}]))
 
 (defn get-context []
   {:biff/router          main/router
