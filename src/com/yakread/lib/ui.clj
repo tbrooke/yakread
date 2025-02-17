@@ -10,7 +10,7 @@
         (remove #(= ns-str (namespace (key %))))
         m))
 
-(defn- with-classes [opts & classes]
+(defn with-classes [opts & classes]
   (-> opts
       (update :class concat (flatten classes))
       (dissoc-ns "ui")))

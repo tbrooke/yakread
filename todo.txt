@@ -1,5 +1,5 @@
 email subscriptions
-- app.* - unsubscribe, reply, ...
+- app.* - unsubscribe
 
 - subscriptions
   - email subs

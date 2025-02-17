@@ -135,23 +135,28 @@
    [:.w-1.sm:w-2]
    [:span text]])
 
-(def bar-button-classes '[hover:bg-neut-50
-                          inter
-                          py-2
-                          w-full])
+(defn bar-button [{:ui/keys [active icon] :keys [href] :as opts} & contents]
+  [(if href :a :button) (ui/with-classes opts
+                          '[block
+                            hover:bg-neut-50
+                            inter
+                            py-2
+                            w-full]
+                          (when active
+                            'font-semibold))
+   (if icon
+     (bar-button-icon-label icon contents)
+     contents)])
 
 (defresolver like-button* [{:item/keys [id]}]
   {:item/like-button*
    (fn [{:keys [active]}]
-     [:button {:hx-post (href toggle-favorite {:item/id id})
-               :hx-swap "outerHTML"
-               :class (into bar-button-classes
-                            (when active
-                              '[font-semibold]))}
-      (bar-button-icon-label (if active
-                               "star-solid"
-                               "star-regular")
-                             "Like")])})
+     (bar-button
+      {:ui/active active
+       :ui/icon (if active "star-solid" "star-regular")
+       :hx-post (href toggle-favorite {:item/id id})
+       :hx-swap "outerHTML"}
+      "Like"))})
 
 (defresolver like-button [{:item/keys [like-button* user-item]}]
   #::pco{:input [{(? :item/user-item) [(? :user-item/favorited-at)]}]}
@@ -160,20 +165,35 @@
 
 (defresolver share-button [{:item/keys [url]}]
   {:item/share-button
-   [:button {:data-url url
-             :_ "on click
-                 writeText(@data-url) on navigator.clipboard
-                 toggle .hidden on .toggle in me
-                 wait 1s
-                 toggle .hidden on .toggle in me"
-             :class bar-button-classes}
-    [:span.toggle (bar-button-icon-label "share-regular" "Share")]
-    [:span.toggle.hidden.text-gray-700 "Copied to clipboard."]]})
+   (bar-button
+    {:data-url url
+     :_ "on click
+         writeText(@data-url) on navigator.clipboard
+         toggle .hidden on .toggle in me
+         wait 1s
+         toggle .hidden on .toggle in me"}
+    [:span.toggle (bar-button-icon-label "share-nodes-regular" "Share")]
+    [:span.toggle.hidden.text-gray-700.text-sm "Copied to clipboard."])})
 
-(defresolver button-bar [{:item/keys [id sub like-button share-button]}]
+#_(defn reply-button [{:keys [item]}]
+  (article-button
+   {:href (util/assoc-url* (str "mailto:" (:item.email/reply-to item))
+                           :subject (str "Re: " (:item/title item)))
+    :icon "reply-regular"
+    :text "Reply"}))
+
+(defn query-encode [s]
+  (some-> s
+          (java.net.URLEncoder/encode "UTF-8")
+          (str/replace "+" "%20")))
+
+(defresolver button-bar [{:item/keys [id title sub like-button share-button]
+                          :item.email/keys [reply-to]}]
   #::pco{:input [:item/id
                  :item/like-button
+                 (? :item/title)
                  (? :item/share-button)
+                 (? :item.email/reply-to)
                  {(? :item/sub) [:sub/id :sub/title]}]}
   {:item/button-bar
    [:div {:class '[bg-white
@@ -184,10 +204,14 @@
           :style {:box-shadow "0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)"}}
     (when share-button
       [:.flex-1 share-button])
-    ;;(cond
-    ;;  (:item.email/reply-to item)
-    ;;  [:.flex-1 (reply-button ctx)]
+    (when reply-to
+      [:.flex-1
+       (bar-button
+        {:ui/icon "reply-regular"
+         :href (str "mailto:" (query-encode reply-to) "?subject=" (query-encode (str "Re: " title)))}
+        "Reply")])
 
+    ;;(cond
     ;;  (some (or item {}) [:item.rss/feed-url :item/inferred-feed-url])
     ;;  [:.flex-1 (subscribe-button ctx)])
     [:.flex-1 like-button]
