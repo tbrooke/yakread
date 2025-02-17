@@ -1,10 +1,5 @@
-look at failing tests
-
 email subscriptions
-- com.yakread.smtp
-    juicing is done; next, save to s3 and submit tx
-- model.subscriptions ?
-- app.* - e.g. unsubscribe
+- app.* - unsubscribe, reply, ...
 
 - subscriptions
   - email subs
@@ -37,6 +32,8 @@ misc
 - maybe include wrap-signed-in as part of defget/defpost
 - autogenerate tests for all defgets, defposts, defresolvers
 - nicer not-found page
+- when viewing an item for the first time, unread status is stale in the feed below. maybe just need to make it lazy
+- infer :item/url for emails
 
 
 video/blog topics:

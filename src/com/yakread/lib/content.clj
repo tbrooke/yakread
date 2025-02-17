@@ -10,19 +10,20 @@
     s
     (str (subs s 0 (dec n)) "…")))
 
+(defn html->text [html]
+  (some-> html (Jsoup/parse) (.text)))
+
 (defn lang [html]
   (try
-    (some-> html
-            (Jsoup/parse)
-            (.text)
+    (some-> (html->text html)
             cld/detect
             first
             not-empty)
     (catch Exception _
       "en")))
 
-(defn excerpt [html]
-  (some-> html
+(defn excerpt [text]
+  (some-> text
           (str/trim)
           (str/replace #"\s+" " ")
           (truncate 500)))

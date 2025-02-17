@@ -94,7 +94,7 @@
      :username username
      :domain domain}))
 
-(defn- deliver-opts [from to raw]
+(defn- deliver-opts [to raw]
   (let [msg (parse raw)
         headers (datafy-headers msg)]
     (lib.core/some-vals
@@ -104,7 +104,7 @@
              :from (not-empty (mapv datafy-address (.getFrom msg)))
              :reply-to (not-empty (mapv datafy-address (.getReplyTo msg)))
              :recipients (not-empty (mapv datafy-address (.getAllRecipients msg)))
-             :subject (first (get headers "subject"))
+             :subject (.getSubject msg)
              :content (not-empty (datafy-content (.getContent msg)))}
             (to-details to)))))
 
@@ -122,7 +122,7 @@
                    (deliver [from to data]
                      (deliver* (assoc (biff/merge-context ctx)
                                       :biff.smtp/message
-                                      (deliver-opts from to (slurp data))))))))]
+                                      (deliver-opts to (slurp data))))))))]
     (.setPort server port)
     (.start server)
     (-> ctx

@@ -1,6 +1,7 @@
 (ns com.yakread.lib.pipeline
   (:require [cheshire.core :as cheshire]
             [clj-http.client :as http]
+            [clojure.data.generators :as gen]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.walk :as walk]
@@ -11,17 +12,15 @@
             [com.yakread.lib.s3 :as lib.s3]
             [clojure.tools.logging :as log]
             [remus]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy]
+            [xtdb.api :as xt]))
 
-;; TODO
-;; - include db basis in exception data
-;; - include seed value for clojure.data.generators
 (defn make [& {:as id->handler}]
   (fn execute
     ([ctx handler-id]
      ((or (get id->handler handler-id)
           (throw (ex-info (str "No handler for " handler-id) {})))
-       ctx))
+      ctx))
     ([{:biff.pipe/keys [global-handlers] :as ctx*}]
      (let [id->handler (merge global-handlers id->handler)
            ctx (assoc ctx* :biff.pipe/next [:start])]
@@ -32,18 +31,26 @@
                   :as extra-params} (if (map? next-step)
                                       next-step
                                       {:biff.pipe/current next-step})
-                 ctx (merge ctx result extra-params {:biff.pipe/next remaining})
+                 now (java.time.Instant/now)
+                 ctx (merge ctx result
+                            extra-params
+                            {:biff.pipe/next remaining
+                             :biff.pipe/now now})
                  handler (or (get id->handler current)
-                             (throw (ex-info (str "No handler for " current) {})))]
+                             (throw (ex-info (str "No handler for " current) {})))
+                 seed (long (* (rand) Long/MAX_VALUE))]
              (recur (try
-                      (handler ctx)
+                      (binding [gen/*rnd* (java.util.Random. seed)]
+                        (handler ctx))
                       (catch Exception e
                         (if (= (:biff.pipe/catch ctx) current)
                           (assoc ctx :biff.pipe/exception e)
                           (throw (lib.error/merge-ex-data
                                   e
                                   (lib.error/request-ex-data ctx*)
-                                  (apply dissoc ctx (keys ctx*)))))))))))))))
+                                  (apply dissoc ctx (keys ctx*))
+                                  {:biff.pipe/seed seed
+                                   :biff.pipe/db-basis (some-> (:biff/db ctx) xt/db-basis)})))))))))))))
 
 ;; TODO move into Biff with option
 (defn- replace-db-now [tx]
@@ -58,6 +65,17 @@
   (constantly
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
+
+(defn s3 [k & [body content-type]]
+  {:biff.pipe/current  :biff.pipe/s3
+   :biff.pipe.s3/input (if body
+                         {:method  "PUT"
+                          :key     (str k)
+                          :body    body
+                          :headers {"x-amz-acl"    "private"
+                                    "content-type" content-type}}
+                         {:method "GET"
+                          :key    (str k)})})
 
 (defn- call-js [fn-name opts]
   (:body

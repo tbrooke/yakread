@@ -1,19 +1,21 @@
 (ns com.yakread.smtp
-  (:require [clojure.java.process :as proc]
+  (:require [clojure.data.generators :as gen]
+            [clojure.java.process :as proc]
             [clojure.string :as str]
             [com.biffweb :as biff]
+            [com.yakread.lib.content :as lib.content]
+            [com.yakread.lib.core :as lib.core]
             [com.yakread.lib.smtp :as lib.smtp]
             [com.yakread.lib.pipeline :as lib.pipe]
-            [rum.core :as rum])
+            [rum.core :as rum]
+            [xtdb.api :as xt])
   [:import (org.jsoup Jsoup)])
-
-(def dev-promise (atom (promise)))
 
 (defn accept? [{:keys [biff/db biff.smtp/message yakread/domain]}]
   (and (or (not domain) (= domain (:domain message)))
        (some? (biff/lookup-id db :user/email-username (str/lower-case (:username message))))))
 
-(defn extract-html [message]
+(defn- extract-html [message]
   (let [{:keys [content content-type]}
         (->> (lib.smtp/parts-seq message)
              (filterv (comp string? :content))
@@ -39,7 +41,8 @@
             {:biff.pipe/next [:yakread.pipe/js :end]
              :yakread.pipe.js/fn-name "juice"
              :yakread.pipe.js/input {:html (extract-html message)}})
-   :end (fn [{{:keys [html]} :yakread.pipe.js/output}]
+   :end (fn [{:keys [biff.smtp/message biff/db]
+              {:keys [html]} :yakread.pipe.js/output}]
           (let [doc (Jsoup/parse html)
                 _ (-> doc
                       (.select "a[href]")
@@ -49,77 +52,46 @@
                                                   #"^http://"
                                                   "https://")))
                 html (.outerHtml doc)
-                html (str/replace html #"#transparent" "transparent")]
-            {:html html}
-            ;; TODO store this in
-            ;; - store in s3 (raw and juiced)
-            ;; - submit tx
-            #_{:biff.pipe/next [{:biff.pipe/current  :biff.pipe/s3
-                               :biff.pipe.s3/input {:method  "PUT"
-                                                    :key     (str content-key)
-                                                    :body    content
-                                                    :headers {"x-amz-acl"    "private"
-                                                              "content-type" "text/html"}}}
-                              ]}
-
-            
-            )
-
-          )))
-
-(comment
-
-  (-> output*
-      :body
-      keys)
-
-  (defn juice [html]
-    (let [path (str "/tmp/" (rand-int 100000))
-          _ (try (biff/sh "npx" "juice"
-                          "--web-resources-images" "false"
-                          "--web-resources-scripts" "false"
-                          "/dev/stdin" path :in html)
-              (catch Exception e
-                (throw (ex-info "Juice crashed"
-                                {:cause :juice}
-                                e))))
-          ret (slurp path)]
-      (io/delete-file (io/file path))
-      (str/replace ret #"#transparent" "transparent")))
-
-  (defn clean-html* [html]
-    (let [doc (Jsoup/parse html)]
-      (-> doc
-          (.select "a[href]")
-          (.attr "target" "_blank"))
-      (doseq [img (.select doc "img[src^=http://]")]
-        (.attr img "src" (str/replace (.attr img "src")
-                                      #"^http://"
-                                      "https://")))
-      (.outerHtml doc)))
-
-  (defn robust-juice [ctx html]
-    (let [cloud-juiced (biff/catchall (util/cloud-fn ctx "juice" {:html html}))
-          cloud-cleaned (some-> cloud-juiced
-                                :body
-                                :html
-                                util/clean-html*
-                                (str/replace #"#transparent" "transparent"))
-          local-cleaned (-> html
-                            util/juice
-                            util/clean-html*
-                            delay)]
-      (cond
-        (nil? cloud-juiced)
-        (log/info "cloud-fn juice failed")
-
-        (nil? cloud-cleaned)
-        (log/info "local cloud-fn juiced clean failed"))
-      (or cloud-cleaned @local-cleaned)))
-
-  (let [html (extract-html msg*)]
-    (count html))
-
-  
-  
-  )
+                html (str/replace html #"#transparent" "transparent")
+                raw-content-key (gen/uuid)
+                parsed-content-key (gen/uuid)
+                headers (:headers message)
+                from (some (fn [k]
+                             (->> (concat (:from message) (:reply-to message))
+                                  (some k)))
+                           [:personal :address])
+                text (lib.content/html->text html)
+                user-id (biff/lookup-id db :user/email-username (str/lower-case (:username message)))
+                sub (biff/lookup db :sub/user user-id :sub.email/from from)
+                sub-id (or (:xt/id sub) :db.id/new-sub)]
+            {:biff.pipe/next [(lib.pipe/s3 raw-content-key (:raw message) "text/plain")
+                              (lib.pipe/s3 parsed-content-key html "text/html")
+                              :biff.pipe/tx]
+             :biff.pipe.tx/input (concat
+                                  [(lib.core/some-vals
+                                    {:db/doc-type :item/email
+                                     :item/ingested-at :db/now
+                                     :item/title (:subject message)
+                                     :item/url (some-> (get headers "list-post")
+                                                       first
+                                                       (str/replace #"[<>]" ""))
+                                     :item/content-key parsed-content-key
+                                     :item/published-at :db/now
+                                     :item/excerpt (lib.content/excerpt text)
+                                     :item/author-name from
+                                     :item/lang (lib.content/lang html)
+                                     :item/length (count text)
+                                     :item.email/sub sub-id
+                                     :item.email/raw-content-key raw-content-key
+                                     :item.email/list-unsubscribe (first (get headers "list-unsubscribe"))
+                                     :item.email/list-unsubscribe-post (first (get headers "list-unsubscribe-post"))
+                                     :item.email/reply-to (some :address (:reply-to message))
+                                     :item.email/maybe-confirmation (or (nil? sub) nil)})]
+                                  (when-not sub
+                                    [{:db/doc-type :sub/email
+                                      :xt/id sub-id
+                                      :sub/user user-id
+                                      :sub.email/from from
+                                      :sub/created-at :db/now}
+                                     [::xt/fn :biff/ensure-unique {:sub/user user-id
+                                                                   :sub.email/from from}]]))}))))

@@ -43,8 +43,16 @@
 
   (main/refresh)
 
+  (do
+    (-> (#'lib.smtp/deliver-opts "whatup@yakread.com" (slurp "resources/emails/indie1.txt"))
+        (dissoc :raw :headers :content)
+        )
+    :done)
+
+  (.getSubject (lib.smtp/parse (slurp "resources/emails/indie.txt")))
+
   (lib.smtp/send-local!
-   {:path "resources/emails/tangle1.txt"
+   {:path "resources/emails/hnblogs1.txt"
     :to "whatup@yakread.com"})
 
   (lib.smtp/send-local!
@@ -85,8 +93,11 @@
 
 
   (with-context
-    (fn [{:keys [biff/db]}]
-      (xt/pull db '[*] #uuid "796af02b-4eb7-4d8c-a930-386d1b434fd1")
+    (fn [{:keys [biff/db biff.xtdb/node] :as ctx}]
+      #_(xt/pull db '[*] #uuid "796af02b-4eb7-4d8c-a930-386d1b434fd1")
+      (q db '{:find (pull doc [*])
+              :where [[doc :item.email/sub]]})
+      ;(xt/submit-tx node [[::xt/delete #uuid "de587b6d-93b4-41db-ad21-7f1a6f669b30"]])
 
       ))
 

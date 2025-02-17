@@ -38,10 +38,10 @@
                        [:sub.feed/feed (r :feed) :ref/uuid])
    ;; :sub-email is automatically created when the user receives an email with a new From field.
    :sub/email (inherit :sub/base
-                       [:sub.email/from            ::string]
+                       [:sub.email/from              ::string]
                        ;; If the user unsubscribes, instead of deleting the :sub-email, we set this flag. Then even if the
                        ;; newsletter sends more emails, we won't accidentally re-subscribe them.
-                       [:sub.email/unsubscribed-at :time/instant])
+                       [:sub.email/unsubscribed-at ? :time/instant])
    :sub/any   [:or :sub/feed :sub/email]
 
    :item/base  [:map {:closed true}
@@ -70,11 +70,13 @@
                         ;; The RSS <guid> / Atom <id> field.
                         [:item.feed/guid ? ::string])
    :item/email (inherit :item/base
-                        [:item.email/sub                (r :sub/email) :uuid]
-                        [:item.email/content-key                       :uuid]
-                        [:item.email/unsubscribe        ?              ::string]
-                        [:item.email/reply-to           ?              ::string]
-                        [:item.email/maybe-confirmation ?              :boolean])
+                        [:item.email/sub                   (r :sub/email) :uuid]
+                        ;; For the raw email -- processed email goes in :item/content-key
+                        [:item.email/raw-content-key                      :uuid]
+                        [:item.email/list-unsubscribe      ?              ::string]
+                        [:item.email/list-unsubscribe-post ?              ::string]
+                        [:item.email/reply-to              ?              ::string]
+                        [:item.email/maybe-confirmation    ?              :boolean])
    ;; Items fetched from a user-supplied URL (bookmarked or favorited)
    :item/direct (inherit :item/base
                          [:item/doc-type [:enum :item/direct]])

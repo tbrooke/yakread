@@ -92,7 +92,6 @@
 (defresolver xt-id [{:keys [item/id]}]
   {:xt/id id})
 
-;; TODO add resolver/clause for :item.email/content-key
 (defresolver content [ctx {:item/keys [content-key url]}]
   #::pco{:input [(? :item/content-key)
                  (? :item/url)]
@@ -118,13 +117,13 @@
      (.outerHtml doc))})
 
 (defresolver doc-type [{:keys [item.feed/feed
-                               item.email/user]}]
+                               item.email/sub]}]
   #::pco{:input [(? :item.feed/feed)
-                 (? :item.email/user)]
+                 (? :item.email/sub)]
          :output [:item/doc-type]}
   (cond
     feed {:item/doc-type :item/feed}
-    user {:item/doc-type :item/email}))
+    sub {:item/doc-type :item/email}))
 
 (defn- reading-minutes [n-characters]
   (max 1 (Math/round (/ n-characters 900.0))))
