@@ -15,7 +15,7 @@
    :user [:map {:closed true}
           [:xt/id                     :uuid]
           [:user/email                ::string]
-          [:user/roles              ? [:set [:enum :admin]]]
+          [:user/roles              ? [:set [:= :admin]]]
           [:user/joined-at          ? :time/instant]
           [:user/digest-days        ? [:set ::day]]
           [:user/send-digest-at     ? :time/local-time]
@@ -79,7 +79,7 @@
                         [:item.email/maybe-confirmation    ?              :boolean])
    ;; Items fetched from a user-supplied URL (bookmarked or favorited)
    :item/direct (inherit :item/base
-                         [:item/doc-type [:enum :item/direct]])
+                         [:item/doc-type [:= :item/direct]])
 
    :feed [:map {:closed true}
           [:xt/id                :uuid]

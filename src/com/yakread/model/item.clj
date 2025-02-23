@@ -14,6 +14,17 @@
            (java.time Instant ZoneId ZoneOffset)
            (java.time.format DateTimeFormatter)))
 
+(defresolver user-favorites [{:keys [biff/db]} {:keys [user/id]}]
+  #::pco{:output [{:user/favorites [:item/id]}]}
+  {:user/favorites (q db
+                      '{:find [item]
+                        :keys [item/id]
+                        :in [user]
+                        :where [[user-item :user-item/user user]
+                                [user-item :user-item/item item]
+                                [user-item :user-item/favorited-at]]}
+                      id)})
+
 (defresolver user-item [{:keys [biff/db session]} items]
   #::pco{:input [:xt/id]
          :output [{:item/user-item [:xt/id]}]
@@ -168,7 +179,8 @@
         (biff/join ui/interpunct))})
 
 (def module
-  {:resolvers [clean-html
+  {:resolvers [user-favorites
+               clean-html
                content
                details
                doc-type

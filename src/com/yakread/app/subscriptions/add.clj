@@ -182,8 +182,8 @@
            {:id "bookmarklet-modal"
             :title "Subscribe via bookmarklet"}
            [:.p-4
-            [:p "You can install the bookmarklet by dragging this link "
-             "onto your browser toolbar or bookmarks menu:"]
+            [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
+                 bookmarks menu:"]
             [:p.my-6 [:a.text-xl.text-blue-600
                       {:href "javascript:window.location=\"https://yakread.com/subscriptions/add?url=\"+encodeURIComponent(document.location)"}
                       "Subscribe | Yakread"]]

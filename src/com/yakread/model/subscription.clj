@@ -12,6 +12,21 @@
             [xtdb.api :as xt])
   (:import [java.time Instant]))
 
+(defresolver user-subs [{:keys [biff/db]} {:keys [user/id]}]
+  #::pco{:output [{:user/subscriptions [:sub/id]}
+                  {:user/unsubscribed [:sub/id]}]}
+  (as-> id $
+    (q db
+       '{:find [sub t]
+         :in [user]
+         :where [[sub :sub/user user]
+                 [(get-attr sub :sub.email/unsubscribed-at nil) [t ...]]]}
+       $)
+    (group-by (comp some? second) $)
+    (update-vals $ #(mapv (fn [[id _]] {:sub/id id}) %))
+    (merge {true [] false []} $)
+    (set/rename-keys $ {false :user/subscriptions true :user/unsubscribed})))
+
 (defresolver email-title [{:keys [sub.email/from]}]
   {:sub/title (str/replace from #"\s<.*>" "")})
 
@@ -149,7 +164,8 @@
                {(:xt/id doc) (when new-doc-read? true)
                 id           (when (not= n-read 0) n-read)}))))))})
 
-(def module {:resolvers [sub-info
+(def module {:resolvers [user-subs
+                         sub-info
                          sub-id->xt-id
                          email-title
                          feed-title

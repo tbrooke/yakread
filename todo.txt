@@ -1,4 +1,6 @@
-- favorites
+favorites
+- add page
+
 - read later
 - settings
 - for you
@@ -8,6 +10,7 @@
 - admin page
 - generative testing for get routes + resolvers
 - e2e tests
+- share target -- make a pwa/app
 
 
 misc

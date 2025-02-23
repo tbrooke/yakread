@@ -12,6 +12,7 @@
             [com.yakread.app.api :as app.api]
             [com.yakread.app.auth :as app.auth]
             [com.yakread.app.favorites :as app.favorites]
+            [com.yakread.app.favorites.add :as app.favorites.add]
             [com.yakread.app.for-you :as app.for-you]
             [com.yakread.app.home :as app.home]
             [com.yakread.app.read-later :as app.read-later]
@@ -48,6 +49,7 @@
    app.api/module
    app.auth/module
    app.favorites/module
+   app.favorites.add/module
    app.for-you/module
    app.home/module
    app.read-later/module

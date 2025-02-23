@@ -56,19 +56,19 @@
    (lazy-load href)
    [:.grow]])
 
-(defn callout [{type* :ui/type :as opts} & contents]
+(defn callout [{:ui/keys [icon] type* :ui/type :as opts} & contents]
   [:div (with-classes opts
           '[;border-l-4
             p-4
             text-neut-800
             flex items-start gap-3]
           (case type*
-            :info '[bg-tealv-75 #_border-tealv-200]
-            :danger '[bg-redv-50 #_border-redv-200]))
-   (lib.icons/base (case type*
-                     :info "circle-info"
-                     nil)
-                   {:class '[w-5 pt-1 flex-shrink-0]})
+            :info 'bg-tealv-75
+            :error 'bg-redv-50))
+   (when-some [icon (cond
+                      (contains? opts :ui/icon) icon
+                      (= type* :info) "circle-info")]
+     (lib.icons/base icon {:class '[w-5 pt-1 flex-shrink-0]}))
    contents])
 
 (defn confirm-unsub-msg [title]
@@ -357,6 +357,18 @@
       (lib.icons/base "xmark-regular" {:class "w-6 h-6"})]]
     content]
    [:.grow]])
+
+(defn card-grid [{:ui/keys [cols] :as opts} cards]
+  (let [cnt (count cards)]
+    [:div (with-classes opts
+            '["grid grid-cols-1 sm:grid-cols-2"
+              gap-4]
+            (case cols
+              4 "xl:grid-cols-3 2xl:grid-cols-4"
+              5 "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"))
+     (for [[i card] (map-indexed vector cards)]
+       [:.yak-card {:style {:z-index (- (+ 10 cnt) i)}}
+        card])]))
 
 ;;;; Composites
 

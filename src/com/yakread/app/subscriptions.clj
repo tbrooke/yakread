@@ -101,14 +101,11 @@
                     right-0]}
      (ui/overflow-menu
       {:ui/rounded true}
-      (let [[hx-method label] (if pinned-at
-                                [:hx-delete "Unpin"]
-                                [:hx-put "Pin"])]
-        (ui/overflow-button
-         {:hx-post (href toggle-pin {:sub/id id})
-          :hx-target "#content"
-          :hx-on:htmx:before-request "this.closest('.sub-card').remove()"}
-         label))
+      (ui/overflow-button
+       {:hx-post (href toggle-pin {:sub/id id})
+        :hx-target "#content"
+        :hx-on:htmx:before-request "this.closest('.yak-card').remove()"}
+       (if pinned-at "Unpin" "Pin"))
       (ui/overflow-button
        {:hx-post (href unsubscribe {:sub/id id})
         :hx-confirm (ui/confirm-unsub-msg title)}
@@ -162,11 +159,9 @@
 (defget page-content-route "/dev/subscriptions/content"
   [{:session/user
     [{:user/subscriptions [:sub/id
-                           :sub/title
                            :sub.view/card
                            (? :sub/published-at)
-                           (? :sub/pinned-at)
-                           (? :sub.email/unsubscribed-at)]}
+                           (? :sub/pinned-at)]}
      {:user/unsubscribed [:sub/id]}]}]
   (fn [_ {{:user/keys [subscriptions unsubscribed]} :session/user}]
     (let [{pinned-subs true unpinned-subs false} (group-by (comp some? :sub/pinned-at) subscriptions)]
@@ -188,16 +183,12 @@
                                                  border border-neut-200]}]
                      (for [[id subscriptions] [["pinned" pinned-subs]
                                                ["unpinned" unpinned-subs]]
-                           :when (not-empty subscriptions)
-                           :let [cnt (count subscriptions)]]
-                       [:div {:id id
-                              :class '["grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-                                       gap-4]}
-                        (for [[i sub] (->> subscriptions
-                                           (sort-by :sub/published-at #(compare %2 %1))
-                                           (map-indexed vector))]
-                          [:.sub-card {:style {:z-index (- (+ 10 cnt) i)}}
-                           (:sub.view/card sub)])]))])])))
+                           :when (not-empty subscriptions)]
+                       (ui/card-grid
+                        {:id id :ui/cols 5}
+                        (->> subscriptions
+                             (sort-by :sub/published-at #(compare %2 %1))
+                             (mapv :sub.view/card)))))])])))
 
 (defget page-route "/dev/subscriptions"
   [:app.shell/app-shell (? :user/current)]
