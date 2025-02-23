@@ -32,8 +32,8 @@
         (let [data (ex-data e)]
           (cond
             (and (= (::p.error/cause data) ::p.error/attribute-missing)
-                 (some #(= "params" (namespace %)) (keys (:missing data))))
-            {:status 404 :body "not found" :headers {"Content-type" "text/plain"}}
+                 (some #(str/starts-with? (namespace %) "params") (keys (:missing data))))
+            {:status 400 :body "invalid input" :headers {"Content-type" "text/plain"}}
 
             (and (= (::p.error/cause data) ::p.error/attribute-missing)
                  (some #(= "session" (namespace %)) (keys (:missing data))))

@@ -1,6 +1,8 @@
 module.exports = {
   content: [
     './src/**/*',
+    './resources/tailwind.css',
+    './resources/tailwind.config.js',
   ],
   safelist: [
     'max-w-screen-sm',
@@ -20,6 +22,7 @@ module.exports = {
         'secondary-dark': '#5d6166',
 
         'tealv-50': '#F0FCF9',
+        'tealv-75': '#DBFAF1',
         'tealv-100': '#C6F7E9',
         'tealv-200': '#8EEDD1',
         'tealv-300': '#5FE3C0',

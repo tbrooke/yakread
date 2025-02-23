@@ -41,7 +41,7 @@
                        "If the problem persists, try another address.")
     "There was an error."))
 
-;;;; Spinners
+;;;; Misc
 
 (defn lazy-load [href]
   [:.flex.justify-center
@@ -56,15 +56,36 @@
    (lazy-load href)
    [:.grow]])
 
+(defn callout [{type* :ui/type :as opts} & contents]
+  [:div (with-classes opts
+          '[;border-l-4
+            p-4
+            text-neut-800
+            flex items-start gap-3]
+          (case type*
+            :info '[bg-tealv-75 #_border-tealv-200]
+            :danger '[bg-redv-50 #_border-redv-200]))
+   (lib.icons/base (case type*
+                     :info "circle-info"
+                     nil)
+                   {:class '[w-5 pt-1 flex-shrink-0]})
+   contents])
+
+(defn confirm-unsub-msg [title]
+  (str "Unsubscribe from "
+       (-> title str/trim (str/replace #"\s+" " "))
+       "?"))
+
 ;;;; Buttons
 
 (defn button [{:ui/keys [size] type_ :ui/type :as opts} & contents]
   [(if (contains? opts :href) :a :button)
    (with-classes opts
-     '[rounded-md
-       inter font-medium
-       disabled:opacity-70
-       "min-w-[5rem]"]
+     '[inter font-medium
+       disabled:opacity-70]
+     (when (not= type_ :link)
+       '[rounded-md
+         "min-w-[5rem]"])
      (case type_
        :primary '[bg-tealv-500 hover:bg-tealv-600 disabled:hover:bg-tealv-500
                   text-neut-50]
@@ -73,6 +94,7 @@
                     bg-neut-500 hover:bg-neut-400 disabled:hover:bg-neut-500]
        :danger '[bg-redv-700 hover:bg-redv-800 disabled:bg-redv-200 disabled:hover:bg-redv-200
                  text-neut-50 disabled:text-white]
+       :link   '[text-blue-600]
        '[bg-neut-700 hover:bg-neut-800 disabled:hover:bg-neut-700
          text-neut-50])
      (case size
@@ -91,15 +113,17 @@
            concat
            '[block
              w-full
-             px-4 py-2
+             px-3 py-2
              hover:bg-neut-75
-             font-medium inter
+             first:rounded-t last:rounded-b
+             inter text-sm
              whitespace-nowrap text-left])
    contents])
 
-(defn overflow-menu [{:ui/keys [direction icon rounded]
+(defn overflow-menu [{:ui/keys [direction icon rounded hover-shade]
                       :or {direction :down
-                           icon "ellipsis-vertical-regular"}
+                           icon "ellipsis-vertical-regular"
+                           hover-shade :regular}
                       :as opts}
                      & contents]
   [:.relative.flex.items-center
@@ -111,10 +135,12 @@
                                  '[flex flex-none
                                    px-1 py-2
                                    h-full
-                                   hover:bg-neut-50
                                    text-neut-600]
+                                 (case hover-shade
+                                   :regular 'hover:bg-neut-50
+                                   :dark 'hover:bg-neut-200)
                                  (when rounded
-                                   '[rounded-full])
+                                   '[rounded-lg])
                                  (case direction
                                    :up 'translate-y-full
                                    :down "translate-y-[-100%]"))
@@ -133,13 +159,11 @@
                                    absolute right-0
                                    hidden
                                    bg-white
-                                   py-1
-                                   border shadow-uniform]
+                                   border border-neut-300
+                                   shadow-sm]
                                  (if (= direction :down)
-                                   '[top-0
-                                     mt-2]
-                                   '[bottom-0
-                                     mb-2]))}
+                                   '[top-0 mt-2]
+                                   '[bottom-0 mb-2]))}
                    contents])
      (= direction :up) reverse)])
 
@@ -241,9 +265,20 @@
      (some->> error input-error)
      (some->> description input-description)]))
 
+(defn checkbox [{:ui/keys [label] :as opts}]
+  [:label.flex.items-center.gap-2.cursor-pointer
+   [:input (with-classes (merge {:type "checkbox"} opts)
+             '[text-tealv-500
+               "border border-neut-300"
+               form-checkbox
+               cursor-pointer
+               focus:ring-1 focus:ring-neut-300])]
+   [:span.inter.text-sm.text-neut-800
+    label]])
+
 ;;;; Layout
 
-(defn page-header [& {:keys [title add-href back-href]}]
+(defn page-header [& {:keys [title add-href back-href actions]}]
   [:div.max-sm:px-4
    (when back-href
      [:a {:href back-href
@@ -259,9 +294,10 @@
                    w-fit]}
       (lib.icons/default chevron-left-regular w-3 h-3)
       "Back"])
-   [:.flex.items-center.mb-8
+   [:.flex.items-center.mb-8.gap-4
     [:h2.font-bold.text-2xl title]
     [:.grow]
+    actions
     (when add-href
       [:a {:href add-href
            :class '[text-tealv-500

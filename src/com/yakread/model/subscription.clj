@@ -66,6 +66,23 @@
                       'source]]}
             source-id))})
 
+(defresolver latest-item [{:keys [biff/db]} {:sub/keys [source-id doc-type]}]
+  {::pco/output [{:sub/latest-item [:xt/id]}]}
+  (when-some [id (ffirst
+                  (q db
+                     {:find '[item t]
+                      :in '[source]
+                      :where [['item
+                               (case doc-type
+                                 :sub/feed :item.feed/feed
+                                 :sub/email :item.email/sub)
+                               'source]
+                              '[item :item/ingested-at t]]
+                      :order-by '[[t :desc]]
+                      :limit 1}
+                     source-id))]
+    {:sub/latest-item {:xt/id id}}))
+
 (defresolver from-params [{:keys [biff/db biff/malli-opts session path-params params]} _]
   #::pco{:output [{:params/sub [:xt/id]}]}
   (let [sub-id (or (:sub/id params)
@@ -74,6 +91,13 @@
               (xt/entity db sub-id))]
     (when (and sub (= (:uid session) (:sub/user sub)))
       {:params/sub (biffs/joinify @malli-opts sub)})))
+
+(defresolver params-checked [{:keys [biff/db biff/malli-opts session params]} _]
+  #::pco{:output [{:params.checked/subscriptions [:sub/id]}]}
+  (let [subs* (mapv #(some->> (parse-uuid %) (xt/entity db))
+                    (keys (:subs params)))]
+    (when (every? #(= (:uid session) (:sub/user %)) subs*)
+      {:params.checked/subscriptions (mapv #(biffs/joinify @malli-opts %) subs*)})))
 
 (defn- index-update [index-get id f]
   (let [old-doc (index-get id)
@@ -132,6 +156,8 @@
                          unread
                          published-at
                          items
-                         from-params]
+                         latest-item
+                         from-params
+                         params-checked]
              :indexes [last-published-index
                        unread-index]})

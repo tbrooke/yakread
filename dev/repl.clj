@@ -75,8 +75,10 @@
               (assoc :path-params {:item-id "eWrwK063TYypMDhtG0NP0Q"
                                    :sub-id "l0irZnG-ST2DzldKN_A6AQ"})
               #_(dissoc :session))
-          [{:session/user [:xt/id]}
-           {:params/sub [{:sub/items [:item/id :item/unread]}]}
+          [{:session/user [
+                           {:user/subscriptions [:sub/id]}
+                           {:user/unsubscribed [:sub/id]}]}
+           ;{:params/sub [{:sub/items [:item/id :item/unread]}]}
            #_{:params/item [:xt/id
                           {(? :item/sub) [:xt/id]}
                           {:item/user-item [(? :user-item/disliked-at)

@@ -1,5 +1,6 @@
 (ns com.yakread.app.subscriptions.view
   (:require [clojure.string :as str]
+            [cheshire.core :as cheshire]
             [com.biffweb :as biff :refer [<<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
             [com.yakread.lib.htmx :as lib.htmx]
@@ -14,11 +15,6 @@
             [lambdaisland.uri :as uri]
             [xtdb.api :as xt]
             [rum.core :as rum]))
-
-(defn- confirm-unsub-msg [title]
-  (str "Unsubscribe from "
-       (-> title str/trim (str/replace #"\s+" " "))
-       "?"))
 
 (defn- redirect-to-sub [sub-id]
   (if sub-id
@@ -91,21 +87,6 @@
                              :user-item/favorited-at :db/dissoc
                              :user-item/disliked-at :db/now}]})))
 
-(defpost-pathom unsubscribe
-  [{:params/sub [:sub/id :sub/doc-type]}]
-  (fn [_ {{:sub/keys [id doc-type]} :params/sub}]
-    {:status 204
-     :headers {"HX-Location" (href routes/subs-page)}
-     :biff.pipe/next [:biff.pipe/tx]
-     :biff.pipe.tx/retry false
-     :biff.pipe.tx/input [(if (= doc-type :sub/email)
-                            ;; TODO actually unsubscribe from the mailing list
-                            {:db/doc-type :sub/email
-                             :db/op :update
-                             :xt/id id
-                             :sub.email/unsubscribed-at :db/now}
-                            [::xt/delete id])]}))
-
 (defpost-pathom mark-all-read
   [{:session/user [:xt/id]}
    {:params/sub [:sub/id
@@ -175,13 +156,6 @@
     [:span.toggle (bar-button-icon-label "share-nodes-regular" "Share")]
     [:span.toggle.hidden.text-gray-700.text-sm "Copied to clipboard."])})
 
-#_(defn reply-button [{:keys [item]}]
-  (article-button
-   {:href (util/assoc-url* (str "mailto:" (:item.email/reply-to item))
-                           :subject (str "Re: " (:item/title item)))
-    :icon "reply-regular"
-    :text "Reply"}))
-
 (defn query-encode [s]
   (some-> s
           (java.net.URLEncoder/encode "UTF-8")
@@ -227,8 +201,8 @@
       "Not interested")
      (when sub
        (ui/overflow-button
-        {:hx-post (href unsubscribe {:sub/id (:sub/id sub)})
-         :hx-confirm (confirm-unsub-msg (:sub/title sub))}
+        {:hx-post (href routes/unsubscribe! {:sub/id (:sub/id sub)})
+         :hx-confirm (ui/confirm-unsub-msg (:sub/title sub))}
         "Unsubscribe"))
      ;; TODO report button
      )]})
@@ -359,8 +333,8 @@
         "Mark all as read")
       (ui/button {:ui/type :secondary
                   :ui/size :small
-                  :hx-post (href unsubscribe {:sub/id id})
-                  :hx-confirm (confirm-unsub-msg title)}
+                  :hx-post (href routes/unsubscribe! {:sub/id id})
+                  :hx-confirm (ui/confirm-unsub-msg title)}
         "Unsubscribe")]
      [:div {:class '[flex
                      flex-col
@@ -443,7 +417,6 @@
              mark-unread
              toggle-favorite
              not-interested
-             unsubscribe
              mark-all-read]]
    :resolvers [button-bar
                like-button*

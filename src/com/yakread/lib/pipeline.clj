@@ -91,6 +91,9 @@
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
                                                            (assoc :url (:url input))
                                                            (dissoc :http-client))))
+   :biff.pipe/email (fn [ctx]
+                      ;; TODO
+                      ctx)
    :biff.pipe/tx (fn [{:biff.pipe.tx/keys [input retry] :as ctx}]
                    (assoc ctx :biff.pipe.tx/output
                           (biff/submit-tx

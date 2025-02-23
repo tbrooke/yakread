@@ -88,3 +88,9 @@ const savePosition = debounce((elt) => {
     localStorage.positions = JSON.stringify(positions);
   }
 }, 200, false);
+
+window.onload = () => {
+  document.body.addEventListener("yak/open-new-tab", function(evt){
+      window.open(evt.detail.value, "_blank");
+  })
+};
