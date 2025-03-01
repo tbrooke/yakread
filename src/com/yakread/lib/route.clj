@@ -35,6 +35,10 @@
   {:status 303
    :headers {"Location" (apply href args)}})
 
+(defn hx-redirect [& args]
+  {:status 303
+   :headers {"HX-Redirect" (apply href args)}})
+
 (defn call [router route-name method ctx]
   ((get-in (reitit/match-by-name router route-name)
            [:data method :handler])

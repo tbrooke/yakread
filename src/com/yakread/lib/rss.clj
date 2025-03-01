@@ -23,14 +23,19 @@
                             (contains? (:headers response) "Content-Type")
                             (assoc-in [:headers "Content-Type"] "application/xml")))))
 
+(defn parse-urls* [base-url html]
+  (->> (.select (Jsoup/parse html base-url)
+                (str "link[type=application/rss+xml], "
+                     "link[type=application/atom+xml]"))
+       (mapv (fn [element]
+               {:url (.attr element "abs:href")
+                :title (.attr element "title")}))
+       (filterv :url)))
+
 (defn parse-urls [{:keys [url body] :as http-response}]
-  (let [doc (delay (Jsoup/parse body url))]
-    (if (not-empty (:entries (remus-parse http-response)))
-      [{:url url}]
-      (for [element (.select @doc (str "link[type=application/rss+xml], "
-                                       "link[type=application/atom+xml]"))]
-        {:url (.attr element "abs:href")
-         :title (.attr element "title")}))))
+  (if (not-empty (:entries (remus-parse http-response)))
+    [{:url url}]
+    (parse-urls* url body)))
 
 (defn extract-opml-urls [body]
   ;; NOTE: by default java.xml prints all parsing errors to the console.

@@ -77,7 +77,7 @@
                          {:method "GET"
                           :key    (str k)})})
 
-(defn- call-js [fn-name opts]
+(defn call-js [fn-name opts]
   (:body
    (cheshire/parse-string
     (biff/sh

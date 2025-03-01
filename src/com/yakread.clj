@@ -16,6 +16,7 @@
             [com.yakread.app.for-you :as app.for-you]
             [com.yakread.app.home :as app.home]
             [com.yakread.app.read-later :as app.read-later]
+            [com.yakread.app.read-later.add :as app.read-later.add]
             [com.yakread.app.settings :as app.settings]
             [com.yakread.app.shell :as app.shell]
             [com.yakread.app.subscriptions :as app.subs]
@@ -53,6 +54,7 @@
    app.for-you/module
    app.home/module
    app.read-later/module
+   app.read-later.add/module
    app.settings/module
    app.shell/module
    app.subs/module

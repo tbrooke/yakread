@@ -64,7 +64,7 @@
 (deftest-index sut/unread-index
   {:num-tests   25
    :model-opts  {:biff/malli-opts main/malli-opts
-                 :schemas #{:item/feed :item/email :user-item}
+                 :schemas #{:item/feed :item/email :user-item :item/direct}
                  :rank-overrides {:sub/email 1}}
    :expected-fn (fn [docs]
                   (let [db (->> docs
@@ -85,6 +85,8 @@
                                                   [id true]))))))))})
 
 (comment
+
+  (unread-index-test)
 
   (lib.test/write-examples! (get-context))
   ,)

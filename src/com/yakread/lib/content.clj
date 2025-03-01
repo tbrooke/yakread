@@ -1,6 +1,8 @@
 (ns com.yakread.lib.content
-  (:require [cld.core :as cld]
-            [clojure.string :as str])
+  (:require [com.biffweb :as biff]
+            [cld.core :as cld]
+            [clojure.string :as str]
+            [pantomime.extract :as pantomime])
   (:import [org.jsoup Jsoup]))
 
 (defn truncate
@@ -27,3 +29,29 @@
           (str/trim)
           (str/replace #"\s+" " ")
           (truncate 500)))
+
+(defn pantomime-parse [html]
+  (-> html
+      (.getBytes "UTF-8")
+      (java.io.ByteArrayInputStream.)
+      pantomime/parse
+      (try (catch Exception _))))
+
+(defn normalize [html]
+  (let [doc (Jsoup/parse html)]
+    (-> doc
+        (.select "a[href]")
+        (.attr "target" "_blank"))
+    (doseq [img (.select doc "img[src^=http://]")]
+      (.attr img "src" (str/replace (.attr img "src")
+                                    #"^http://"
+                                    "https://")))
+    (.outerHtml doc)))
+
+(defn parse-instant [d]
+  (some->> [biff/rfc3339
+            "yyyy-MM-dd'T'HH:mm:ssXXX"]
+           (keep (fn [fmt]
+                   (biff/catchall (biff/parse-date d fmt))))
+           first
+           (.toInstant)))

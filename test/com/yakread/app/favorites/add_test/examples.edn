@@ -1,0 +1,148 @@
+[
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :start,
+ :doc "item exists",
+ :db-contents
+ #{{:xt/id 2,
+    :item/url "https://example.com",
+    :item/doc-type :item/direct}},
+ :ctx {:session {:uid 1}, :params {:url "https://example.com"}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/tx],
+  :biff.pipe.tx/input
+  [{:db/doc-type :user-item,
+    :db.op/upsert #:user-item{:user 1, :item 2},
+    :user-item/favorited-at :db/now}],
+  :status 303,
+  :headers {"HX-Redirect" ["/dev/favorites/add" {:added true}]}}}
+
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :start,
+ :doc "item doesn't exist",
+ :db-contents #{},
+ :ctx {:session {:uid 1}, :params {:url "https://example.com"}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/http :handle-http],
+  :biff.pipe.http/input
+  {:url "https://example.com",
+   :method :get,
+   :headers {"User-Agent" "https://yakread.com/"},
+   :socket-timeout 5000,
+   :connection-timeout 5000},
+  :biff.pipe/catch :biff.pipe/http}}
+
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :handle-http,
+ :doc "Received html",
+ :ctx
+ #:biff.pipe.http{:output
+                  {:url "https://example.com",
+                   :headers {"Content-Type" "text/html"},
+                   :body "<p>how now brown cow</p>"}},
+ :expected
+ {:biff.pipe/next [:yakread.pipe/js :handle-readability],
+  :com.yakread.lib.item/url "https://example.com",
+  :com.yakread.lib.item/raw-html "<p>how now brown cow</p>",
+  :yakread.pipe.js/fn-name "readability",
+  :yakread.pipe.js/input
+  {:url "https://example.com", :html "<p>how now brown cow</p>"}}}
+
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :handle-http,
+ :doc "Didn't receive html",
+ :ctx
+ #:biff.pipe.http{:output
+                  {:url "https://example.com",
+                   :headers {"Content-Type" "image/png"},
+                   :body "<p>how now brown cow</p>"}},
+ :expected
+ {:status 303,
+  :headers {"HX-Redirect" ["/dev/favorites/add" {:error true}]}}}
+
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :handle-readability,
+ :doc "parse obryant.dev post",
+ :fixture :post-0,
+ :ctx {:session {:uid 1}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/s3 :biff.pipe/tx],
+  :biff.pipe.s3/input
+  {:method "PUT",
+   :key "bb20b45f-d4d9-5138-3d93-cb799b3970be",
+   :body
+   "<html>\n <head></head>\n <body>\n  <div id=\"readability-page-1\" class=\"page\">\n   <div>\n    <p>It's official; Netcraft has confirmed: Big Social Media is dying. And from their ashes we can begin anew. <a href=\"https://www.techdirt.com/2022/12/30/new-years-message-the-opportunity-to-build-a-better-internet-is-here-right-now/\" target=\"_blank\">The opportunity to build a better Internet is here</a>!&nbsp;<a href=\"https://noahpinion.substack.com/p/the-internet-wants-to-be-fragmented\" target=\"_blank\">The Internet wants to be fragmented</a>!&nbsp; And my personal favorite—2023 is <a href=\"https://www.robinsloan.com/lab/new-avenues/\" target=\"_blank\">a year of new avenues</a>.</p> \n    <p>For my own contribution to the zeitgeist, I'd like to make a few simple, practical suggestions for anyone—not just software developers—who wants to be part of the movement. These obviously aren't the only ways to participate! They're just areas that I personally think are worth your attention.</p> \n    <p><strong>Build your reading habits on neutral ground</strong></p> \n    <p>When you've got a few minutes to kill, where do you go? What website or app do you open without even thinking about it?</p> \n    <p>Next question: does that app (or website, but hereafter \"app\" for simplicity) favor content that's hosted on a particular platform? For example, my default \"reading app\" for a while, up until several months ago, was Twitter. And Twitter favors content that's hosted on Twitter. People can of course post links to articles and such on other websites, but Twitter (like most/all social media sites) is optimized to keep you on-platform. They'd prefer the entire write-read-discuss cycle to happen inside Twitter.</p> \n    <p>You want your main reading app, your check-this-first location, to give an equal chance to writers, without requiring them to go through a central gatekeeper. Today, the most widely adopted app of this kind is Gmail. And email's not a bad place to start! You probably already have a habit of checking your inbox regularly. So as a first step, figure out how to get more of your content via email. Do the people you follow have newsletters? If you like to go to Twitter for the news, can you instead find a good daily or weekly newsletter that covers your industry/niche?<sup>1</sup></p> \n    <p>You can also look for services that deliver content from various places via email. Like <a href=\"https://mailbrew.com/\" target=\"_blank\">Mailbrew</a>. And <a href=\"https://mailist.app/\" target=\"_blank\">Mailist</a>. Set up a filter or two so you can keep your newsletters in their own folder. Try out <a href=\"https://www.hey.com/\" target=\"_blank\">Hey</a>.</p> \n    <p>This email-centric workflow will work well enough for many people. I personally did it for a while with&nbsp;<a href=\"https://www.fastmail.com/\" target=\"_blank\">Fastmail</a>, my preferred email client. Ultimately it didn't&nbsp;<em>quite</em> do it for me. If you reach the same conclusion, you can try out a dedicated reading app. These apps often give you an email address for subscribing to newsletters, and they work out-of-the-box with other kinds of content too. I built one called <a href=\"https://yakread.com/\" target=\"_blank\">Yakread</a>, which is what I currently use. I also recommend checking out <a href=\"https://hq.getmatter.com/\" target=\"_blank\">Matter</a>, <a href=\"https://readwise.io/read\" target=\"_blank\">Readwise Reader</a>, and <a href=\"https://feedbin.com/\" target=\"_blank\">Feedbin</a>.</p> \n    <p>If you already use an RSS reader as your main app, congratulations—you aced this section!</p> \n    <p><strong>Engage in small communities</strong></p> \n    <p>What reading apps generally&nbsp;<em>don't</em> do is handle discussion. That's fine. We should outsource discussion to places that are better suited for it. And it doesn't need to happen all in one place! Smaller communities are often better moderated and more interesting anyway. Especially if you don't already have a large social media following, it's way easier to have meaningful discussions in smaller, focused groups where there's less competition to be the one talking. (Can you tell I'm an introvert?)</p> \n    <p>So join that Slack workspace/Discord server/subreddit/Facebook group/Discourse forum/Mastodon instance. And figure out how to build a low-effort habit of checking in with those groups. I found a way that's super easy and works great for me: I made a folder in Firefox's bookmarks menu called \"Communities.\" I've got six links in there currently. When I get to my desk each morning, I right-click on that folder and hit \"Open all bookmarks,\" which opens each link in a new tab. I have a few apps installed on my phone so I can get reply notifications.</p> \n    <p>Another great thing about using bookmarks is that it's easy to add a new community&nbsp;<em>regardless of where it's</em> <em>hosted.</em> It could be an experimental forum that someone hacked up in their spare time, and I would be just as likely to engage with it as I would be with any of the communities hosted on more established platforms.</p> \n    <p><strong>Start a newsletter</strong></p> \n    <p>What do you do if you want to write something for more than just one community? You write a blog post! You can share the link in any relevant communities you're in, and maybe some people in those communities will post it elsewhere too. If people want to follow you specifically, they can subscribe to your newsletter via email (or RSS).</p> \n    <p>If you don't already have a blog/newsletter set up somewhere, I recommend starting with <a href=\"https://postcard.page/\" target=\"_blank\">Postcard</a>. It's super simple, free, looks great, and has all the essentials. If you outgrow that, you can check out&nbsp;<a href=\"https://ghost.org/\" target=\"_blank\">Ghost</a>, <a href=\"https://www.beehiiv.com/\" target=\"_blank\">Beehiiv</a>, or <a href=\"https://buttondown.email/\" target=\"_blank\">Buttondown</a>, to name a few.<sup>2</sup></p> \n    <p>Setting up a newsletter is easy, figuring out what to write is hard. That's why this step is optional! Not everyone cares about broadcasting their ideas or building a following, and that's fine. If everyone had a neutral reading app and a handful of communities they enjoy, I'd say \"mission accomplished.\"</p> \n    <p>But if you are interested in starting your own newsletter and nevertheless aren't sure what to write, make it easy on yourself. Once a month is fine. Start out just sharing links to good stuff you read. Once you have a reading app/workflow you like, you'll accumulate such links easily. You don't even have to give any commentary. And by doing this, you'll help writers get discovered without them needing to go viral on some platform.</p> \n    <p><strong>Write about what's missing—and i</strong><strong>f all else fails, build something</strong></p> \n    <p>As you go down this road, you'll inevitably hit pain points. Pay attention to those; try to articulate them. Write a blog post about what you wish existed or how you'd prefer some feature to work. For one thing, writing about it will help clarify your thoughts. Maybe with some searching you'll find that there is a way to solve your problem with tools that already exist. Write about that too! Help other people discover tools and workflows that work for them.</p> \n    <p>If you try at that for a while and you still have an itch that isn't being scratched, then maybe there's an opportunity for a new app. You know what to do: write about it! Ask around! Perhaps someone is already working on something that might do what you need. Maybe they even have a prototype you can try out. Be an early adopter! Help them make their app great. When it is, spread the word. This is how the ecosystem will grow.</p> \n    <p>If you're a developer, you can be the one to make something new—but take your time, and try earnestly to solve your problems with existing tools first. Don't skip the writing step; it'll help you hone in on a real need before you get distracted by implementing a particular solution. Again, when you have an itch that&nbsp;<em>won't go away</em>—that's when you know you might be on to something.</p> \n    <p><strong>Notes</strong></p> \n    <p>[1] Larry Sanger, in <a href=\"https://larrysanger.org/2019/01/how-to-stop-using-social-media/\" target=\"_blank\">How to stop using social media</a>:</p> \n    <blockquote> \n     <p>... one thing that really struck me was how poorly informed we would be if we just looked at the stuff that came across our social media feeds. I discovered this when I helped to prepare news summaries daily. There were a lot of important news stories that we found that were not widely discussed in social media, or even in most of the mainstream media. You’ll probably be better informed if you stop using social media to keep up with the news...</p> \n    </blockquote> \n    <p>[2] The most common newsletter provider for individuals is of course Substack. However, on the axis relevant to this article, they're no different from the large platforms we're trying to get away from. They're creating yet another monolithic platform where reading, writing, and discussion all happen primarily in one place. For example, every email sent from a Substack newsletter—even paid ones!—includes an advertisement for their reading app, and that reading app favors Substack publications. That's not good for the ecosystem.</p> \n    <p>Taking a step back, I am very much in favor of commercial activity. Businesses will help to make the unbundled web sustainable and bring it into the mainstream, but we need to have realistic expectations. It's probably not feasible to build a traditional VC-backed, hypergrowth startup while still keeping the core functions of reading, writing, and discussion independent. Instead of scaling companies <em>up</em>, let's scale them&nbsp;<em>out.</em> Let's grow a thriving rainforest of small- and medium-sized businesses, and leave the VC to B2B SaaS.</p>\n   </div>\n  </div>\n </body>\n</html>",
+   :headers {"x-amz-acl" "private", "content-type" "text/html"}},
+  :biff.pipe.tx/input
+  [{:item/excerpt
+    "It's official; Netcraft has confirmed: Big Social Media is dying. And from their ashes we can begin anew. The opportunity to build a better Internet is here! The Internet wants to be fragmented!  And my personal favorite—2023 is a year of new avenues. For my own contribution to the zeitgeist, I'd like to make a few simple, practical suggestions for anyone—not just software developers—who wants to be part of the movement. These obviously aren't the only ways to participate! They're just areas th…",
+    :item/url "https://obryant.dev/p/you-can-unbundle-social-media/",
+    :item/length 8269,
+    :item/image-url
+    "https://obryant.dev/cards/ff5fda10607965fdc2c0d2d73f0f138d04a73c19.png",
+    :item/feed-url "https://obryant.dev/feed.xml",
+    :item/byline "Jacob O'Bryant",
+    :item/content-key #uuid "bb20b45f-d4d9-5138-3d93-cb799b3970be",
+    :item/lang "en",
+    :item/doc-type :item/direct,
+    :xt/id #uuid "a32dc9f6-4f1d-f03a-8ce9-70b71df42503",
+    :item/title "You can help unbundle social media",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/direct}
+   {:db/doc-type :user-item,
+    :db.op/upsert
+    #:user-item{:user 1,
+                :item #uuid "a32dc9f6-4f1d-f03a-8ce9-70b71df42503"},
+    :user-item/favorited-at :db/now}],
+  :status 303,
+  :headers {"HX-Redirect" ["/dev/favorites/add" {:added true}]}}}
+
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :handle-readability,
+ :doc "parse kibty.town post",
+ :fixture :post-1,
+ :ctx {:session {:uid 1}},
+ :expected
+ {:biff.pipe/next [:biff.pipe/s3 :biff.pipe/tx],
+  :biff.pipe.s3/input
+  {:method "PUT",
+   :key "98f8ba3d-c812-a76d-554d-cd2b40b5f04b",
+   :body
+   "<html>\n <head></head>\n <body>\n  <div id=\"readability-page-1\" class=\"page\">\n   <article>\n    <div>\n     <p>this started when i was looking into <a href=\"https://cursor.com/\" target=\"_blank\">cursor</a>, an ai text editor. also, i use <a href=\"https://objective-see.org/products/lulu.html\" target=\"_blank\">lulu by objective-see</a> on my laptop, so when i downloaded the cursor installer, i got this pop-up:</p> \n     <p><img src=\"https://kibty.town/files/img/posts/todesktop/lulu-alert.png\" alt=\"A LuLu alert, showing that &quot;Install Cursor&quot; was trying to connect to &quot;download.todesktop.com&quot;\"></p> \n     <p>now, what the hell is todesktop? i thought i was downloading cursor? well, looking at their website, they seem to be an electron app bundler service alongside providing a SDK for electron apps. so it appears the installer i downloaded is actually managed by todesktop, not cursor.</p> \n     <p>this made me curious and i made an account on todesktop to look into it, and when i clicked the github login button, i saw my calling: <strong>firebase</strong></p> \n     <h2>basic firebase recon</h2> \n     <p>realising the app used firestore (firebase's no-sql database that is often used in frontend), i quickly opened my devtools and began doing basic recon on the firebase.</p> \n     <p>i realised that the site has sourcemaps, which made searching for all of the firestore paths used in the app even easier (its still easy without sourcemaps, usually)</p> \n     <p>then i found an insecure collection, <code>temporaryApplications</code>, which seemed to give me an name list of some applications (edit: todesktop has clarified this collection has no sensitive data and hasnt been updated since 2022), but not much other than that, everything seemed secure on the firebase other then this.</p> \n     <p>i then noticed that most of the deployment and general logic happens in the terminal, with the npm package <code>@todesktop/cli</code>, so i installed that and started looking into it</p> \n     <h2>looking into the todesktop cli</h2> \n     <p>the cli manages deployments, source code uploads, and much more. the website just seems to be a shell to create applications, view deployments, etc etc</p> \n     <p>i was once again lucky that the cli also had sourcemaps, so i used <a href=\"https://github.com/denandz/sourcemapper\" target=\"_blank\">sourcemapper</a> to extract them into a source tree.</p> \n     <p>looking in there, i found an arbitrary s3 upload vulnerability via a firebase cloud function called <code>getSignedURL</code>, but i didn't really have an s3 key (file path) to upload to that would do something interesting, so i kept looking.</p> \n     <h2>hijacking the deployment pipeline via a postinstall script</h2> \n     <p>i wanted to get on the machine where the application gets built and the easiest way to do this would be a postinstall script in <code>package.json</code>, so i did that with a simple reverse shell payload</p> \n     <p>this worked. navigating around the container, i figured out where the actual code-building application lives, and found this:</p> \n     <p><img src=\"https://kibty.town/files/img/posts/todesktop/config-encrypted.png\" alt=\"A screenshot showing a file called &quot;config.json.encrypted&quot;\"></p> \n     <p>oh fuck, this usually means something bad. i found the code for decrypting this file, and this is what i got after decrypting it myself:</p> \n     <p><img src=\"https://kibty.town/files/img/posts/todesktop/config-json.png\" alt=\"A file called &quot;config.json&quot;, with 2 apple id, remote sign and a hsm's credentials\"></p> \n     <p><strong>fuck. this container stores secrets</strong></p> \n     <p>looking around in the container more, i found a hardcoded firebase admin key (which was full-scoped).</p> \n     <h2>post-exploitation</h2> \n     <p>i quickly realized that with the credentials i have, i could deploy an auto update to any app of my liking, having clients receive it immediately when they restart the app.</p> \n     <p>i then made some code to use my credentials to deploy an update to my app, and it worked. i immediately got a update on my client and got RCE.</p> \n     <h2>lets talk about impact</h2> \n     <p>with this, i could push auto updates to all applications using todesktop, such as:</p> \n     <ul> \n      <li>clickup (https://clickup.com)</li> \n      <li>cursor (https://cursor.com) (update: cursor has now switched off of todesktop to their own build system)</li> \n      <li>linear (https://linear.app)</li> \n      <li>notion calendar (https://calendar.notion.so)</li> \n     </ul> \n     <p>(<strong>please do not harass these companies or make it seem like it's their fault, it's not. it's todesktop's fault if anything</strong>)</p> \n     <p>which, if i were to estimate, is probably in the range of hundreds of millions of people in <strong>tech environments</strong>, other hackers, programmers, executives, etc. making this exploit <strong>deadly</strong> if used.</p> \n     <h2>the fix</h2> \n     <p>i immediately used my contacts to get in reach with the owner of todesktop, we were chatting via signal and the fix came almost immediately. they were nice enough to compensate me for my efforts and were very nice in general.</p> \n     <p>the build container now has a privileged sidecar that does all of the signing, uploading and everything else instead of the main container with user code having that logic.</p> \n     <p>security incidents happen all the time, its natural. what matters is the company's response, and todesktop's response has been awesome, they were very nice to work with.</p> \n     <p>check out todesktop's incident report <a href=\"https://www.todesktop.com/blog/posts/security-incident-at-todesktop\" target=\"_blank\">here</a></p> \n     <p>for those wondering, in total i got 5k for this vuln, which i dont blame todesktop for because theyre a really small company</p> \n     <p><strong>update:</strong> cursor (one of the affected customers) is giving me 50k USD for my efforts.</p> \n    </div>\n   </article>\n  </div>\n </body>\n</html>",
+   :headers {"x-amz-acl" "private", "content-type" "text/html"}},
+  :biff.pipe.tx/input
+  [{:item/excerpt
+    "this started when i was looking into cursor, an ai text editor. also, i use lulu by objective-see on my laptop, so when i downloaded the cursor installer, i got this pop-up: now, what the hell is todesktop? i thought i was downloading cursor? well, looking at their website, they seem to be an electron app bundler service alongside providing a SDK for electron apps. so it appears the installer i downloaded is actually managed by todesktop, not cursor. this made me curious and i made an account o…",
+    :item/url "https://kibty.town/blog/todesktop/",
+    :item/length 4414,
+    :item/feed-url "https://kibty.town/blog.rss",
+    :item/content-key #uuid "98f8ba3d-c812-a76d-554d-cd2b40b5f04b",
+    :item/lang "en",
+    :item/doc-type :item/direct,
+    :xt/id #uuid "629bc222-9cef-e94d-fc1e-932efb9a0f58",
+    :item/title
+    "how to gain code execution on millions of people and hundreds of popular apps - eva's site",
+    :item/ingested-at :db/now,
+    :db/doc-type :item/direct}
+   {:db/doc-type :user-item,
+    :db.op/upsert
+    #:user-item{:user 1,
+                :item #uuid "629bc222-9cef-e94d-fc1e-932efb9a0f58"},
+    :user-item/favorited-at :db/now}],
+  :status 303,
+  :headers {"HX-Redirect" ["/dev/favorites/add" {:added true}]}}}
+
+{:route-name :com.yakread.app.favorites.add/add-item,
+ :method :post,
+ :handler-id :handle-readability,
+ :doc "empty content",
+ :expected
+ {:status 303,
+  :headers {"HX-Redirect" ["/dev/favorites/add" {:error true}]}}}
+
+]

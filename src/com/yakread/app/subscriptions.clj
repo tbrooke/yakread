@@ -196,7 +196,7 @@
     (app-shell
      {:wide true}
      (if user
-       [:div#content (ui/lazy-load-spaced (href page-content-route))]
+       [:div#content.h-full (ui/lazy-load-spaced (href page-content-route))]
        [:<>
         (ui/page-header {:title    "Subscriptions"
                          :add-href (href routes/add-sub-page)})

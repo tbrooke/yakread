@@ -7,4 +7,6 @@
 
 (def favorites-page 'com.yakread.app.favorites/page)
 (def add-favorite-page 'com.yakread.app.favorites.add/page)
-(def view-favorite-page 'com.yakread.app.favorites.view/page)
+
+(def bookmarks-page 'com.yakread.app.read-later/page)
+(def add-bookmark-page 'com.yakread.app.read-later.add/page)

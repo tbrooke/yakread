@@ -171,7 +171,9 @@
 
 (defn- text-input* [element {:ui/keys [size] type_ :type :as opts}]
   [element
-   (with-classes opts
+   (with-classes (merge (when (= element :textarea)
+                          {:rows 4})
+                        opts)
      '[w-full
        rounded-md
        shadow-inner
@@ -197,7 +199,9 @@
 (defn textarea [opts]
   (text-input* :textarea opts))
 
-(defn overlay-text-input [{:ui/keys [icon postfix size] :as opts}]
+(defn overlay-text-input [{:ui/keys [icon postfix size input-type]
+                           :or {input-type :text}
+                           :as opts}]
   [:.relative
    [:div {:class '[absolute
                    inset-0
@@ -217,8 +221,11 @@
                      :large '[max-sm:text-sm]
                      '[text-sm]))}
      postfix]]
-   (text-input (cond-> opts
-                 icon (update :class concat '[pl-10])))])
+   ((case input-type
+      :text text-input
+      :textarea textarea)
+    (cond-> opts
+      icon (update :class concat '[pl-10])))])
 
 (defn input-label [opts & contents]
   [:label.block.mb-2 opts
@@ -236,8 +243,15 @@
 (defn form-input [{name_ :name :as opts}]
   (let [{:ui/keys [label error description
                    size indicator-id
-                   submit-opts submit-text]
-         :keys [id required] :as opts} (merge {:id name_} opts)]
+                   submit-opts submit-text
+                   input-type]
+         :keys [id required] :as opts} (merge {:id name_} opts)
+        input (overlay-text-input opts)
+        submit-button (button (-> {:type "submit"
+                                   :ui/size size}
+                                  (merge submit-opts)
+                                  (update :class concat '[leading-6]))
+                        submit-text)]
     [:div.w-full
      (when label
        (input-label
@@ -249,19 +263,27 @@
            [:img.h-5.htmx-indicator.hidden
             {:id indicator-id
              :src spinner-gif}])]))
-     (if-not submit-text
-       (overlay-text-input opts)
+
+
+     (cond
+       (not submit-text)
+       input
+
+       (= input-type :textarea)
+       [:<>
+        input
+        [:.h-2]
+        [:.flex.justify-end submit-button]]
+
+       :else
        [:.flex.gap-3.w-full
-        [:.grow (overlay-text-input opts)]
+        [:.grow input]
         [:.flex-shrink-0
-         (button (-> {:type "submit"
-                      :ui/size size}
-                     (merge submit-opts)
-                     (update :class concat '[leading-6]))
-           submit-text)]])
+         submit-button]])
      (case size
        :large [:.h-1]
        nil)
+     ;; TODO handle case when error/description is set and input-type is :textarea
      (some->> error input-error)
      (some->> description input-description)]))
 
@@ -367,7 +389,9 @@
               4 "xl:grid-cols-3 2xl:grid-cols-4"
               5 "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"))
      (for [[i card] (map-indexed vector cards)]
-       [:.yak-card {:style {:z-index (- (+ 10 cnt) i)}}
+       [:.yak-card
+        {:class "[&>*]:size-full"
+         :style {:z-index (- (+ 10 cnt) i)}}
         card])]))
 
 ;;;; Composites
@@ -437,7 +461,7 @@
      [:.h-3])])
 
 (defn empty-page-state [{:keys [icons text btn-label btn-href]}]
-  [:.flex.flex-col.grow
+  [:.flex.flex-col.h-full
    [:.grow]
    [:.flex.justify-center.gap-8.text-neut-800
     (for [icon icons]
@@ -448,6 +472,7 @@
    [:.h-6]
    [:.flex.justify-center.gap-4
     (button {:href btn-href :ui/type :primary} btn-label)]
+   [:.grow]
    [:.grow]])
 
 (defn on-error-page [ctx]

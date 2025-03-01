@@ -151,15 +151,18 @@
    (fn [{:biff.index/keys [index-get op doc]}]
      (let [source-id (lib.item/source-id doc)]
        (cond
+         ;; When a new item is created, increment its source's unread count.
          (and (= op ::xt/put) source-id (-> (:xt/id doc) index-get nil?))
          {(:xt/id doc) source-id
           source-id ((fnil inc 0) (index-get source-id))}
 
+         ;; When an item is read, decrement its source's unread count.
          (and (= op ::xt/put) (:user-item/user doc))
          (let [new-doc-read? (lib.user-item/read? doc)
-               old-doc-read? (boolean (index-get (:xt/id doc)))]
-           (when (not= new-doc-read? old-doc-read?)
-             (let [id [(:user-item/user doc) (index-get (:user-item/item doc))]
+               old-doc-read? (boolean (index-get (:xt/id doc)))
+               source-id (index-get (:user-item/item doc))]
+           (when (and source-id (not= new-doc-read? old-doc-read?))
+             (let [id [(:user-item/user doc) source-id]
                    n-read ((fnil (if new-doc-read? inc dec) 0) (index-get id))]
                {(:xt/id doc) (when new-doc-read? true)
                 id           (when (not= n-read 0) n-read)}))))))})

@@ -1,0 +1,37 @@
+[
+{:route-name :com.yakread.app.read-later.add/add-batch,
+ :method :post,
+ :handler-id :start,
+ :doc "non-empty batch",
+ :ctx
+ {:session {:uid 1},
+  :params
+  {:batch "https://example.com foo http://obryant.dev/some-post bar"}},
+ :expected
+ {:status 303,
+  :headers {"HX-Redirect" ["/dev/read-later/add" {:batch-added 2}]},
+  :biff.pipe/next
+  ({:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :com.yakread.app.read-later.add/add-item,
+    :biff.pipe.queue/job
+    {:user/id 1, :url "https://example.com", :biff/priority 0}}
+   {:biff.pipe/current :biff.pipe/queue,
+    :biff.pipe.queue/id :com.yakread.app.read-later.add/add-item,
+    :biff.pipe.queue/job
+    {:user/id 1,
+     :url "http://obryant.dev/some-post",
+     :biff/priority 1}})}}
+
+{:route-name :com.yakread.app.read-later.add/add-batch,
+ :method :post,
+ :handler-id :start,
+ :doc "empty batch",
+ :ctx
+ {:session {:uid 1},
+  :params
+  {:batch "ttps://example.com foo ttp://obryant.dev/some-post bar"}},
+ :expected
+ {:status 303,
+  :headers {"HX-Redirect" ["/dev/read-later/add" {:batch-error true}]}}}
+
+]

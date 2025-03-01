@@ -2,6 +2,9 @@
   (:require [clojure.string :as str]
             [clojure.data.generators :as gen]
             [com.biffweb :as biff :refer [q <<-]]
+            [com.yakread.lib.content :as lib.content]
+            [com.yakread.lib.core :as lib.core]
+            [com.yakread.lib.item :as lib.item]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
             [com.yakread.lib.route :refer [defget defpost href redirect]]
@@ -11,71 +14,14 @@
             [com.yakread.routes :as routes]
             [xtdb.api :as xt]))
 
-#_(defn add-article [{:keys [biff/db user params] :as ctx}]
-    (let [{:keys [url]} params
-          url (str/trim url)
-          article (or (biff/lookup db :item/url url :item/type :article)
-                      (biff/catchall-verbose
-                       (util-art/get-article! ctx url)))
-          article-id (or (:xt/id article) (random-uuid))]
-      (when article
-        (biff/submit-tx ctx
-          (concat
-           [{:db/doc-type :rec
-             :db.op/upsert {:rec/user (:xt/id user)
-                            :rec/item article-id}
-             :rec/created-at :db/now
-             :rec/viewed-at :db/now
-             :rec/rating :like}]
-           (when (:db/doc-type article)
-             [(assoc article :xt/id article-id)]))))
-      {:status 303
-       :headers {"location" (util/make-url "/favorites/add"
-                                           (if article
-                                             {:added "true"}
-                                             {:error "invalid-url"}))}}))
-
-;; TODO test
-(let [success (fn [user-id item-id]
-                {:biff.pipe/next [:biff.pipe/tx]
-                 :biff.pipe.tx/input [{:db/doc-type :user-item
-                                       :db.op/upsert {:user-item/user user-id
-                                                      :user-item/item item-id}
-                                       :user-item/favorited-at :db/now}]
-                 :status 303
-                 :headers {"HX-Redirect" (href `page {:added true})}})
-      error (fn []
-              {:status 303
-               :headers {"HX-Redirect" (href `page {:error true})}})]
-  (defpost add-item
-    :start
-    (fn [{:keys [biff/db session] {:keys [url]} :params}]
-      (let [url (str/trim url)]
-        (if-some [item-id (biff/lookup-id db :item/url url :item/doc-type :item/direct)]
-          (success (:uid session) item-id)
-          {:biff.pipe/next       [:biff.pipe/http :handle-http]
-           :biff.pipe.http/input {:url url
-                                  :method  :get
-                                  :headers {"User-Agent" "https://yakread.com/"}
-                                  :socket-timeout 5000
-                                  :connection-timeout 5000}
-           :biff.pipe/catch      :biff.pipe/http})))
-
-    :handle-http
-    (fn [{:keys [biff/db session biff.pipe.http/output]}]
-      (if-not (and (some-> output :headers (get "Content-Type") (str/includes? "text"))
-                   (< (count (:body output)) (* 2 1000 1000)))
-        (error)
-        {:biff.pipe/next [:yakread.pipe/js :handle-readability]
-         ::url (:url output)
-         ::raw-html (:body output)
-         :yakread.pipe.js/fn-name "readability"
-         :yakread.pipe.js/input {:url (:url output) :html (:body output)}}))
-
-    :handle-readability
-    (fn [_]
-      ;; TODO
-      nil)))
+(defpost add-item
+  (lib.item/add-item-pipeline
+   {:user-item-kvs {:user-item/favorited-at :db/now
+                    :user-item/disliked-at :db/dissoc
+                    :user-item/reported-at :db/dissoc
+                    :user-item/report-reason :db/dissoc
+                    :user-item/bookmarked-at :db/dissoc}
+    :redirect-to `page}))
 
 (defget page "/dev/favorites/add"
   [:app.shell/app-shell

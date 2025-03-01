@@ -43,16 +43,9 @@
              :yakread.pipe.js/input {:html (extract-html message)}})
    :end (fn [{:keys [biff.smtp/message biff/db]
               {:keys [html]} :yakread.pipe.js/output}]
-          (let [doc (Jsoup/parse html)
-                _ (-> doc
-                      (.select "a[href]")
-                      (.attr "target" "_blank"))
-                _ (doseq [img (.select doc "img[src^=http://]")]
-                    (.attr img "src" (str/replace (.attr img "src")
-                                                  #"^http://"
-                                                  "https://")))
-                html (.outerHtml doc)
-                html (str/replace html #"#transparent" "transparent")
+          (let [html (-> html
+                         lib.content/normalize
+                         (str/replace #"#transparent" "transparent"))
                 raw-content-key (gen/uuid)
                 parsed-content-key (gen/uuid)
                 headers (:headers message)

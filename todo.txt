@@ -1,7 +1,3 @@
-favorites
-- add page
-
-- read later
 - settings
 - for you
 - home page/auth

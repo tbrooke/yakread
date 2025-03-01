@@ -16,14 +16,25 @@
 
 (defresolver user-favorites [{:keys [biff/db]} {:keys [user/id]}]
   #::pco{:output [{:user/favorites [:item/id]}]}
-  {:user/favorites (q db
-                      '{:find [item]
-                        :keys [item/id]
-                        :in [user]
-                        :where [[user-item :user-item/user user]
-                                [user-item :user-item/item item]
-                                [user-item :user-item/favorited-at]]}
-                      id)})
+  {:user/favorites (vec (q db
+                           '{:find [item]
+                             :keys [item/id]
+                             :in [user]
+                             :where [[user-item :user-item/user user]
+                                     [user-item :user-item/item item]
+                                     [user-item :user-item/favorited-at]]}
+                           id))})
+
+(defresolver user-bookmarks [{:keys [biff/db]} {:keys [user/id]}]
+  #::pco{:output [{:user/bookmarks [:item/id]}]}
+  {:user/bookmarks (vec (q db
+                           '{:find [item]
+                             :keys [item/id]
+                             :in [user]
+                             :where [[user-item :user-item/user user]
+                                     [user-item :user-item/item item]
+                                     [user-item :user-item/bookmarked-at]]}
+                           id))})
 
 (defresolver user-item [{:keys [biff/db session]} items]
   #::pco{:input [:xt/id]
@@ -154,7 +165,7 @@
                  (? :item/ingested-at)
                  (? :item/length)]}
   {:item/details
-   (->> [(not-empty (str/trim (or author-name byline)))
+   (->> [(some-> (or author-name byline) str/trim not-empty)
          (some-> url uri/uri :host str/trim not-empty)
          (let [offset ZoneOffset/UTC ; TODO get timezone for user
                odt (.atOffset (or published-at ingested-at) offset)
@@ -180,6 +191,7 @@
 
 (def module
   {:resolvers [user-favorites
+               user-bookmarks
                clean-html
                content
                details

@@ -6,6 +6,7 @@
             [com.yakread.lib.middleware :as lib.mid]
             [com.yakread.routes :as routes]))
 
+;; move somewhere else since this is used in app.read-later too
 (defresolver item-card [{:item/keys [id title details]}]
   {:item.view/card
    [:a {:href "" ; TODO go to For You
@@ -14,8 +15,8 @@
                  shadow
                  p-2
                  text-sm]}
-    [:.truncate.font-semibold.mr-6 (or (not-empty title) "[no title]")]
-    [:.text-neut-800.mr-6 details]]})
+    [:.font-semibold.mr-6.line-clamp-2 (or (not-empty title) "[no title]")]
+    [:.text-neut-800.mr-6.line-clamp-2 details]]})
 
 (defn- empty-state []
   (ui/empty-page-state {:icons ["star-regular-sharp"]
@@ -46,7 +47,7 @@
       (ui/page-header {:title    "Favorites"
                        :add-href (href routes/add-favorite-page)})
       (if user
-        [:div#content (ui/lazy-load-spaced (href page-content))]
+        [:div#content.h-full (ui/lazy-load-spaced (href page-content))]
         (empty-state))])))
 
 (def module
