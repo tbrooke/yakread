@@ -1,13 +1,21 @@
-- settings
-- for you
+for you
+  migrate data
+  algorithm
+  UI
+
+- admin page (if needed for algo)
 - home page/auth
+- not-found page
 - email digests
+- settings
 - pay-what-you-want
-- admin page
+- redo subs page layout (use tabs)
+- deploy, migrate
+
+- ads
 - generative testing for get routes + resolvers
 - e2e tests
 - share target -- make a pwa/app
-
 
 misc
 - better approach to loading indicators/lazy loads
@@ -23,16 +31,50 @@ misc
 - check :item/image-url gets set correctly for feed items
 - maybe include wrap-signed-in as part of defget/defpost
 - autogenerate tests for all defgets, defposts, defresolvers
-- nicer not-found page
 - when viewing an item for the first time, unread status is stale in the feed below. maybe just need to make it lazy
 - infer :item/url for emails
-- redo subs page layout (use tabs)
 
+---
 
-video/blog topics:
-- demo for what there is so far
-- generative testing for indexes
-- code organization (model, app, lib, work)
-- malli schema introspection
-- lib.pipe/make
-- lib.pathom/handler
+algorithm notes
+
+sources:
+- subscriptions
+- bookmarks
+- discover
+
+bookmarks
+  cluster by domain -- then do same algo as for subs
+
+subscriptions
+  rank subs by affinity/pinned-ness
+    make an index based on user-items/skips
+    for each rank, X% chance of selecting a pinned sub vs. any sub (50%?)
+    make sure affinity decays somehow -- maybe only use last N user-items/skips
+  weighted shuffle subs
+    each sub's weight is the max of (1) 1/9th of all the remaining subs' weight, (2) the next sub's weight
+  for each sub, pick one item
+    rank by publish/ingest date + n skips
+    use same weighted shuffle/sample as for the subs
+
+discover
+  do... something
+  crawl the web based on user's subs/items / stated preferences
+    follow links and check for rss feeds
+  don't bother with surfacing recs from other yakread users until there are a lot of users
+
+balancing bookmarks and subs
+  then sample based on total n skips of bookmarks vs. subs
+    weight for sampling bookmarks next is 1 + n subs samples + total n skips of selected sub items, and vice versa
+
+balance discover vs bookmarks/subs
+  maybe show N bookmarks/subs first, then M discover items after (like 15 / 5)
+  have a "view more" button at the bottom, skips all the items and refreshes
+
+short-form rss
+  when ingesting rss items, assign a group id if item length is under a threshold
+    use the previous item's group ID if that group ID started less than a week previous and if total group length is
+    under a threshold
+    otherwise start a new group ID
+  when recommending RSS subs, only recommend first item in group
+  when viewing RSS items, show all items in the group

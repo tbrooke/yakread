@@ -31,6 +31,7 @@
             [com.yakread.model.item :as model.item]
             [com.yakread.model.subscription :as model.sub]
             [com.yakread.model.user :as model.user]
+            [com.yakread.model.recommend :as model.recommend]
             [com.yakread.model.schema :as model.schema]
             [com.yakread.smtp :as smtp]
             [com.yakread.work.subscription :as work.sub]
@@ -63,6 +64,7 @@
    model.item/module
    model.sub/module
    model.user/module
+   model.recommend/module
    model.schema/module
    work.sub/module
    (app.auth/module
