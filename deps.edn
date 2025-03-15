@@ -30,7 +30,8 @@
         com.stripe/stripe-java              {:mvn/version "22.10.0"}
         cld/cld                             {:mvn/version "0.1.0"}
         org.apache.spark/spark-core_2.13    {:mvn/version "3.4.0"}
-        org.apache.spark/spark-mllib_2.13   {:mvn/version "3.4.0"}}
+        org.apache.spark/spark-mllib_2.13   {:mvn/version "3.4.0"}
+        ring/ring-jetty-adapter             {:mvn/version "1.13.0"}}
  :aliases
  {:run {:extra-deps {com.biffweb/tasks {:git/url "https://github.com/jacobobryant/biff",
                                         :git/sha "c53c273c7e1a1773a57f9df6750a7c4448e47052"

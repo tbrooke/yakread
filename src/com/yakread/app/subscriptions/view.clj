@@ -117,14 +117,14 @@
    [:span text]])
 
 (defn bar-button [{:ui/keys [active icon] :keys [href] :as opts} & contents]
-  [(if href :a :button) (ui/with-classes opts
-                          '[block
-                            hover:bg-neut-50
-                            inter
-                            py-2
-                            w-full]
-                          (when active
-                            'font-semibold))
+  [(if href :a :button) (ui/dom-opts opts
+                                     '[block
+                                       hover:bg-neut-50
+                                       inter
+                                       py-2
+                                       w-full]
+                                     (when active
+                                       'font-semibold))
    (if icon
      (bar-button-icon-label icon contents)
      contents)])

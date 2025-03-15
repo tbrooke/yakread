@@ -58,14 +58,15 @@
     [:script {:src "https://unpkg.com/hyperscript.org@0.9.12"}]
     [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js"}]
     [:script {:src "/js/main.js"}]
-    [:script {:src "https://unpkg.com/@popperjs/core@2"}]
-    [:script {:src "https://unpkg.com/tippy.js@6"}]
+    ;[:script {:src "https://unpkg.com/@popperjs/core@2"}]
+    ;[:script {:src "https://unpkg.com/tippy.js@6"}]
     (when include-plausible
       [:script {:src "https://pl.tfos.co/js/script.js"
                 :defer "defer"
                 :data-domain "yakread.com"}])
     (when (and (nil? user) include-recaptcha)
       [:script {:src "https://www.google.com/recaptcha/api.js" :async "async" :defer "defer"}])
+    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-beta.9/bundles/datastar.js"}]
     ;; TODO
     ;[:link {:rel "manifest", :href "/site.webmanifest?a"}]
     [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
@@ -265,8 +266,7 @@
         [:.bg-neut-75.grow.flex
          {:hx-boost "true" ; TODO make sure this still works how we want it to
           :hx-headers (cheshire/generate-string
-                       {:x-csrf-token csrf/*anti-forgery-token*})
-          :_ "on click add .hidden to .dropdown"}
+                       {:x-csrf-token csrf/*anti-forgery-token*})}
          sidebar
          [:.sm:w-8]
          [:div {:class (concat '[mx-auto

@@ -6,6 +6,7 @@
             [clojure.java.io :as io]
             [clojure.walk :as walk]
             [com.biffweb :as biff]
+            [com.yakread.lib.datastar :as lib.d*]
             [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.pathom :as lib.pathom]
@@ -110,6 +111,8 @@
                        #_(lib.route/call router route-name :get ctx))
    :biff.pipe/render* (fn [{:keys [biff.pipe.render/route] :as ctx}]
                         ((get-in @(resolve route) [1 :get]) ctx))
+   :biff.pipe/render-sse (fn [{:keys [biff.pipe.render-sse/route] :as ctx}]
+                           {:sse [(lib.d*/merge-fragments ((get-in @(resolve route) [1 :get]) ctx))]})
    :biff.pipe/queue (fn [{:biff.pipe.queue/keys [id job wait-for-result] :as ctx}]
                       (assoc ctx
                              :biff.pipe.queue/output

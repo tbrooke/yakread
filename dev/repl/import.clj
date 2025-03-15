@@ -10,7 +10,7 @@
             [xtdb.api :as xt]
             [taoensso.nippy :as nippy]))
 
-(defn import! [node]
+#_(defn import! [node]
   (xt/sync node)
   (println "done syncing")
   (let [db (xt/db node)

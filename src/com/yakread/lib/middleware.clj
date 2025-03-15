@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [com.biffweb :as biff :refer [q]]
             [com.wsscode.pathom3.error :as p.error]
+            [com.yakread.lib.datastar :as lib.d*]
             [com.yakread.lib.route :as lib.route]
             [com.yakread.settings :as settings]
             [com.yakread.util :as util]
@@ -194,7 +195,8 @@
    wrap-render-rum
    wrap-auth-aliases
    wrap-edn-json-params
-   wrap-pathom-error])
+   wrap-pathom-error
+   lib.d*/wrap-sse-response])
 
 (defn wrap-options [handler options]
   (fn [ctx]

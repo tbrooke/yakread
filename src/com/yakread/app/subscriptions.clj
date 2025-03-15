@@ -1,5 +1,6 @@
 (ns com.yakread.app.subscriptions
   (:require [cheshire.core :as cheshire]
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.edn :as edn]
@@ -8,7 +9,7 @@
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.route :as lib.route :refer [href defget defpost-pathom]]
+            [com.yakread.lib.route :as lib.route :refer [action href defget defpost defpost-pathom]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.ui :as ui]
             [com.yakread.lib.middleware :as lib.mid]
@@ -66,14 +67,14 @@
                  (? :sub/pinned-at)]}]
   (fn [_ {{:sub/keys [id pinned-at doc-type]}
           :params/sub}]
-    {:biff.pipe/next              [:biff.pipe/tx :biff.pipe/render*]
-     :biff.pipe.tx/input          [{:db/doc-type   doc-type
-                                    :db/op         :update
-                                    :xt/id         id
-                                    :sub/pinned-at (if pinned-at
-                                                     :db/dissoc
-                                                     :db/now)}]
-     :biff.pipe.render/route      `page-content-route}))
+    {:biff.pipe/next             [:biff.pipe/tx :biff.pipe/render-sse]
+     :biff.pipe.tx/input         [{:db/doc-type   doc-type
+                                   :db/op         :update
+                                   :xt/id         id
+                                   :sub/pinned-at (if pinned-at
+                                                    :db/dissoc
+                                                    :db/now)}]
+     :biff.pipe.render-sse/route `page-content-route}))
 
 (defpost-pathom resubscribe
   [{:params.checked/subscriptions
@@ -102,9 +103,7 @@
      (ui/overflow-menu
       {:ui/rounded true}
       (ui/overflow-button
-       {:hx-post (href toggle-pin {:sub/id id})
-        :hx-target "#content"
-        :hx-on:htmx:before-request "this.closest('.yak-card').remove()"}
+       {:data-on-click (action :post toggle-pin {:params {:sub/id id}})}
        (if pinned-at "Unpin" "Pin"))
       (ui/overflow-button
        {:hx-post (href unsubscribe {:sub/id id})
@@ -165,7 +164,7 @@
      {:user/unsubscribed [:sub/id]}]}]
   (fn [_ {{:user/keys [subscriptions unsubscribed]} :session/user}]
     (let [{pinned-subs true unpinned-subs false} (group-by (comp some? :sub/pinned-at) subscriptions)]
-      [:<>
+      [:.h-full {:id (ui/dom-id ::content)}
        (ui/page-header {:title    "Subscriptions"
                         :add-href (href routes/add-sub-page)
                         :actions (when (not-empty unsubscribed)
@@ -196,7 +195,7 @@
     (app-shell
      {:wide true}
      (if user
-       [:div#content.h-full (ui/lazy-load-spaced (href page-content-route))]
+       (ui/lazy-load-spaced (href page-content-route))
        [:<>
         (ui/page-header {:title    "Subscriptions"
                          :add-href (href routes/add-sub-page)})

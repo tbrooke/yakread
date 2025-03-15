@@ -23,6 +23,7 @@
             [com.yakread.app.subscriptions.add :as app.subs.add]
             [com.yakread.app.subscriptions.view :as app.subs.view]
             [com.yakread.email :as email]
+            [com.yakread.lib.jetty :as lib.jetty]
             [com.yakread.lib.middleware :as lib.middleware]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
@@ -137,7 +138,7 @@
    biff/use-queues
    biff/use-tx-listener
    #_train/use-spark
-   biff/use-jetty
+   lib.jetty/use-jetty
    biff/use-chime
    biff/use-beholder
    lib.smtp/use-server])

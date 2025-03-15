@@ -3,14 +3,25 @@
             [com.biffweb :as biff]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.route :as lib.route]
-            [lambdaisland.uri :as uri]))
+            [lambdaisland.uri :as uri]
+            [cheshire.core :as cheshire]
+            [clojure.data.generators :as gen]
+            [com.yakread.lib.serialize :as lib.serialize]))
+
+(def ^:private chars* (mapv char (concat (range (int \a) (inc (int \z)))
+                                         (range (int \A) (inc (int \Z))))))
+
+(defn random-id []
+  (apply str "_" (repeatedly 22 #(gen/rand-nth chars*))))
+
+(def json cheshire/generate-string)
 
 (defn- dissoc-ns [m ns-str]
   (into {}
         (remove #(= ns-str (namespace (key %))))
         m))
 
-(defn with-classes [opts & classes]
+(defn dom-opts [opts & classes]
   (-> opts
       (update :class concat (flatten classes))
       (dissoc-ns "ui")))
@@ -57,14 +68,14 @@
    [:.grow]])
 
 (defn callout [{:ui/keys [icon] type* :ui/type :as opts} & contents]
-  [:div (with-classes opts
-          '[;border-l-4
-            p-4
-            text-neut-800
-            flex items-start gap-3]
-          (case type*
-            :info 'bg-tealv-75
-            :error 'bg-redv-50))
+  [:div (dom-opts opts
+                  '[;border-l-4
+                    p-4
+                    text-neut-800
+                    flex items-start gap-3]
+                  (case type*
+                    :info 'bg-tealv-75
+                    :error 'bg-redv-50))
    (when-some [icon (cond
                       (contains? opts :ui/icon) icon
                       (= type* :info) "circle-info")]
@@ -80,30 +91,30 @@
 
 (defn button [{:ui/keys [size] type_ :ui/type :as opts} & contents]
   [(if (contains? opts :href) :a :button)
-   (with-classes opts
-     '[inter font-medium
-       disabled:opacity-70]
-     (when (not= type_ :link)
-       '[rounded-md
-         "min-w-[5rem]"])
-     (case type_
-       :primary '[bg-tealv-500 hover:bg-tealv-600 disabled:hover:bg-tealv-500
-                  text-neut-50]
-       :secondary '[border
-                    text-white
-                    bg-neut-500 hover:bg-neut-400 disabled:hover:bg-neut-500]
-       :danger '[bg-redv-700 hover:bg-redv-800 disabled:bg-redv-200 disabled:hover:bg-redv-200
-                 text-neut-50 disabled:text-white]
-       :link   '[text-blue-600]
-       '[bg-neut-700 hover:bg-neut-800 disabled:hover:bg-neut-700
-         text-neut-50])
-     (case size
-       :small '[text-sm
-                px-3 py-1]
-       :large '[max-sm:text-sm
-                px-3 py-2]
-       '[text-sm
-         px-3 py-2]))
+   (dom-opts opts
+             '[inter font-medium
+               disabled:opacity-70]
+             (when (not= type_ :link)
+               '[rounded-md
+                 "min-w-[5rem]"])
+             (case type_
+               :primary '[bg-tealv-500 hover:bg-tealv-600 disabled:hover:bg-tealv-500
+                          text-neut-50]
+               :secondary '[border
+                            text-white
+                            bg-neut-500 hover:bg-neut-400 disabled:hover:bg-neut-500]
+               :danger '[bg-redv-700 hover:bg-redv-800 disabled:bg-redv-200 disabled:hover:bg-redv-200
+                         text-neut-50 disabled:text-white]
+               :link   '[text-blue-600]
+               '[bg-neut-700 hover:bg-neut-800 disabled:hover:bg-neut-700
+                 text-neut-50])
+             (case size
+               :small '[text-sm
+                        px-3 py-1]
+               :large '[max-sm:text-sm
+                        px-3 py-2]
+               '[text-sm
+                 px-3 py-2]))
    contents])
 
 (defn overflow-button [{:keys [href] :as opts} & contents]
@@ -126,72 +137,70 @@
                            hover-shade :regular}
                       :as opts}
                      & contents]
-  [:.relative.flex.items-center
-   {:class [(case direction
-              :up "translate-y-[-100%]"
-              :down 'translate-y-full)]}
-   (cond->> (list [:button (-> opts
-                               (with-classes
-                                 '[flex flex-none
-                                   px-1 py-2
-                                   h-full
-                                   text-neut-600]
-                                 (case hover-shade
-                                   :regular 'hover:bg-neut-50
-                                   :dark 'hover:bg-neut-200)
-                                 (when rounded
-                                   '[rounded-lg])
-                                 (case direction
-                                   :up 'translate-y-full
-                                   :down "translate-y-[-100%]"))
-                               (merge {:_ (str "on click toggle .hidden on the "
-                                               (if (= direction :down)
-                                                 "next"
-                                                 "previous")
-                                               " .dropdown then halt")}))
-                   (lib.icons/base icon
-                                   {:class '[w-8
-                                             h-5
-                                             flex-shrink-0]})]
-                  [:div {:class (concat
-                                 '[dropdown
-                                   rounded
-                                   absolute right-0
-                                   hidden
-                                   bg-white
-                                   border border-neut-300
-                                   shadow-sm]
-                                 (if (= direction :down)
-                                   '[top-0 mt-2]
-                                   '[bottom-0 mb-2]))}
-                   contents])
-     (= direction :up) reverse)])
+  (let [open (random-id)]
+    [:.relative.flex.items-center
+     {:data-signals (json {open false})
+      :data-on-click__outside (str "$" open " = false")
+      :class [(case direction
+                :up "translate-y-[-100%]"
+                :down 'translate-y-full)]}
+     (cond->> (list [:button (-> opts
+                                 (dom-opts '[flex flex-none
+                                             px-1 py-2
+                                             h-full
+                                             text-neut-600]
+                                           (case hover-shade
+                                             :regular 'hover:bg-neut-50
+                                             :dark 'hover:bg-neut-200)
+                                           (when rounded
+                                             '[rounded-lg])
+                                           (case direction
+                                             :up 'translate-y-full
+                                             :down "translate-y-[-100%]"))
+                                 (merge {:data-on-click (str "$" open " = !$" open)}))
+                     (lib.icons/base icon
+                                     {:class '[w-8
+                                               h-5
+                                               flex-shrink-0]})]
+                    [:div {:data-show (str "$" open)
+                           :class (concat
+                                   '[dropdown
+                                     rounded
+                                     absolute right-0
+                                     bg-white
+                                     border border-neut-300
+                                     shadow-sm]
+                                   (if (= direction :down)
+                                     '[top-0 mt-2]
+                                     '[bottom-0 mb-2]))}
+                     contents])
+       (= direction :up) reverse)]))
 
 ;;;; Inputs
 
 (defn- text-input* [element {:ui/keys [size] type_ :type :as opts}]
   [element
-   (with-classes (merge (when (= element :textarea)
-                          {:rows 4})
-                        opts)
-     '[w-full
-       rounded-md
-       shadow-inner
-       border-0
-       ring-1 ring-inset ring-neut-100
-       text-black inter leading-6
-       bg-neut-50 disabled:opacity-70]
-     (case type_
-       "file" '["file:py-[11.5px]" file:px-3
-                file:border-0 focus:outline-tealv-600
-                file:bg-neut-100
-                file:text-neut-800 text-neut-600]
-       '[focus:ring-inset
-         focus:ring-tealv-600
-         py-2])
-     (case size
-       :large '[max-sm:text-sm]
-       '[text-sm]))])
+   (dom-opts (merge (when (= element :textarea)
+                      {:rows 4})
+                    opts)
+             '[w-full
+               rounded-md
+               shadow-inner
+               border-0
+               ring-1 ring-inset ring-neut-100
+               text-black inter leading-6
+               bg-neut-50 disabled:opacity-70]
+             (case type_
+               "file" '["file:py-[11.5px]" file:px-3
+                        file:border-0 focus:outline-tealv-600
+                        file:bg-neut-100
+                        file:text-neut-800 text-neut-600]
+               '[focus:ring-inset
+                 focus:ring-tealv-600
+                 py-2])
+             (case size
+               :large '[max-sm:text-sm]
+               '[text-sm]))])
 
 (defn text-input [opts]
   (text-input* :input (merge {:type "text"} opts)))
@@ -289,12 +298,12 @@
 
 (defn checkbox [{:ui/keys [label] :as opts}]
   [:label.flex.items-center.gap-2.cursor-pointer
-   [:input (with-classes (merge {:type "checkbox"} opts)
-             '[text-tealv-500
-               "border border-neut-300"
-               form-checkbox
-               cursor-pointer
-               focus:ring-1 focus:ring-neut-300])]
+   [:input (dom-opts (merge {:type "checkbox"} opts)
+                     '[text-tealv-500
+                       "border border-neut-300"
+                       form-checkbox
+                       cursor-pointer
+                       focus:ring-1 focus:ring-neut-300])]
    [:span.inter.text-sm.text-neut-800
     label]])
 
@@ -356,38 +365,38 @@
    [:.flex.flex-col.gap-6
     contents]])
 
-(defn modal [{:keys [id title]} & content]
-  [:div {:id id
-         :class '[fixed inset-0
+(defn modal [{:keys [open title]} & content]
+  [:div {:class '[fixed inset-0
                   flex flex-col items-center
-                  hidden
                   overflow-y-auto
                   p-4
                   z-30]
          :aria-modal "true",
-         :role "dialog"}
+         :role "dialog"
+         :data-signals (json {open false})
+         :data-show (str "$" open)}
    [:.grow]
    [:div.fixed.inset-0.bg-gray-500.bg-opacity-75
     {:aria-hidden "true"
-     :_ (str "on click toggle .hidden on #" id)}]
+     :data-on-click (str "$" open " = false")}]
    [:.bg-white.rounded.max-w-screen-sm.w-full.transform
     [:.flex.h-12.border-b.items-center.p-3
      [:h3.font-bold.text-lg title]
      [:.grow]
      [:button.flex {:type "button"
-                    :_ (str "on click toggle .hidden on #" id)}
+                    :data-on-click (str "$" open " = false")}
       (lib.icons/base "xmark-regular" {:class "w-6 h-6"})]]
     content]
    [:.grow]])
 
 (defn card-grid [{:ui/keys [cols] :as opts} cards]
   (let [cnt (count cards)]
-    [:div (with-classes opts
-            '["grid grid-cols-1 sm:grid-cols-2"
-              gap-4]
-            (case cols
-              4 "xl:grid-cols-3 2xl:grid-cols-4"
-              5 "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"))
+    [:div (dom-opts opts
+                    '["grid grid-cols-1 sm:grid-cols-2"
+                      gap-4]
+                    (case cols
+                      4 "xl:grid-cols-3 2xl:grid-cols-4"
+                      5 "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"))
      (for [[i card] (map-indexed vector cards)]
        [:.yak-card
         {:class "[&>*]:size-full"

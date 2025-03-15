@@ -162,32 +162,33 @@
                           p-3
                           text-neut-800]}
            "Subscribed to " (ui/pluralize n "feed") "."])
-        (biff/form
-          {:action (href add-rss)
-           :hx-indicator (str "#" (ui/dom-id ::rss-indicator))}
-          (ui/form-input
-           {:ui/label "Website or feed URL" ; TODO spinner icon
-            :ui/submit-text "Subscribe"
-            :ui/description [:<> "You can also "
-                             [:button.link {:_ "on click toggle .hidden on #bookmarklet-modal"
-                                            :type "button"}
-                              "subscribe via bookmarklet"] "."]
-            :ui/indicator-id (ui/dom-id ::rss-indicator)
-            :ui/error (when (= (:error params) "invalid-rss-feed")
-                        "We weren't able to subscribe to that URL.")
-            :name "url"
-            :value (:url params)
-            :required true})
-          (ui/modal
-           {:id "bookmarklet-modal"
-            :title "Subscribe via bookmarklet"}
-           [:.p-4
-            [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
-                 bookmarks menu:"]
-            [:p.my-6 [:a.text-xl.text-blue-600
-                      {:href "javascript:window.location=\"https://yakread.com/subscriptions/add?url=\"+encodeURIComponent(document.location)"}
-                      "Subscribe | Yakread"]]
-            [:p.mb-0 "Then click the bookmarklet to subscribe to the RSS feed for the current page."]]))
+        (let [modal-open (ui/random-id)]
+          (biff/form
+            {:action (href add-rss)
+             :hx-indicator (str "#" (ui/dom-id ::rss-indicator))}
+            (ui/modal
+             {:open modal-open
+              :title "Subscribe via bookmarklet"}
+             [:.p-4
+              [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
+                   bookmarks menu:"]
+              [:p.my-6 [:a.text-xl.text-blue-600
+                        {:href "javascript:window.location=\"https://yakread.com/subscriptions/add?url=\"+encodeURIComponent(document.location)"}
+                        "Subscribe | Yakread"]]
+              [:p.mb-0 "Then click the bookmarklet to subscribe to the RSS feed for the current page."]])
+            (ui/form-input
+             {:ui/label "Website or feed URL" ; TODO spinner icon
+              :ui/submit-text "Subscribe"
+              :ui/description [:<> "You can also "
+                               [:button.link {:type "button"
+                                              :data-on-click (str "$" modal-open " = true")}
+                                "subscribe via bookmarklet"] "."]
+              :ui/indicator-id (ui/dom-id ::rss-indicator)
+              :ui/error (when (= (:error params) "invalid-rss-feed")
+                          "We weren't able to subscribe to that URL.")
+              :name "url"
+              :value (:url params)
+              :required true})))
         (biff/form
           {:action (href add-opml)
            :hx-indicator (str "#" (ui/dom-id ::opml-indicator))

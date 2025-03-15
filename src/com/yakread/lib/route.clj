@@ -6,7 +6,9 @@
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipe]
             [lambdaisland.uri :as uri]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy]
+            [ring.middleware.anti-forgery :as csrf]
+            [cheshire.core :as cheshire]))
 
 (defn- encode-uuid [x]
   (if (uuid? x)
@@ -30,6 +32,13 @@
       (str path
            (when (not-empty query-params)
              (str "?" (uri/map->query-string {:npy (nippy/freeze-to-string query-params)})))))))
+
+(defn action [action-name route & {:as opts}]
+  (let [url (href route (:params opts {}))
+        opts (-> opts
+                 (dissoc :params)
+                 (assoc-in [:headers :x-csrf-token] csrf/*anti-forgery-token*))]
+    (str "@" (name action-name) "('" url "', " (cheshire/generate-string opts) ")")))
 
 (defn redirect [& args]
   {:status 303

@@ -78,29 +78,30 @@
           (ui/callout {:ui/type :info :ui/icon nil} "Bookmark added."))
         (when (:error params)
           (ui/callout {:ui/type :error :ui/icon nil} "We weren't able to add that bookmark."))
-        [:form {:hx-post (href add-item)
-                :hx-indicator (str "#" (ui/dom-id ::item-indicator))}
-         (ui/form-input
-          {:ui/label "Article URL"
-           :ui/submit-text "Add"
-           :ui/description [:<> "You can also "
-                            [:button.link {:_ "on click toggle .hidden on #bookmarklet-modal"
-                                           :type "button"}
-                             "add articles via bookmarklet"] "."]
-           :ui/indicator-id (ui/dom-id ::item-indicator)
-           :name "url"
-           :value (:url params)
-           :required true})
-         (ui/modal
-          {:id "bookmarklet-modal"
-           :title "Add articles via bookmarklet"}
-          [:.p-4
-           [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
-                bookmarks menu:"]
-           [:p.my-6 [:a.text-xl.text-blue-600
-                     {:href "javascript:window.location=\"https://yakread.com/read-later/add?url=\"+encodeURIComponent(document.location)"}
-                     "Read later | Yakread"]]
-           [:p.mb-0 "Then click the bookmarklet to add the current article to Yakread."]])]
+        (let [modal-open (ui/random-id)]
+          [:form {:hx-post (href add-item)
+                  :hx-indicator (str "#" (ui/dom-id ::item-indicator))}
+           (ui/modal
+            {:open modal-open
+             :title "Add articles via bookmarklet"}
+            [:.p-4
+             [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
+                  bookmarks menu:"]
+             [:p.my-6 [:a.text-xl.text-blue-600
+                       {:href "javascript:window.location=\"https://yakread.com/read-later/add?url=\"+encodeURIComponent(document.location)"}
+                       "Read later | Yakread"]]
+             [:p.mb-0 "Then click the bookmarklet to add the current article to Yakread."]])
+           (ui/form-input
+            {:ui/label "Article URL"
+             :ui/submit-text "Add"
+             :ui/description [:<> "You can also "
+                              [:button.link {:type "button"
+                                             :data-on-click (str "$" modal-open " = true")}
+                               "add articles via bookmarklet"] "."]
+             :ui/indicator-id (ui/dom-id ::item-indicator)
+             :name "url"
+             :value (:url params)
+             :required true})])
 
         (when-some [n (:batch-added params)]
           (ui/callout {:ui/type :info :ui/icon nil} 
