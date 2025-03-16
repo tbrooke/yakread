@@ -27,7 +27,11 @@
           ;; The user reported our emails as spam or emails to them hard-bounced, so don't send them any more emails.
           [:user/suppressed-at      ? :time/instant]
           ;; Used for email subscriptions (<username>@yakread.com)
-          [:user/email-username     ? ::string]]
+          [:user/email-username     ? ::string]
+          ;; Stripe ID
+          [:user/customer-id        ? ::string]
+          [:user/plan               ? [:enum :quarter :annual]]
+          [:user/cancel-at          ? :time/instant]]
 
    :sub/base  [:map {:closed true}
                [:xt/id                    :uuid]
