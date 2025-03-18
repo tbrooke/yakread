@@ -15,22 +15,27 @@
             [malli.core :as malli])
   (:import (java.time LocalTime Instant)))
 
-
-
 (defn update-some [m k f & args]
   (if (contains? m k)
     (apply update m k f args)
     m))
+
+(defn assoc-some [m & kvs]
+  (into m
+        (keep (fn [[k v]]
+                  (when (some? v)
+                    [k v])))
+        (partition 2 kvs)))
 
 (def schema->keys (into {}
                         (map (juxt (comp :schema :properties)
                                    (comp keys :keys)))
                         (biffs/doc-asts main/malli-opts)))
 
-(do
+(time
+ (do
   (defn import-user-docs [db email]
-    (let [user (biff/lookup db :user/email email)
-          rename-keys {:user/subscribed-days :user/digest-days
+    (let [rename-keys {:user/subscribed-days :user/digest-days
                        :user/send-time       :user/send-digest-at
                        :user/last-sent       :user/digest-last-sent
 
@@ -42,14 +47,20 @@
                        :rss/etag          :feed/etag
                        :rss/last-modified :feed/last-modified
 
-                       :item/fetched-at :item/ingested-at
-                       :item/content :item/content-key
+                       :item/fetched-at        :item/ingested-at
+                       :item/content           :item/content-key
                        :item/inferred-feed-url :item/feed-url
-                       :item/image :item/image-url
+                       :item/image             :item/image-url
 
                        :conn/user              :sub/user
                        :conn.rss/subscribed-at :sub/created-at
-                       :conn/feed              :sub.feed/feed}
+                       :conn/feed              :sub.feed/feed
+
+                       :rec/user          :user-item/user
+                       :rec/item          :user-item/item
+                       :rec/viewed-at     :user-item/viewed-at
+                       :rec/reported-at   :user-item/reported-at
+                       :rec/report-reason :user-item/report-reason}
           base-update (fn [doc schema]
                         (-> doc
                             (set/rename-keys rename-keys)
@@ -64,6 +75,7 @@
                                        {:doc doc
                                         :schema schema
                                         :explanation (malli/explain schema doc main/malli-opts)}))))
+          user (biff/lookup db :user/email email)
           rss-conns (q db
                        '{:find (pull conn [*])
                          :in [user]
@@ -89,20 +101,38 @@
                          :in [[url ...]]
                          :where [[item :item.rss/feed-url url]]}
                        (mapv :conn.rss/url rss-conns))
-          ]
+          recs (biff/lookup-all db :rec/user (:xt/id user))
+          item->bookmarked-at (into {}
+                                    (for [bookmark (biff/lookup-all db :bookmark/user (:xt/id user))
+                                          item (:bookmark/items bookmark)]
+                                      [item (:bookmark/created-at bookmark)]))]
       ;; TODO
-      ;; - user items
-      ;; - email subs, items
       ;; - skips
+      ;; - email subs, items
       ;; - ads, clicks, credit
-      (->> (concat (for [conn rss-conns]
-                     (-> conn
-                         (base-update :sub/feed)
-                         (merge (when (contains? (:pinned/rss pinned) (:xt/id conn))
-                                  {:sub/pinned-at (.toInstant #inst "2025")})
-                                (when-some [feed (url->feed (:conn.rss/url conn))]
-                                  {:sub.feed/feed (:xt/id feed)}))
-                         (validate :sub/feed)))
+      (->> (concat (for [{:rec/keys [created-at
+                                     viewed-at]
+                          :as rec} recs
+                         :let [user-item (-> rec
+                                             (merge (when (:rec/skipped rec)
+                                                      {:user-item/skipped-at created-at})
+                                                    (when (= (:rec/rating rec) :like)
+                                                      {:user-item/favorited-at viewed-at})
+                                                    (when (= (:rec/rating rec) :dislike)
+                                                      {:user-item/disliked-at viewed-at})
+                                                    (when-some [t (item->bookmarked-at (:rec/item rec))]
+                                                      {:user-item/bookmarked-at t}))
+                                             (base-update :user-item))]
+                         :when (not-empty (dissoc user-item :xt/id :user-item/item :user-item/user))]
+                     user-item)
+                   #_(for [conn rss-conns]
+                       (-> conn
+                           (base-update :sub/feed)
+                           (merge (when (contains? (:pinned/rss pinned) (:xt/id conn))
+                                    {:sub/pinned-at (.toInstant #inst "2025")})
+                                  (when-some [feed (url->feed (:conn.rss/url conn))]
+                                    {:sub.feed/feed (:xt/id feed)}))
+                           (validate :sub/feed)))
                    #_(for [item rss-items]
                        (-> item
                            (base-update :item/feed)
@@ -127,14 +157,11 @@
                            (base-update :feed)
                            (merge (when (:rss/failed feed)
                                     {:feed/failed-syncs 1}))
-                           (validate :feed)))
-
-                   )
+                           (validate :feed))))
            shuffle
            (take 10))))
-  
   #_(import-user-docs (xt/db export-node) "jacob@thesample.ai")
-  )
+  ))
 
 (comment
 

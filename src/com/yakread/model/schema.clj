@@ -113,7 +113,6 @@
                [:user-item/skipped-at    ?                 :time/instant]
                [:user-item/bookmarked-at ?                 :time/instant]
                [:user-item/favorited-at  ?                 :time/instant]
-               [:user-item/digested-at   ?                 :time/instant]
                [:user-item/position      (?r :position)    :uuid]
                ;; User clicked thumbs-down. Mutually exclusive with :user-item/favorited-at
                [:user-item/disliked-at   ?                 :time/instant]
@@ -121,10 +120,15 @@
                [:user-item/reported-at   ?                 :time/instant]
                [:user-item/report-reason ?                 ::string]]
 
-   ;; Split this out of :user-item because it'll change very frequently.
-   :position [:map {:closed true}
-              [:xt/id          :uuid]
-              [:position/value :int]]
+   ;; Digest emails
+   :digest [:map {:closed true}
+            [:xt/id                            :uuid]
+            [:digest/user    (r :user)         :uuid]
+            [:digest/sent-at                   :time/instant]
+            [:digest/subject (r [:item/feed
+                                 :item/email]) :uuid]
+            [:digest/items (r [:item/feed
+                               :item/email])   [:vector :uuid]]]
 
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a :skip document.
    :skip [:map {:closed true}
@@ -132,7 +136,12 @@
           [:skip/user       (r :user)         :uuid]
           [:skip/skipped-at                   :time/instant]
           [:skip/items      (r [:item/feed
-                                :item/email]) [:vector :uuid]]]})
+                                :item/email]) [:vector :uuid]]]
+
+   ;; Split this out of :user-item because it'll change very frequently.
+   :position [:map {:closed true}
+              [:xt/id          :uuid]
+              [:position/value :int]]})
 
 (def module
   {:schema schema})
