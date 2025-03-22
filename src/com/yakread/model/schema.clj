@@ -4,13 +4,14 @@
   [:merge base-schema (into [:map {:closed true}] map-args)])
 
 (def ? {:optional true})
+;; target is used by lib.test for generating test docs
 (defn r [target] {:biff/ref (if (coll? target) target #{target})})
 (defn ?r [target] (assoc (r target) :optional true))
 
 (def schema
   {::string  [:string {:max 1000}]
    ::day     [:enum :sunday :monday :tuesday :wednesday :thursday :friday :saturday]
-   :ref/uuid :uuid
+   ::cents   :int
 
    :user [:map {:closed true}
           [:xt/id                     :uuid]
@@ -39,7 +40,7 @@
                [:sub/created-at           :time/instant]
                [:sub/pinned-at  ?         :time/instant]]
    :sub/feed  (inherit :sub/base
-                       [:sub.feed/feed (r :feed) :ref/uuid])
+                       [:sub.feed/feed (r :feed) :uuid])
    ;; :sub-email is automatically created when the user receives an email with a new From field.
    :sub/email (inherit :sub/base
                        [:sub.email/from              ::string]
@@ -77,13 +78,14 @@
                         [:item.email/sub                   (r :sub/email) :uuid]
                         ;; For the raw email -- processed email goes in :item/content-key
                         [:item.email/raw-content-key                      :uuid]
-                        [:item.email/list-unsubscribe      ?              ::string]
+                        [:item.email/list-unsubscribe      ?              [:string {:max 5000}]]
                         [:item.email/list-unsubscribe-post ?              ::string]
                         [:item.email/reply-to              ?              ::string]
                         [:item.email/maybe-confirmation    ?              :boolean])
    ;; Items fetched from a user-supplied URL (bookmarked or favorited)
    :item/direct (inherit :item/base
                          [:item/doc-type [:= :item/direct]])
+   :item/any    [:or :item/feed :item/email :item/direct]
 
    :feed [:map {:closed true}
           [:xt/id                :uuid]
@@ -104,44 +106,88 @@
    ;; - we send the user a digest email using this item's title in the subject line
    ;; - we recommend the item in For You and the user reports it
    :user-item [:map {:closed true}
-               [:xt/id                                     :uuid]
-               [:user-item/user          (r :user)         :uuid]
-               [:user-item/item          (r [:item/feed
-                                             :item/email]) :uuid]
-               [:user-item/viewed-at     ?                 :time/instant]
+               [:xt/id                                  :uuid]
+               [:user-item/user          (r :user)      :uuid]
+               [:user-item/item          (r :item/any)  :uuid]
+               [:user-item/viewed-at     ?              :time/instant]
                ;; User clicked "mark all as read"
-               [:user-item/skipped-at    ?                 :time/instant]
-               [:user-item/bookmarked-at ?                 :time/instant]
-               [:user-item/favorited-at  ?                 :time/instant]
-               [:user-item/position      (?r :position)    :uuid]
+               [:user-item/skipped-at    ?              :time/instant]
+               [:user-item/bookmarked-at ?              :time/instant]
+               [:user-item/favorited-at  ?              :time/instant]
+               [:user-item/position      (?r :position) :uuid]
                ;; User clicked thumbs-down. Mutually exclusive with :user-item/favorited-at
-               [:user-item/disliked-at   ?                 :time/instant]
+               [:user-item/disliked-at   ?              :time/instant]
                ;; This item was recommended in For You and the user reported it.
-               [:user-item/reported-at   ?                 :time/instant]
-               [:user-item/report-reason ?                 ::string]]
+               [:user-item/reported-at   ?              :time/instant]
+               [:user-item/report-reason ?              ::string]]
 
    ;; Digest emails
    :digest [:map {:closed true}
-            [:xt/id                            :uuid]
-            [:digest/user    (r :user)         :uuid]
-            [:digest/sent-at                   :time/instant]
-            [:digest/subject (r [:item/feed
-                                 :item/email]) :uuid]
-            [:digest/items (r [:item/feed
-                               :item/email])   [:vector :uuid]]]
+            [:xt/id                             :uuid]
+            [:digest/user    (r :user)          :uuid]
+            [:digest/sent-at                    :time/instant]
+            [:digest/subject (r :item/any)      :uuid]
+            [:digest/items   (r :timeline/item) [:vector :uuid]]]
 
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a :skip document.
    :skip [:map {:closed true}
-          [:xt/id                             :uuid]
-          [:skip/user       (r :user)         :uuid]
-          [:skip/skipped-at                   :time/instant]
-          [:skip/items      (r [:item/feed
-                                :item/email]) [:vector :uuid]]]
+          [:xt/id                                       :uuid]
+          [:skip/user                (r :user)          :uuid]
+          [:skip/timeline-created-at                    :time/instant]
+          [:skip/items               (r :timeline/item) [:set :uuid]]
+          [:skip/clicked             (r :timeline/item) [:set :uuid]]]
 
    ;; Split this out of :user-item because it'll change very frequently.
    :position [:map {:closed true}
               [:xt/id          :uuid]
-              [:position/value :int]]})
+              [:position/value :int]]
+
+   :timeline/item [:or :item/any :ad]
+
+   :ad [:map {:closed true}
+        [:xt/id                       :uuid]
+        [:ad/user           (r :user) :uuid]
+        [:ad/approve-state            [:enum :pending :approved :rejected]]
+        [:ad/balance                  ::cents]
+        ;; Balance accrued from ad clicks in the past 7 days
+        [:ad/recent-cost              ::cents]
+        [:ad/bid            ?         ::cents]
+        ;; Max amount that balance should increase by in a 7-day period
+        [:ad/budget         ?         ::cents]
+        [:ad/url            ?         :string]
+        [:ad/title          ?         :string]
+        [:ad/description    ?         :string]
+        [:ad/image-url      ?         :string]
+        [:ad/paused         ?         :boolean]
+        [:ad/payment-failed ?         :boolean]
+        ;; Stripe info
+        [:ad/customer-id    ?         :string]
+        [:ad/session-id     ?         :string]
+        [:ad/payment-method ?         :string]
+        [:ad/card-details   ?         [:map {:closed true}
+                                       [:brand     :string]
+                                       [:last4     :int]
+                                       [:exp_year  :int]
+                                       [:exp_month :int]]]]
+
+   :ad.click [:map {:closed true}
+              [:xt/id                          :uuid]
+              [:ad.click/user        (r :user) :uuid]
+              [:ad.click/ad          (r :ad)   :uuid]
+              [:ad.click/created-at            :time/instant]
+              [:ad.click/cost                  ::cents]
+              [:ad.click/source                [:enum :web :email]]]
+
+   :ad.credit [:map {:closed true}
+               [:xt/id                           :uuid]
+               [:ad.credit/ad            (r :ad) :uuid]
+               ;; Are we charging their card or giving them free ad credit?
+               [:ad.credit/source                [:enum :charge :manual]]
+               [:ad.credit/amount                ::cents]
+               [:ad.credit/created-at            :time/instant]
+               ;; We store :xt/id in the Stripe payment intent metadata and use it to look up the
+               ;; charge status.
+               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]})
 
 (def module
   {:schema schema})

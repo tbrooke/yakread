@@ -6,7 +6,7 @@
             [com.yakread.lib.core :as lib.core]
             [rum.core :as rum]
             [clojure.stacktrace :as st])
-  (:import [javax.mail.internet MimeMessage MimeMultipart MimeBodyPart InternetAddress]
+  (:import [javax.mail.internet MimeMessage MimeMultipart MimeBodyPart InternetAddress MimeUtility]
            [javax.mail Authenticator PasswordAuthentication Session Message$RecipientType Transport]
            [org.subethamail.smtp.helper
             SimpleMessageListenerAdapter
@@ -132,3 +132,9 @@
 (defn parts-seq [message]
   (->> (tree-seq map? #(get-in % [:content :parts]) message)
        (map #(assoc % :content-type (get-in % [:headers "content-type" 0] "")))))
+
+(defn decode-header [s]
+  (try
+    (MimeUtility/decodeText s)
+    (catch Exception e
+      nil)))

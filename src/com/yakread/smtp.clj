@@ -9,7 +9,7 @@
             [com.yakread.lib.pipeline :as lib.pipe]
             [rum.core :as rum]
             [xtdb.api :as xt])
-  [:import (org.jsoup Jsoup)])
+  (:import (org.jsoup Jsoup)))
 
 (defn accept? [{:keys [biff/db biff.smtp/message yakread/domain]}]
   (and (or (not domain) (= domain (:domain message)))
@@ -48,7 +48,6 @@
                          (str/replace #"#transparent" "transparent"))
                 raw-content-key (gen/uuid)
                 parsed-content-key (gen/uuid)
-                headers (:headers message)
                 from (some (fn [k]
                              (->> (concat (:from message) (:reply-to message))
                                   (some k)))
@@ -56,7 +55,9 @@
                 text (lib.content/html->text html)
                 user-id (biff/lookup-id db :user/email-username (str/lower-case (:username message)))
                 sub (biff/lookup db :sub/user user-id :sub.email/from from)
-                sub-id (or (:xt/id sub) :db.id/new-sub)]
+                sub-id (or (:xt/id sub) :db.id/new-sub)
+                first-header (fn [header-name]
+                               (some lib.smtp/decode-header (get-in message [:headers header-name])))]
             {:biff.pipe/next [(lib.pipe/s3 raw-content-key (:raw message) "text/plain")
                               (lib.pipe/s3 parsed-content-key html "text/html")
                               :biff.pipe/tx]
@@ -65,8 +66,7 @@
                                     {:db/doc-type :item/email
                                      :item/ingested-at :db/now
                                      :item/title (:subject message)
-                                     :item/url (some-> (get headers "list-post")
-                                                       first
+                                     :item/url (some-> (first-header "list-post")
                                                        (str/replace #"[<>]" ""))
                                      :item/content-key parsed-content-key
                                      :item/published-at :db/now
@@ -76,8 +76,8 @@
                                      :item/length (count text)
                                      :item.email/sub sub-id
                                      :item.email/raw-content-key raw-content-key
-                                     :item.email/list-unsubscribe (first (get headers "list-unsubscribe"))
-                                     :item.email/list-unsubscribe-post (first (get headers "list-unsubscribe-post"))
+                                     :item.email/list-unsubscribe (first-header "list-unsubscribe")
+                                     :item.email/list-unsubscribe-post (first-header "list-unsubscribe-post")
                                      :item.email/reply-to (some :address (:reply-to message))
                                      :item.email/maybe-confirmation (or (nil? sub) nil)})]
                                   (when-not sub
