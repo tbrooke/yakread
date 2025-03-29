@@ -152,8 +152,17 @@
                               (validate :item/email)))])))
              (into {}))
 
-        rec-items (xt/pull-many db '[*] (mapv :rec/item recs))
-        more-rss-items (filterv :item.rss/feed-url rec-items)
+        rec-items (->> (xt/pull-many db '[*] (mapv :rec/item recs))
+                       (filterv (some-fn :item.rss/feed-url
+                                         :item.email/user
+                                         (comp #{:article} :item/type))))
+        recs (filterv (comp (set (mapv :xt/id rec-items))
+                            :rec/item)
+                      recs)
+        bookmark-items (->> (keys item->bookmarked-at)
+                            (remove (set (mapv :xt/id rec-items)))
+                            (xt/pull-many db '[*]))
+        more-rss-items (filterv :item.rss/feed-url (concat rec-items bookmark-items))
         rss-items (lib.core/distinct-by :xt/id (concat rss-items more-rss-items))
         url->feed (into {}
                         (map (fn [[url feed]]
@@ -170,34 +179,33 @@
                            (distinct
                             (concat (mapv :conn.rss/url rss-conns)
                                     (mapv :item.rss/feed-url rss-items)))))
-        bookmark-items (->> (keys item->bookmarked-at)
-                            (remove (set (mapv :xt/id rec-items)))
-                            (xt/pull-many db '[*]))]
-    (concat
-     (for [item bookmark-items]
-       (validate {:xt/id (uuid-from [:user-item (:xt/id user) (:xt/id item)])
-                  :user-item/user (:xt/id user)
-                  :user-item/item (:xt/id item)
-                  :user-item/bookmarked-at (.toInstant (item->bookmarked-at (:xt/id item)))}
-                 :user-item))
-     (for [item (concat bookmark-items rec-items)
-           :when (= :article (:item/type item))]
-       (-> item
-           (base-update-item :item/direct)
-           (assoc :item/doc-type :item/direct)
-           (validate :item/direct)))
-     [(-> user
-          (base-update :user)
-          (update-some :user/send-digest-at #(LocalTime/of % 0))
-          (merge (when (:user/suppressed user)
-                   {:user/suppressed-at (.toInstant #inst "2025")})
-                 (when-some [email-username (:conn.email/username
-                                             (biff/lookup db
-                                                          :conn/user (:xt/id user)
-                                                          :conn/singleton-type :email))]
-                   {:user/email-username email-username}))
-          (validate :user))]
-     (vals url->feed)
+
+        all-docs
+        (concat
+         (for [item bookmark-items]
+           (validate {:xt/id (uuid-from [:user-item (:xt/id user) (:xt/id item)])
+                      :user-item/user (:xt/id user)
+                      :user-item/item (:xt/id item)
+                      :user-item/bookmarked-at (.toInstant (item->bookmarked-at (:xt/id item)))}
+                     :user-item))
+         (for [item (concat bookmark-items rec-items)
+               :when (= :article (:item/type item))]
+           (-> item
+               (base-update-item :item/direct)
+               (assoc :item/doc-type :item/direct)
+               (validate :item/direct)))
+         [(-> user
+              (base-update :user)
+              (update-some :user/send-digest-at #(LocalTime/of % 0))
+              (merge (when (:user/suppressed user)
+                       {:user/suppressed-at (.toInstant #inst "2025")})
+                     (when-some [email-username (:conn.email/username
+                                                 (biff/lookup db
+                                                              :conn/user (:xt/id user)
+                                                              :conn/singleton-type :email))]
+                       {:user/email-username email-username}))
+              (validate :user))]
+         (vals url->feed)
      (for [conn rss-conns]
        (-> conn
            (base-update :sub/feed)
@@ -245,7 +253,21 @@
      (for [ad-credit ad-credits]
        (-> ad-credit
            (base-update :ad.credit)
-           (validate :ad.credit))))))
+           (validate :ad.credit))))
+
+        invalid-user-items (->> all-docs
+                                (filterv :user-item/item)
+                                (remove (comp (set (mapv :xt/id all-docs))
+                                              :user-item/item)))]
+    (when (not-empty invalid-user-items)
+      (throw (ex-info "some user-items' items weren't imported"
+                      {:n (count invalid-user-items)
+                       :user-items (take 10 (shuffle invalid-user-items))
+                       :items (->> invalid-user-items
+                                   shuffle
+                                   (take 10)
+                                   (mapv #(xt/entity db (:user-item/item %))))})))
+    all-docs))
 
 (defn unimported-user-docs [from-db to-db email]
   (->> (all-user-docs from-db email)
@@ -288,16 +310,21 @@
   (def to-node (:biff.xtdb/node @com.yakread/system))
 
   (with-open [from-node (open-from-node)]
-    (import-user-docs! from-node to-node ".."))
+    (import-user-docs! from-node to-node "..."))
 
-  (import-ad-users! from-node to-node)
+  (with-open [from-node (open-from-node)]
+    (import-ad-users! from-node to-node))
 
   (.close from-node)
 
-  (with-open [from-node (open-from-node)]
-    (->> (all-user-docs (xt/db from-node) "...")
-         shuffle
-         (take 10)
-         time))
+  (try
+    (with-open [from-node (open-from-node)]
+      (->> (all-user-docs (xt/db from-node) "...")
+           shuffle
+           (take 10)
+           time))
+    (catch Exception e
+      (ex-data e)))
+
 
   )
