@@ -190,11 +190,11 @@
                ring-1 ring-inset ring-neut-100
                text-black inter leading-6
                bg-neut-50 disabled:opacity-70]
-             (case type_
-               "file" '["file:py-[11.5px]" file:px-3
-                        file:border-0 focus:outline-tealv-600
-                        file:bg-neut-100
-                        file:text-neut-800 text-neut-600]
+             (if (= type_ "file")
+               '["file:py-[8px]" file:px-3
+                 file:border-0
+                 file:bg-neut-100 file:text-neut-800 text-neut-600
+                 focus:outline-tealv-600]
                '[focus:ring-inset
                  focus:ring-tealv-600
                  py-2])

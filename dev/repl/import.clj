@@ -31,6 +31,8 @@
   (binding [gen/*rnd* (java.util.Random. (hash x))]
     (gen/uuid)))
 
+;; indexer rules:
+;; - items must come before user-items
 (defn all-user-docs [db email]
   (let [rename-keys {:user/subscribed-days :user/digest-days
                      :user/send-time       :user/send-digest-at
@@ -104,7 +106,6 @@
                        :in [[url ...]]
                        :where [[item :item.rss/feed-url url]]}
                      (mapv :conn.rss/url rss-conns))
-        recs (biff/lookup-all db :rec/user (:xt/id user))
         item->bookmarked-at (into {}
                                   (for [bookmark (biff/lookup-all db :bookmark/user (:xt/id user))
                                         item (:bookmark/items bookmark)]
@@ -152,6 +153,9 @@
                               (validate :item/email)))])))
              (into {}))
 
+        recs (->> (biff/lookup-all db :rec/user (:xt/id user))
+                  (sort-by :rec/created-at #(compare %2 %1))
+                  (lib.core/distinct-by :rec/item))
         rec-items (->> (xt/pull-many db '[*] (mapv :rec/item recs))
                        (filterv (some-fn :item.rss/feed-url
                                          :item.email/user
@@ -182,12 +186,6 @@
 
         all-docs
         (concat
-         (for [item bookmark-items]
-           (validate {:xt/id (uuid-from [:user-item (:xt/id user) (:xt/id item)])
-                      :user-item/user (:xt/id user)
-                      :user-item/item (:xt/id item)
-                      :user-item/bookmarked-at (.toInstant (item->bookmarked-at (:xt/id item)))}
-                     :user-item))
          (for [item (concat bookmark-items rec-items)
                :when (= :article (:item/type item))]
            (-> item
@@ -227,6 +225,18 @@
            (update :skip/items set)
            (assoc :skip/clicked #{})
            (validate :skip)))
+     (when ad
+       [(-> ad
+            (base-update :ad)
+            (validate :ad))])
+     (for [ad-click ad-clicks]
+       (-> ad-click
+           (base-update :ad.click)
+           (validate :ad.click)))
+     (for [ad-credit ad-credits]
+       (-> ad-credit
+           (base-update :ad.credit)
+           (validate :ad.credit)))
      (for [{:rec/keys [created-at
                        viewed-at]
             :as rec} recs
@@ -242,31 +252,34 @@
                                (base-update :user-item))]
            :when (not-empty (dissoc user-item :xt/id :user-item/item :user-item/user))]
        (validate user-item :user-item))
-     (when ad
-       [(-> ad
-            (base-update :ad)
-            (validate :ad))])
-     (for [ad-click ad-clicks]
-       (-> ad-click
-           (base-update :ad.click)
-           (validate :ad.click)))
-     (for [ad-credit ad-credits]
-       (-> ad-credit
-           (base-update :ad.credit)
-           (validate :ad.credit))))
+     (for [item bookmark-items]
+       (validate {:xt/id (uuid-from [:user-item (:xt/id user) (:xt/id item)])
+                  :user-item/user (:xt/id user)
+                  :user-item/item (:xt/id item)
+                  :user-item/bookmarked-at (.toInstant (item->bookmarked-at (:xt/id item)))}
+                 :user-item)))
 
-        invalid-user-items (->> all-docs
-                                (filterv :user-item/item)
-                                (remove (comp (set (mapv :xt/id all-docs))
-                                              :user-item/item)))]
-    (when (not-empty invalid-user-items)
+        user-items-missing-item (->> all-docs
+                                     (filterv :user-item/item)
+                                     (remove (comp (set (mapv :xt/id all-docs))
+                                                   :user-item/item)))
+        duplicate-user-items (->> all-docs
+                                  (filterv :user-item/item)
+                                  (group-by (juxt :user-item/user :user-item/item))
+                                  (filter #(< 1 (count (val %)))))
+        ]
+    (when (not-empty user-items-missing-item)
       (throw (ex-info "some user-items' items weren't imported"
-                      {:n (count invalid-user-items)
-                       :user-items (take 10 (shuffle invalid-user-items))
-                       :items (->> invalid-user-items
+                      {:n (count user-items-missing-item)
+                       :user-items (take 10 (shuffle user-items-missing-item))
+                       :items (->> user-items-missing-item
                                    shuffle
                                    (take 10)
                                    (mapv #(xt/entity db (:user-item/item %))))})))
+    (when (not-empty duplicate-user-items)
+      (throw (ex-info "some user-items were duplicated"
+                      {:n (count (mapcat val duplicate-user-items))
+                       :user-items (rand-nth (vals duplicate-user-items))})))
     all-docs))
 
 (defn unimported-user-docs [from-db to-db email]
@@ -305,8 +318,6 @@
 
 (comment
 
-  (def from-node (:biff.xtdb/node (biff/use-xtdb {:biff.xtdb/topology :standalone,
-                                                  :biff.xtdb/dir "storage/export-xtdb-2"})))
   (def to-node (:biff.xtdb/node @com.yakread/system))
 
   (with-open [from-node (open-from-node)]
@@ -315,7 +326,6 @@
   (with-open [from-node (open-from-node)]
     (import-ad-users! from-node to-node))
 
-  (.close from-node)
 
   (try
     (with-open [from-node (open-from-node)]
