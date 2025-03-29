@@ -36,6 +36,28 @@
                                      [user-item :user-item/bookmarked-at]]}
                            id))})
 
+(defresolver unread-bookmarks [{:keys [biff/db]} {:user/keys [bookmarks]}]
+  #::pco{:input [{:user/bookmarks [:item/id
+                                   :item/unread]}]
+         :output [{:user/unread-bookmarks [:item/id]}]}
+  {:user/unread-bookmarks (filterv :item/unread bookmarks)})
+
+(defresolver n-skipped [{:keys [biff/db session]} items]
+  #::pco{:input [:xt/id]
+         :output [:item/n-skipped]
+         :batch? true}
+  (let [id->n-skipped (into {}
+                            (q db
+                               '{:find [item (count skip)]
+                                 :in [user [item ...]]
+                                 :where [[skip :skip/user user]
+                                         [skip :skip/items item]]}
+                               (:uid session)
+                               (mapv :xt/id items)))]
+    (mapv (fn [item]
+            (assoc item :item/n-skipped (get id->n-skipped (:xt/id item) 0)))
+          items)))
+
 (defresolver user-item [{:keys [biff/db session]} items]
   #::pco{:input [:xt/id]
          :output [{:item/user-item [:xt/id]}]
@@ -203,4 +225,6 @@
                sub
                unread
                user-item
-               xt-id]})
+               xt-id
+               n-skipped
+               unread-bookmarks]})

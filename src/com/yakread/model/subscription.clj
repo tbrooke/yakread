@@ -67,6 +67,7 @@
   (when-some [published-at (biff/index-get db :last-published source-id)]
     {:sub/published-at published-at}))
 
+;; TODO experiment with making this batch
 (defresolver items [{:keys [biff/db]} {:sub/keys [source-id doc-type]}]
   {::pco/output [{:sub/items [:xt/id]}]}
   {:sub/items
@@ -167,6 +168,12 @@
                {(:xt/id doc) (when new-doc-read? true)
                 id           (when (not= n-read 0) n-read)}))))))})
 
+(defresolver unread-items [{:keys [sub/items]}]
+  #::pco{:input [{:sub/items [:xt/id
+                              :item/unread]}]
+         :output [{:sub/unread-items [:xt/id]}]}
+  {:sub/unread-items (filterv :item/unread items)})
+
 (def module {:resolvers [user-subs
                          sub-info
                          sub-id->xt-id
@@ -177,6 +184,7 @@
                          items
                          latest-item
                          from-params
-                         params-checked]
+                         params-checked
+                         unread-items]
              :indexes [last-published-index
                        unread-index]})
