@@ -6,6 +6,7 @@
             [clojure.set :as set]
             [com.yakread :as main]
             [com.yakread.smtp :as smtp]
+            [com.yakread.lib.core :as lib.core]
             [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
             [com.yakread.lib.smtp :as lib.smtp]
@@ -97,19 +98,6 @@
                        :where [[conn :conn/user user]
                                [conn :conn.rss/url]]}
                      (:xt/id user))
-        url->feed (into {}
-                        (map (fn [[url feed]]
-                               [url
-                                (-> feed
-                                    (base-update :feed)
-                                    (merge (when (:rss/failed feed)
-                                             {:feed/failed-syncs 1}))
-                                    (validate :feed))]))
-                        (q db
-                           '{:find [url (pull feed [*])]
-                             :in [[url ...]]
-                             :where [[feed :rss/url url]]}
-                           (mapv :conn.rss/url rss-conns)))
         pinned (biff/lookup db :pinned/user (:xt/id user))
         rss-items (q db
                      '{:find (pull item [*])
@@ -140,7 +128,7 @@
         (->> (biff/lookup-all db :item.email/user (:xt/id user))
              (group-by (some-fn :item/author-name :item.email/from-address))
              (mapv (fn [[from items]]
-                     (let [sub-id (uuid-from from)]
+                     (let [sub-id (uuid-from from)] ; TODO pass user ID/email to uuid-from
                        [(-> (merge {:xt/id sub-id
                                     :sub/user (:xt/id user)
                                     :sub/created-at (apply min-key inst-ms (mapv :item/fetched-at items))
@@ -162,8 +150,42 @@
                               (cond->
                                 (not (string? (:item/inferred-feed-url item))) (dissoc :item/feed-url))
                               (validate :item/email)))])))
-             (into {}))]
+             (into {}))
+
+        rec-items (xt/pull-many db '[*] (mapv :rec/item recs))
+        more-rss-items (filterv :item.rss/feed-url rec-items)
+        rss-items (lib.core/distinct-by :xt/id (concat rss-items more-rss-items))
+        url->feed (into {}
+                        (map (fn [[url feed]]
+                               [url
+                                (-> feed
+                                    (base-update :feed)
+                                    (merge (when (:rss/failed feed)
+                                             {:feed/failed-syncs 1}))
+                                    (validate :feed))]))
+                        (q db
+                           '{:find [url (pull feed [*])]
+                             :in [[url ...]]
+                             :where [[feed :rss/url url]]}
+                           (distinct
+                            (concat (mapv :conn.rss/url rss-conns)
+                                    (mapv :item.rss/feed-url rss-items)))))
+        bookmark-items (->> (keys item->bookmarked-at)
+                            (remove (set (mapv :xt/id rec-items)))
+                            (xt/pull-many db '[*]))]
     (concat
+     (for [item bookmark-items]
+       (validate {:xt/id (uuid-from [:user-item (:xt/id user) (:xt/id item)])
+                  :user-item/user (:xt/id user)
+                  :user-item/item (:xt/id item)
+                  :user-item/bookmarked-at (.toInstant (item->bookmarked-at (:xt/id item)))}
+                 :user-item))
+     (for [item (concat bookmark-items rec-items)
+           :when (= :article (:item/type item))]
+       (-> item
+           (base-update-item :item/direct)
+           (assoc :item/doc-type :item/direct)
+           (validate :item/direct)))
      [(-> user
           (base-update :user)
           (update-some :user/send-digest-at #(LocalTime/of % 0))
@@ -237,10 +259,27 @@
         to-db (xt/db to-node)
         docs (unimported-user-docs from-db to-db email)
         batches (partition-all 1000 docs)]
-    (println "Importing" (count batches) "batches")
+    (println "Importing" (count batches) "batches (" (count docs) " docs )")
     (doseq [batch batches]
       (xt/submit-tx to-node (for [doc batch]
                               [::xt/put doc])))))
+
+(defn ad-user-emails [from-db]
+  (sort (q from-db
+           '{:find email
+             :where [[user :user/email email]
+                     [ad :ad/user user]]})))
+
+(defn import-ad-users! [from-node to-node]
+  (doseq [email (ad-user-emails (xt/db from-node))]
+    (println "Importing" email)
+    (import-user-docs! from-node to-node email)
+    (println "Syncing...")
+    (xt/sync to-node)))
+
+(defn open-from-node []
+  (:biff.xtdb/node (biff/use-xtdb {:biff.xtdb/topology :standalone,
+                                   :biff.xtdb/dir "storage/export-xtdb-2"})))
 
 (comment
 
@@ -248,7 +287,17 @@
                                                   :biff.xtdb/dir "storage/export-xtdb-2"})))
   (def to-node (:biff.xtdb/node @com.yakread/system))
 
-  (import-user-docs! from-node to-node ,,,)
+  (with-open [from-node (open-from-node)]
+    (import-user-docs! from-node to-node ".."))
+
+  (import-ad-users! from-node to-node)
 
   (.close from-node)
+
+  (with-open [from-node (open-from-node)]
+    (->> (all-user-docs (xt/db from-node) "...")
+         shuffle
+         (take 10)
+         time))
+
   )

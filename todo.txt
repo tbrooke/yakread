@@ -1,28 +1,24 @@
-for you
-  migrate data
-  algorithm
-  UI
-
-- admin page (if needed for algo)
+- for you page
 - home page/auth
 - not-found page
+- ad page
+- admin page
 - email digests
 - settings
-- pay-what-you-want
+- premium plans
 - redo subs page layout (use tabs)
 - deploy, migrate
 
-- ads
 - generative testing for get routes + resolvers
 - e2e tests
 - share target -- make a pwa/app
 
 misc
+- import referral data
 - better approach to loading indicators/lazy loads
-- include random seed in exception data for reproducibility
 - deal with large values in lib.pipeline exceptions, lib.test examples
 - "column families not opened" error after you remove an index
-- index-get, index-get-many: better error message for nonexistent index id 
+- index-get, index-get-many: better error message for nonexistent index id
 - pathom error messages: make "can't find path for current entity" more specific. e.g. is there _any_ resolver that
   outputs the requested key.
 - see how fulcro's datomic resolvers handle when you query for a ref attr without doing a join -- do they return a full
@@ -45,17 +41,7 @@ sources:
 
 bookmarks
   cluster by domain -- then do same algo as for subs
-
-subscriptions
-  rank subs by affinity/pinned-ness
-    make an index based on user-items/skips
-    for each rank, X% chance of selecting a pinned sub vs. any sub (50%?)
-    make sure affinity decays somehow -- maybe only use last N user-items/skips
-  weighted shuffle subs
-    each sub's weight is the max of (1) 1/9th of all the remaining subs' weight, (2) the next sub's weight
-  for each sub, pick one item
-    rank by publish/ingest date + n skips
-    use same weighted shuffle/sample as for the subs
+    how does that behave if each cluster has only 1 element?
 
 discover
   do... something

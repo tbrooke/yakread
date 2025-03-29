@@ -166,7 +166,7 @@
         [:ad/payment-method ?         :string]
         [:ad/card-details   ?         [:map {:closed true}
                                        [:brand     :string]
-                                       [:last4     :int]
+                                       [:last4     :string]
                                        [:exp_year  :int]
                                        [:exp_month :int]]]]
 

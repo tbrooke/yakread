@@ -37,3 +37,32 @@
   (into {}
         (remove (comp nil? val))
         m))
+
+(defn distinct-by
+  "Returns a lazy sequence of the elements of coll with duplicates removed.
+  Returns a stateful transducer when no collection is provided."
+  {:added "1.0"
+   :static true}
+  ([f]
+   (fn [rf]
+     (let [seen (volatile! #{})]
+       (fn
+         ([] (rf))
+         ([result] (rf result))
+         ([result input]
+          (let [y (f input)]
+            (if (contains? @seen y)
+              result
+              (do (vswap! seen conj y)
+                  (rf result input)))))))))
+  ([f coll]
+   (let [step (fn step [xs seen]
+                (lazy-seq
+                  ((fn [[input :as xs] seen]
+                     (when-let [s (seq xs)]
+                       (let [y (f input)]
+                         (if (contains? seen y)
+                           (recur (rest s) seen)
+                           (cons input (step (rest s) (conj seen y)))))))
+                   xs seen)))]
+     (step coll #{}))))
