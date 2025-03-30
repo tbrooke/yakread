@@ -25,6 +25,7 @@
 - share target -- make a pwa/app
 
 misc
+- check all the pages on mobile
 - make sure links in old emails still work
 - always recommend first post of new subscriptions
 - pathom errors: use ex-cause instead of monkey patching?

@@ -19,6 +19,7 @@
   [com.yakread.model.subscription]
   [com.yakread.model.user]
   [com.yakread.ui-components.item]
+  [com.yakread.ui-components.item.read]
   [com.yakread.ui-components.shell]
   [com.yakread.work.subscription]))
 
@@ -41,5 +42,6 @@
   com.yakread.model.subscription/module
   com.yakread.model.user/module
   com.yakread.ui-components.item/module
+  com.yakread.ui-components.item.read/module
   com.yakread.ui-components.shell/module
   com.yakread.work.subscription/module])

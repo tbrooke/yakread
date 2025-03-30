@@ -5,20 +5,6 @@
             [com.yakread.lib.route :refer [defget defpost-pathom href ?]]
             [com.yakread.lib.ui :as ui]))
 
-(defget read-page-route "/dev/item/:item-id"
-  [:app.shell/app-shell
-   {(? :params/item) [:item/id
-                      :item/title]}]
-  (fn [_ {:keys [app.shell/app-shell]
-          {:item/keys [id title] :as item} :params/item}]
-    (if (nil? item)
-      {:status 303
-       :headers {"Location" (href `page-route)}}
-      (app-shell
-       {:title title}
-       [:div "hello"]
-       #_(ui/lazy-load-spaced (href read-content-route id))))))
-
 (defget page-content-route "/dev/for-you/content"
   [{:session/user
     [{:user/for-you-recs
@@ -30,6 +16,23 @@
        (ui-read-more-card {:on-click-route read-page-route
                            :highlight-unread false
                            :show-author true}))]))
+
+(defget read-page-route "/dev/item/:item-id"
+  [:app.shell/app-shell
+   {(? :params/item) [:item/ui-read-content
+                      :item/id
+                      :item/title]}]
+  (fn [_ {:keys [app.shell/app-shell]
+          {:item/keys [ui-read-content id title] :as item} :params/item}]
+    (if (nil? item)
+      {:status 303
+       :headers {"Location" (href `page-route)}}
+      (app-shell
+       {:title title}
+       (ui-read-content {})
+       [:div.h-10]
+       ;; todo make sure mark-read finishes before this queries
+       [:div#content (ui/lazy-load-spaced (href page-content-route))]))))
 
 (defget page-route "/dev/for-you"
   [:app.shell/app-shell]
