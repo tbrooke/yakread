@@ -1,4 +1,4 @@
-(ns com.yakread.app.shell
+(ns com.yakread.ui-components.shell
   (:require [cheshire.core :as cheshire]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -26,7 +26,7 @@
   #::pco{:input [{(? :user/current) [:user/roles]}]}
   {:app.shell/pages
    (let [route-ns (-> match :data :name namespace)]
-     (->> (cond-> [#:app.shell.page{:route-sym 'com.yakread.app.for-you/page
+     (->> (cond-> [#:app.shell.page{:route-sym 'com.yakread.app.for-you/page-route
                                     :title "For you"
                                     :icon "house"}
                    #:app.shell.page{:route-sym 'com.yakread.app.subscriptions/page-route

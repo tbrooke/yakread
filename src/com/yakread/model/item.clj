@@ -123,11 +123,12 @@
 
 (defresolver from-params [{:keys [biff/db session path-params]} {:keys [params/item-unsafe]}]
   #::pco{:input [{:params/item-unsafe [:xt/id
-                                       {:item/sub [:xt/id
-                                                   :sub/user]}]}]
-         :output [{:params/item [:xt/id
-                                 {:item/sub [:xt/id]}]}]}
-  (when (= (:uid session) (get-in item-unsafe [:item/sub :sub/user :xt/id]))
+                                       {(? :item/sub) [:xt/id
+                                                       :sub/user]}
+                                       {(? :item/user-item) [:xt/id]}]}]
+         :output [{:params/item [:xt/id]}]}
+  (when (or (= (:uid session) (get-in item-unsafe [:item/sub :sub/user :xt/id]))
+            (not-empty (:item/user-item item-unsafe)))
     {:params/item item-unsafe}))
 
 (defresolver item-id [{:keys [xt/id]}]
@@ -143,7 +144,10 @@
   (cond
     ;; TODO actually use s3 when configured
     content-key
-    {:item/content (:body (lib.s3/mock-request #_biff/s3-request ctx {:method "GET" :key (str content-key)}))}
+    {:item/content (:body
+                    (or (biff/catchall
+                         (lib.s3/mock-request ctx {:method "GET" :key (str content-key)}))
+                        (biff/s3-request ctx {:method "GET" :bucket "yakread-content" :key (str content-key)})))}
 
     url
     {:item/content (rum/render-static-markup [:a {:href url} url])}))
@@ -169,54 +173,11 @@
     feed {:item/doc-type :item/feed}
     sub {:item/doc-type :item/email}))
 
-(defn- reading-minutes [n-characters]
-  (max 1 (Math/round (/ n-characters 900.0))))
-
-(defresolver details [{:item/keys [byline
-                                   author-name
-                                   site-name
-                                   url
-                                   published-at
-                                   ingested-at
-                                   length]}]
-  #::pco{:input [(? :item/byline)
-                 (? :item/author-name)
-                 (? :item/site-name)
-                 (? :item/url)
-                 (? :item/published-at)
-                 (? :item/ingested-at)
-                 (? :item/length)]}
-  {:item/details
-   (->> [(some-> (or author-name byline) str/trim not-empty)
-         (some-> url uri/uri :host str/trim not-empty)
-         (let [offset ZoneOffset/UTC ; TODO get timezone for user
-               odt (.atOffset (or published-at ingested-at) offset)
-               same-year (= (.getYear odt)
-                            (.getYear (.atOffset (Instant/now) offset)))
-               formatter (DateTimeFormatter/ofPattern (if same-year
-                                                        "d MMM"
-                                                        "d MMM yyyy"))]
-           (.format odt formatter))
-         (when length
-           (ui/pluralize (reading-minutes length) "minute"))
-         ;; TODO implement this part when we get to the For You page
-         #_(when-some [label ({:bookmark "Bookmarked"
-                               :subscription "Subscribed"
-                               :new-subscription "New subscription"
-                               :ad "Ad"
-                               :discover "Discover"
-                               :current "Continue reading"} type)]
-             [:span.underline label])]
-        (filter some?)
-        (map #(vector :span.inline-block %))
-        (biff/join ui/interpunct))})
-
 (def module
   {:resolvers [user-favorites
                user-bookmarks
                clean-html
                content
-               details
                doc-type
                from-params
                from-params-unsafe

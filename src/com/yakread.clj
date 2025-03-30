@@ -5,37 +5,20 @@
             [clojure.test :as test]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.repl :as tn-repl]
+            [clojure.java.io :as io]
             [com.biffweb :as biff]
+            [com.yakread.modules :as modules]
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.planner :as pcp]
-            [com.yakread.app.admin :as app.admin]
-            [com.yakread.app.api :as app.api]
-            [com.yakread.app.auth :as app.auth]
-            [com.yakread.app.favorites :as app.favorites]
-            [com.yakread.app.favorites.add :as app.favorites.add]
-            [com.yakread.app.for-you :as app.for-you]
-            [com.yakread.app.home :as app.home]
-            [com.yakread.app.read-later :as app.read-later]
-            [com.yakread.app.read-later.add :as app.read-later.add]
-            [com.yakread.app.settings :as app.settings]
-            [com.yakread.app.shell :as app.shell]
-            [com.yakread.app.subscriptions :as app.subs]
-            [com.yakread.app.subscriptions.add :as app.subs.add]
-            [com.yakread.app.subscriptions.view :as app.subs.view]
             [com.yakread.email :as email]
+            [com.yakread.lib.auth :as lib.auth]
             [com.yakread.lib.jetty :as lib.jetty]
             [com.yakread.lib.middleware :as lib.middleware]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
             [com.yakread.lib.smtp :as lib.smtp]
             [com.yakread.lib.ui :as ui]
-            [com.yakread.model.item :as model.item]
-            [com.yakread.model.subscription :as model.sub]
-            [com.yakread.model.user :as model.user]
-            [com.yakread.model.recommend :as model.recommend]
-            [com.yakread.model.schema :as model.schema]
             [com.yakread.smtp :as smtp]
-            [com.yakread.work.subscription :as work.sub]
             [com.yakread.util.biff-staging :as biffs]
             [malli.core :as malli]
             [malli.experimental.time :as malli.t]
@@ -43,43 +26,24 @@
             [malli.registry :as malr]
             [nrepl.cmdline :as nrepl-cmd]
             [reitit.ring :as reitit-ring]
-            [time-literals.read-write :as time-literals])
+            [time-literals.read-write :as time-literals]
+            [clojure.tools.namespace.find :as ns-find])
   (:gen-class))
 
-
 (def modules
-  [app.admin/module
-   app.api/module
-   app.auth/module
-   app.favorites/module
-   app.favorites.add/module
-   app.for-you/module
-   app.home/module
-   app.read-later/module
-   app.read-later.add/module
-   app.settings/module
-   app.shell/module
-   app.subs/module
-   app.subs.add/module
-   app.subs.view/module
-   model.item/module
-   model.sub/module
-   model.user/module
-   model.recommend/module
-   model.schema/module
-   work.sub/module
-   (app.auth/module
-    #:biff.auth{:app-path "/"
-                :email-validator app.auth/email-valid?
-                :link-expire-minutes (* 60 24 7)
-                ;; TODO use router or something
-                :allowed-redirects #{"/"
-                                     "/home"
-                                     "/advertise"
-                                     "/subscriptions/add"
-                                     "/read-later/add"
-                                     "/favorites/add"
-                                     "/dev/subscriptions/add"}})])
+  (concat modules/modules
+          [(lib.auth/module
+            #:biff.auth{:app-path "/"
+                        :email-validator lib.auth/email-valid?
+                        :link-expire-minutes (* 60 24 7)
+                        ;; TODO use router or something
+                        :allowed-redirects #{"/"
+                                             "/home"
+                                             "/advertise"
+                                             "/subscriptions/add"
+                                             "/read-later/add"
+                                             "/favorites/add"
+                                             "/dev/subscriptions/add"}})]))
 
 (def router (reitit-ring/router
              [["" {:middleware lib.middleware/default-site-middleware}
@@ -100,6 +64,12 @@
 
 (defn on-save [sys]
   (biff/add-libs)
+  (biffs/generate-modules-file!
+   {:output-file "src/com/yakread/modules.clj"
+    :search-dirs ["src/com/yakread/app"
+                  "src/com/yakread/model"
+                  "src/com/yakread/ui_components"
+                  "src/com/yakread/work"]})
   (when-not (:clojure.tools.namespace.reload/error (biff/eval-files! sys))
     (generate-assets! sys)
     (test/run-all-tests #"com.yakread.*-test")

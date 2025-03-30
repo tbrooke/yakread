@@ -1,5 +1,7 @@
 - for you page
-  - sub & bookmark items
+  - read item
+  - reading history
+  - continue reading card
 - home page/auth
 - not-found page
 - discover recs
@@ -11,6 +13,7 @@
   - admin page
   - import referral data
 - make recommendations fast
+- continue reading thing
 - email digests
 - settings
 - premium plans
@@ -22,6 +25,8 @@
 - share target -- make a pwa/app
 
 misc
+- make sure links in old emails still work
+- always recommend first post of new subscriptions
 - pathom errors: use ex-cause instead of monkey patching?
 - better approach to loading indicators/lazy loads
 - deal with large values in lib.pipeline exceptions, lib.test examples

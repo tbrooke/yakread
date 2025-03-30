@@ -1,4 +1,4 @@
-(ns com.yakread.app.auth
+(ns com.yakread.lib.auth
   (:require [com.biffweb :as biff]
             [clj-http.client :as http]
             [com.yakread.util :as util]

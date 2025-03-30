@@ -27,6 +27,10 @@
  :biff.s3/origin "https://nyc3.digitaloceanspaces.com"
  :biff.s3/access-key "DO00YP8ZPFEDAV32RH6W"
  :biff.s3/secret-key #biff/secret S3_SECRET_KEY
+ ;; buckets:
+ ;; - yakread: advertising image uploads
+ ;; - yakread-content: parsed/processed html content
+ ;; - yakread-emails: raw emails
  :biff.s3/bucket "yakread"
  :biff.s3/edge "https://yakread.nyc3.cdn.digitaloceanspaces.com"
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY

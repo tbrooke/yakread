@@ -55,3 +55,12 @@
                    (biff/catchall (biff/parse-date d fmt))))
            first
            (.toInstant)))
+
+(defn clean-string [s]
+  (str/replace (apply str (remove #{\newline
+                                    (char 65279)
+                                    (char 847)
+                                    (char 8199)}
+                                  s))
+               #"\s+"
+               " "))

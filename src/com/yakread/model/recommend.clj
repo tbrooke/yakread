@@ -122,7 +122,7 @@
                    (->> unread-items
                         rank-by-freshness
                         first)))]
-     (take n-sub-bookmark-recs items))})
+     (vec (take n-sub-bookmark-recs items)))})
 
 (defresolver bookmark-recs [ctx {:user/keys [unread-bookmarks]}]
   #::pco{:input [{:user/unread-bookmarks [:item/id
@@ -133,7 +133,8 @@
   {:user/bookmark-recs (->> unread-bookmarks
                             rank-by-freshness
                             (lib.core/distinct-by (some-fn (comp :host uri/uri :item/url) :item/id))
-                            (take n-sub-bookmark-recs))})
+                            (take n-sub-bookmark-recs)
+                            vec)})
 
 (defn- pick-by-skipped [a-items b-items]
   ((fn step [a-items b-items]
@@ -169,10 +170,11 @@
          :output [{:user/for-you-recs [:item/id
                                        :item/rec-type]}]}
   {:user/for-you-recs (->> (pick-by-skipped
-                            (map #(assoc % :item/rec-type :read-later) bookmark-recs)
-                            (map #(assoc % :item/rec-type :sub) sub-recs))
+                            (map #(assoc % :item/rec-type :item.rec-type/bookmark) bookmark-recs)
+                            (map #(assoc % :item/rec-type :item.rec-type/subscription) sub-recs))
                            (lib.core/distinct-by :item/id)
-                           (take n-sub-bookmark-recs))})
+                           (take n-sub-bookmark-recs)
+                           vec)})
 
 (def module
   {:resolvers [sub-affinity

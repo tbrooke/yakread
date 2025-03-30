@@ -3,11 +3,12 @@
             [cheshire.core :as cheshire]
             [com.biffweb :as biff :refer [<<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+            [com.yakread.lib.content :as lib.content]
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
+            [com.yakread.lib.route :refer [defget defpost-pathom href ?]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.ui :as ui]
             [com.yakread.routes :as routes]
@@ -210,14 +211,14 @@
 (defget read-content-route "/dev/sub-item/:item-id/content"
   [{(? :params/item) [:item/id
                       :item/doc-type
+                      :item/ui-details
                       (? :item/url)
                       (? :item/title)
                       (? :item/clean-html)
-                      (? :item/details)
                       {:item/sub [:sub/id
                                   :sub/title]}
                       :item/button-bar]}]
-  (fn [_ {{:item/keys [id url details doc-type title sub clean-html button-bar]
+  (fn [_ {{:item/keys [id url ui-details doc-type title sub clean-html button-bar]
            :as item} :params/item}]
     (when item
       [:<>
@@ -237,7 +238,7 @@
                         flex
                         justify-between
                         gap-6]}
-         [:div details]
+         [:div (ui-details {:show-author true})]
          (when url
            [:a {:class '[underline
                          whitespace-nowrap
@@ -286,7 +287,7 @@
                       {:item/sub [:sub/id
                                   :sub/title]}]}]
   (fn [_ {:keys [app.shell/app-shell]
-          {:item/keys [id title sub content] :as item} :params/item}]
+          {:item/keys [id title sub] :as item} :params/item}]
     (if (nil? item)
       {:status 303
        :headers {"Location" (href routes/subs-page)}}
@@ -294,36 +295,12 @@
        {:title title}
        (ui/lazy-load-spaced (href read-content-route id))))))
 
-(defn- clean-string [s]
-  (str/replace (apply str (remove #{\newline
-                                    (char 65279)
-                                    (char 847)
-                                    (char 8199)}
-                                  s))
-               #"\s+"
-               " "))
-
 (defget page-content-route "/dev/subscription/:sub-id/content"
   [{:params/sub [:sub/id
                  :sub/title
                  {:sub/items
-                  [:item/id
-                   :item/unread
-                   :item/details
-                   (? :item/title)
-                   (? :item/image-url)
-                   (? :item/author-name)
-                   (? :item/byline)
-                   (? :item/excerpt)
-                   (? :item/fetched-at)
-                   (? :item/length)
-                   (? :item/published-at)
-                   (? :item/site-name)
-                   (? :item/url)]}]}
-   {:user/current [(? :user/use-original-links)]}]
-  (fn [_ {:keys [app.shell/app-shell]
-          {:keys [user/use-original-links]} :user/current
-          {:sub/keys [id title items]} :params/sub}]
+                  [:item/ui-read-more-card]}]}]
+  (fn [_ {{:sub/keys [id title items]} :params/sub}]
     [:<>
      [:.flex.gap-4
       {:class '["-mt-4" mb-8]}
@@ -336,64 +313,13 @@
                   :hx-post (href routes/unsubscribe! {:sub/id id})
                   :hx-confirm (ui/confirm-unsub-msg title)}
         "Unsubscribe")]
-     [:div {:class '[flex
-                     flex-col
-                     gap-6
+     [:div {:class '[flex flex-col gap-6
                      max-w-screen-sm]}
-      (for [{:item/keys [id details title excerpt unread image-url url] :as item}
+      (for [{:item/keys [ui-read-more-card]}
             (sort-by :item/published-at #(compare %2 %1) items)]
-        [:a (if (and use-original-links url)
-              {:href url :target "_blank"}
-              {:href (href read-page-route id)})
-         [:div {:class (concat '[bg-white
-                                 hover:bg-neut-50
-                                 p-4
-                                 sm:shadow]
-                               (when unread
-                                 '[max-sm:border-t-4
-                                   sm:border-l-4
-                                   border-tealv-500]))}
-          [:.text-neut-600.text-sm.line-clamp-2
-           details]
-          [:.h-1]
-          [:h3 {:class '[font-bold
-                         text-xl
-                         text-neut-800
-                         leading-tight
-                         line-clamp-2]}
-           title]
-          [:.h-2]
-          [:.flex.gap-3.justify-between
-           [:div
-            (when (not= excerpt "Read more")
-              [:.line-clamp-4.text-neut-600.mb-1
-               {:style {:overflow-wrap "anywhere"}}
-               (clean-string excerpt)])
-            [:div {:class '[text-tealv-600
-                            font-semibold
-                            hover:underline
-                            inline-block]}
-             "Read more."]]
-           (when image-url
-             [:.relative.flex-shrink-0
-              [:img {:src (ui/weserv {:url image-url
-                                      :w 150
-                                      :h 150
-                                      :fit "cover"
-                                      :a "attention"})
-                     :_ "on error remove me"
-                     :class '[rounded
-                              object-cover
-                              object-center
-                              "mt-[6px]"
-                              "w-[5.5rem]"
-                              "h-[5.5rem]"]}]
-              [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
-                     :class '[absolute
-                              inset-x-0
-                              "top-[6px]"
-                              "h-[5.5rem]"
-                              rounded]}]])]]])]]))
+        (ui-read-more-card {:on-click-route read-page-route
+                            :highlight-unread true
+                            :show-author false}))]]))
 
 (defget page-route "/dev/subscription/:sub-id"
   [:app.shell/app-shell
