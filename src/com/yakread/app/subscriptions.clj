@@ -26,10 +26,12 @@
                  {(? :sub/latest-item)
                   [:item/id
                    (? :item.email/list-unsubscribe)
-                   (? :item.email/list-unsubscribe-post)]}]}]
-  (fn [_ {{:sub/keys [id doc-type latest-item] :as sub} :params/sub}]
+                   (? :item.email/list-unsubscribe-post)]}]}
+   (? :params/redirect-url)]
+  (fn [_ {{:sub/keys [id doc-type latest-item] :as sub} :params/sub
+          :keys [params/redirect-url]}]
     (let [base {:status 204
-                :headers {"HX-Location" (href routes/subs-page)}
+                :headers {"HX-Location" (or redirect-url (href routes/subs-page))}
                 :biff.pipe/next [:biff.pipe/tx]
                 :biff.pipe.tx/retry false}]
       (case doc-type

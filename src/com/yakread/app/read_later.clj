@@ -15,7 +15,7 @@
 (defget page-content "/dev/read-later/content"
   [{:session/user
     [{:user/bookmarks [:item/id
-                       :item.view/card
+                       :item/ui-small-card
                        {:item/user-item [:user-item/bookmarked-at]}]}]}]
   (fn [_ {{:user/keys [bookmarks]} :session/user}]
     (if (empty? bookmarks)
@@ -24,7 +24,7 @@
        {:ui/cols 4}
        (->> bookmarks
             (sort-by (comp :user-item/bookmarked-at :item/user-item) #(compare %2 %1))
-            (mapv :item.view/card))))))
+            (mapv :item/ui-small-card))))))
 
 (defget page "/dev/read-later"
   [:app.shell/app-shell (? :user/current)]

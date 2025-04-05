@@ -49,7 +49,8 @@
            :as item} :params/item}]
     (when item
       [:<>
-       (ui-read-content {})
+       (ui-read-content {:leave-item-redirect (href `page-route (get-in item [:item/sub :sub/id]))
+                         :unsubscribe-redirect (href routes/subs-page)})
        [:div.h-10]
        (ui/page-header {:title     (:sub/title sub)
                         :back-href (href routes/subs-page)})
@@ -114,8 +115,4 @@
              page-content-route
              read-page-route
              read-content-route
-             mark-read
-             mark-unread
-             toggle-favorite
-             not-interested
              mark-all-read]]})

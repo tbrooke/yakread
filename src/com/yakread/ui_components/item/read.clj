@@ -3,6 +3,7 @@
             [cheshire.core :as cheshire]
             [com.biffweb :as biff :refer [<<-]]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+            [com.yakread.util.biff-staging :as biffs]
             [com.yakread.lib.content :as lib.content]
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.icons :as lib.icons]
@@ -35,12 +36,11 @@
 
 (defpost-pathom mark-unread
   [{:session/user [:xt/id]}
-   {:params/item [:xt/id
-                  {(? :item/sub) [:xt/id]}]}]
-  (fn [_ {:keys [session/user params/item]}]
+   {:params/item [:xt/id]}
+   :params/redirect-url]
+  (fn [_ {:keys [session/user params/item params/redirect-url]}]
     {:status 204
-     ;; todo make configurable
-     :headers {"HX-Location" (redirect-to-sub (get-in item [:item/sub :xt/id]))}
+     :headers {"HX-Location" redirect-url}
      :biff.pipe/next [:biff.pipe/tx]
      :biff.pipe.tx/input [{:db/doc-type :user-item
                            :db.op/upsert {:user-item/user (:xt/id user)
@@ -75,20 +75,18 @@
                              :user-item/report-reason :db/dissoc}]})))
 
 (defpost-pathom not-interested
-  [{:params/item [{(? :item/sub) [:xt/id]}
-                  {:item/user-item [:xt/id]}]}]
-  (fn [_ {:keys [params/item]}]
-    (let [user-item (:item/user-item item)]
-      {:status 204
-       ;; todo make configurable
-       :headers {"HX-Location" (redirect-to-sub (get-in item [:item/sub :xt/id]))}
-       :biff.pipe/next [:biff.pipe/tx]
-       :biff.pipe.tx/retry false
-       :biff.pipe.tx/input [{:db/doc-type :user-item
-                             :db/op :update
-                             :xt/id (:xt/id user-item)
-                             :user-item/favorited-at :db/dissoc
-                             :user-item/disliked-at :db/now}]})))
+  [{:params/item [{:item/user-item [:xt/id]}]}
+   :params/redirect-url]
+  (fn [_ {:params/keys [item redirect-url]}]
+    {:status 204
+     :headers {"HX-Location" redirect-url}
+     :biff.pipe/next [:biff.pipe/tx]
+     :biff.pipe.tx/retry false
+     :biff.pipe.tx/input [{:db/doc-type :user-item
+                           :db/op :update
+                           :xt/id (get-in item [:item/user-item :xt/id])
+                           :user-item/favorited-at :db/dissoc
+                           :user-item/disliked-at :db/now}]}))
 
 (defn bar-button-icon-label [icon text]
   [:.flex.justify-center
@@ -145,7 +143,8 @@
           (java.net.URLEncoder/encode "UTF-8")
           (str/replace "+" "%20")))
 
-(defresolver button-bar [{:item/keys [id title sub like-button share-button]
+(defresolver button-bar [{:keys [com.yakread/sign-redirect]}
+                         {:item/keys [id title sub like-button share-button]
                           :item.email/keys [reply-to]}]
   #::pco{:input [:item/id
                  :item/like-button
@@ -153,52 +152,56 @@
                  (? :item/share-button)
                  (? :item.email/reply-to)
                  {(? :item/sub) [:sub/id :sub/title]}]}
-  {:item/button-bar
-   [:div {:class '[bg-white
-                   flex
-                   sticky
-                   bottom-0
-                   bg-neut-50]
-          :style {:box-shadow "0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)"}}
-    (when share-button
-      [:.flex-1 share-button])
-    (when reply-to
-      [:.flex-1
-       (bar-button
-        {:ui/icon "reply-regular"
-         :href (str "mailto:" (query-encode reply-to) "?subject=" (query-encode (str "Re: " title)))}
-        "Reply")])
+  {:item/ui-button-bar
+   (fn [{:keys [leave-item-redirect
+                unsubscribe-redirect]}]
+     (let [leave-item-redirect-params (sign-redirect leave-item-redirect)
+           unsubscribe-redirect-params (sign-redirect unsubscribe-redirect)]
+       [:div {:class '[bg-white
+                       flex
+                       sticky
+                       bottom-0
+                       bg-neut-50]
+              :style {:box-shadow "0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)"}}
+        (when share-button
+          [:.flex-1 share-button])
+        (when reply-to
+          [:.flex-1
+           (bar-button
+            {:ui/icon "reply-regular"
+             :href (str "mailto:" (query-encode reply-to) "?subject=" (query-encode (str "Re: " title)))}
+            "Reply")])
 
-    ;;(cond
-    ;;  (some (or item {}) [:item.rss/feed-url :item/inferred-feed-url])
-    ;;  [:.flex-1 (subscribe-button ctx)])
-    [:.flex-1 like-button]
+        ;;(cond
+        ;;  (some (or item {}) [:item.rss/feed-url :item/inferred-feed-url])
+        ;;  [:.flex-1 (subscribe-button ctx)])
+        [:.flex-1 like-button]
 
 
-    (ui/overflow-menu
-     {:ui/direction :up}
-     (ui/overflow-button
-      {:hx-post (href mark-unread {:item/id id})}
-      "Mark unread")
-     (ui/overflow-button
-      {:hx-post (href not-interested {:item/id id})}
-      "Not interested")
-     (when sub
-       (ui/overflow-button
-        {:hx-post (href routes/unsubscribe! {:sub/id (:sub/id sub)})
-         :hx-confirm (ui/confirm-unsub-msg (:sub/title sub))}
-        "Unsubscribe"))
-     ;; TODO report button
-     )]})
+        (ui/overflow-menu
+         {:ui/direction :up}
+         (ui/overflow-button
+          {:hx-post (href mark-unread (merge {:item/id id} leave-item-redirect-params))}
+          "Mark unread")
+         (ui/overflow-button
+          {:hx-post (href not-interested (merge {:item/id id} leave-item-redirect-params))}
+          "Not interested")
+         (when sub
+           (ui/overflow-button
+            {:hx-post (href routes/unsubscribe! (merge {:sub/id (:sub/id sub)} unsubscribe-redirect-params))
+             :hx-confirm (ui/confirm-unsub-msg (:sub/title sub))}
+            "Unsubscribe"))
+         ;; TODO report button
+         )]))})
 
-(defresolver ui-read-content [{:item/keys [id url ui-details doc-type title clean-html button-bar]}]
+(defresolver ui-read-content [{:item/keys [id url ui-details doc-type title clean-html ui-button-bar]}]
   {::pco/input [:item/id
                 :item/doc-type
                 :item/ui-details
                 (? :item/url)
                 (? :item/title)
                 (? :item/clean-html)
-                :item/button-bar]}
+                :item/ui-button-bar]}
   {:item/ui-read-content
    (fn [opts]
      [:div {:_ (str "on load wait 100 ms then call resumePosition(me) then "
@@ -250,7 +253,7 @@
                          prose-neut-900
                          prose-quoteless
                          py-4])}]]
-      button-bar])})
+      (ui-button-bar opts)])})
 
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}

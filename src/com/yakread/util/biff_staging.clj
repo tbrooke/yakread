@@ -1,5 +1,6 @@
 (ns com.yakread.util.biff-staging
-  (:require [clojure.tools.logging :as log]
+  (:require [buddy.core.mac :as mac]
+            [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [clojure.walk :as walk]
             [com.biffweb :as biff]
@@ -102,3 +103,9 @@
                                      [(symbol (namespace sym))]))))
         (println)
         (biff/pprint (list 'def 'modules module-symbols))))))
+
+
+(defn signature [secret s]
+  "Returns the hmac-sha1 as base64"
+  (-> (mac/hash s {:key secret :alg :hmac+sha1})
+      biff/base64-encode))

@@ -13,7 +13,7 @@
     [:div {:class '[flex flex-col gap-6
                     max-w-screen-sm]}
      (for [{:item/keys [ui-read-more-card]} for-you-recs]
-       (ui-read-more-card {:on-click-route read-page-route
+       (ui-read-more-card {:on-click-route `read-page-route
                            :highlight-unread false
                            :show-author true}))]))
 
@@ -29,7 +29,8 @@
        :headers {"Location" (href `page-route)}}
       (app-shell
        {:title title}
-       (ui-read-content {})
+       (ui-read-content {:leave-item-redirect (href `page-route)
+                         :unsubscribe-redirect (href `page-route)})
        [:div.h-10]
        ;; todo make sure mark-read finishes before this queries
        [:div#content (ui/lazy-load-spaced (href page-content-route))]))))

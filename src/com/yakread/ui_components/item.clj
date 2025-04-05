@@ -5,6 +5,7 @@
             [com.yakread.lib.route :refer [href]]
             [com.yakread.lib.ui :as ui]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
+            [com.yakread.routes :as routes]
             [lambdaisland.uri :as uri])
   (:import (java.time Instant ZoneOffset)
            (java.time.format DateTimeFormatter)))
@@ -29,7 +30,8 @@
                  (? :item/length)
                  (? :item/rec-type)]}
   {:item/ui-details
-   (fn [{:keys [show-author]}]
+   (fn [{:keys [show-author show-reading-time]
+         :or {show-reading-time true}}]
      (->> [(when show-author
              (some-> (or author-name byline) str/trim not-empty))
            (some-> url uri/uri :host str/trim not-empty)
@@ -41,7 +43,7 @@
                                                           "d MMM"
                                                           "d MMM yyyy"))]
              (.format odt formatter))
-           (when length
+           (when (and show-reading-time length)
              (ui/pluralize (reading-minutes length) "minute"))
            (when-some [label (case rec-type
                                :item.rec-type/bookmark "Bookmarked"
@@ -123,6 +125,21 @@
                            "h-[5.5rem]"
                            rounded]}]])]]])})
 
+(defresolver small-card [{:item/keys [id title ui-details]}]
+  #::pco{:input [:item/id
+                 (? :item/title)
+                 :item/ui-details]}
+  {:item/ui-small-card
+   [:a {:href (href routes/read-item id)
+        :class '[block
+                 bg-white hover:bg-neut-50
+                 shadow
+                 p-2
+                 text-sm]}
+    [:.font-semibold.mr-6.line-clamp-2 (or (not-empty title) "[no title]")]
+    [:.text-neut-800.mr-6.line-clamp-2 (ui-details {:show-author true :show-reading-time false})]]})
+
 (def module
   {:resolvers [details
-               read-more-card]})
+               read-more-card
+               small-card]})

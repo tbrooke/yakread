@@ -14,6 +14,7 @@
   [com.yakread.app.subscriptions.add]
   [com.yakread.app.subscriptions.view]
   [com.yakread.model.item]
+  [com.yakread.model.params]
   [com.yakread.model.recommend]
   [com.yakread.model.schema]
   [com.yakread.model.subscription]
@@ -37,6 +38,7 @@
   com.yakread.app.subscriptions.add/module
   com.yakread.app.subscriptions.view/module
   com.yakread.model.item/module
+  com.yakread.model.params/module
   com.yakread.model.recommend/module
   com.yakread.model.schema/module
   com.yakread.model.subscription/module

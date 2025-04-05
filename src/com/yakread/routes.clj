@@ -10,3 +10,5 @@
 
 (def bookmarks-page 'com.yakread.app.read-later/page)
 (def add-bookmark-page 'com.yakread.app.read-later.add/page)
+
+(def read-item 'com.yakread.app.for-you/read-page-route)

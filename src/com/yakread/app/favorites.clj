@@ -6,18 +6,6 @@
             [com.yakread.lib.middleware :as lib.mid]
             [com.yakread.routes :as routes]))
 
-;; move somewhere else since this is used in app.read-later too
-(defresolver item-card [{:item/keys [id title details]}]
-  {:item.view/card
-   [:a {:href "" ; TODO go to For You
-        :class '[block
-                 bg-white hover:bg-neut-50
-                 shadow
-                 p-2
-                 text-sm]}
-    [:.font-semibold.mr-6.line-clamp-2 (or (not-empty title) "[no title]")]
-    [:.text-neut-800.mr-6.line-clamp-2 details]]})
-
 (defn- empty-state []
   (ui/empty-page-state {:icons ["star-regular-sharp"]
                         :text "Your starred articles will be saved here."
@@ -27,7 +15,7 @@
 (defget page-content "/dev/favorites/content"
   [{:session/user
     [{:user/favorites [:item/id
-                       :item.view/card
+                       :item/ui-small-card
                        {:item/user-item [:user-item/favorited-at]}]}]}]
   (fn [_ {{:user/keys [favorites]} :session/user}]
     (if (empty? favorites)
@@ -36,7 +24,7 @@
        {:ui/cols 4}
        (->> favorites
             (sort-by (comp :user-item/favorited-at :item/user-item) #(compare %2 %1))
-            (mapv :item.view/card))))))
+            (mapv :item/ui-small-card))))))
 
 (defget page "/dev/favorites"
   [:app.shell/app-shell (? :user/current)]

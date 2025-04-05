@@ -85,7 +85,9 @@
 (def pathom-env (pci/register (concat (mapcat :resolvers modules)
                                       (biffs/pull-resolvers malli-opts))))
 
-(defn merge-context [{:keys [com.yakread/spark-model] :as ctx}]
+(defn merge-context [{:keys [com.yakread/spark-model
+                             biff/jwt-secret]
+                      :as ctx}]
   (let [;snapshots (biff/index-snapshots ctx)
         ]
     (-> ctx
@@ -97,7 +99,10 @@
                 :biff.pipe/global-handlers lib.pipeline/global-handlers
                 ;:biff/db (:biff/db snapshots)
                 ;:biff.index/snapshots snapshots
-                :biff/now (java.time.Instant/now)})
+                :biff/now (java.time.Instant/now)
+                :com.yakread/sign-redirect (fn [url]
+                                             {:redirect url
+                                              :redirect-sig (biffs/signature (jwt-secret) url)})})
         (pcp/with-plan-cache (atom {})))))
 
 (defonce system (atom {}))
