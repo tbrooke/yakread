@@ -1,6 +1,8 @@
 (ns com.yakread.lib.route
   (:require [clojure.string :as str]
             [com.yakread.lib.serialize :as lib.serialize]
+            [com.yakread.util.biff-staging :as biffs]
+            [com.biffweb :as biff]
             [reitit.core :as reitit]
             [com.yakread.lib.core :as lib.core]
             [com.yakread.lib.pathom :as lib.pathom]
@@ -33,6 +35,23 @@
            (when (not-empty query-params)
              (str "?" (uri/map->query-string {:npy (nippy/freeze-to-string query-params)})))))))
 
+(defn href-safe [{:keys [session biff/jwt-secret]} route & args]
+  (let [path-template (first
+                       (if (symbol? route)
+                         @(resolve route)
+                         route))
+        template-segments (str/split path-template #":[^/]+")
+        {path-args false query-params true} (group-by map? args)
+        path-args (mapv encode-uuid path-args)
+        query-params (apply merge query-params)
+        path (apply str (lib.core/interleave-all template-segments path-args))
+        token (delay (lib.serialize/ewt-encode jwt-secret (assoc query-params
+                                                                 :uid (:uid session)
+                                                                 :path path)))]
+    (str path
+         (when (not-empty query-params)
+           (str "?" (uri/map->query-string {:ewt @token}))))))
+
 (defn action [action-name route & {:as opts}]
   (let [url (href route (:params opts {}))
         opts (-> opts
@@ -59,10 +78,11 @@
 
 (defn wrap-nippy-params [handler]
   (fn
-    ([{:keys [params] :as ctx}]
+    ([{:keys [biff/jwt-secret params] :as ctx}]
      (handler
       (cond-> ctx
-        (:npy params) (update :params merge (nippy/thaw-from-string (:npy params))))))
+        (:npy params) (update :params merge (nippy/thaw-from-string (:npy params)))
+        (:ewt params) (assoc :biff/safe-params (lib.serialize/ewt-decode jwt-secret (:ewt params))))))
     ([ctx handler-id]
      (handler ctx handler-id))))
 

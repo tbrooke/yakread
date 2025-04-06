@@ -104,8 +104,13 @@
         (println)
         (biff/pprint (list 'def 'modules module-symbols))))))
 
+(defn base64-url-encode [ba]
+  (.encodeToString (java.util.Base64/getUrlEncoder) ba))
+
+(defn base64-url-decode [s]
+  (.decode (java.util.Base64/getUrlDecoder) s))
 
 (defn signature [secret s]
   "Returns the hmac-sha1 as base64"
-  (-> (mac/hash s {:key secret :alg :hmac+sha1})
-      biff/base64-encode))
+  (-> (mac/hash s {:key secret :alg :hmac+sha256})
+      base64-url-encode))

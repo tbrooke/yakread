@@ -17,6 +17,7 @@
             [com.yakread.lib.middleware :as lib.middleware]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
+            [com.yakread.lib.route :as lib.route]
             [com.yakread.lib.smtp :as lib.smtp]
             [com.yakread.lib.ui :as ui]
             [com.yakread.smtp :as smtp]
@@ -104,7 +105,8 @@
                 :biff/now (java.time.Instant/now)
                 :com.yakread/sign-redirect (fn [url]
                                              {:redirect url
-                                              :redirect-sig (biffs/signature (jwt-secret) url)})})
+                                              :redirect-sig (biffs/signature (jwt-secret) url)})
+                :biff/href (partial lib.route/href-safe ctx)})
         (pcp/with-plan-cache (atom {})))))
 
 (defonce system (atom {}))

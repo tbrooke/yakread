@@ -1,6 +1,9 @@
 (ns com.yakread.lib.serialize
   (:require [com.biffweb :as biff]
-            [clojure.edn :as edn]))
+            [clojure.string :as str]
+            [clojure.edn :as edn]
+            [taoensso.nippy :as nippy]
+            [com.yakread.util.biff-staging :as biffs]))
 
 (defn edn->base64 [edn]
   (biff/base64-encode (.getBytes (pr-str edn))))
@@ -22,3 +25,12 @@
                     (.decode (str s "=="))
                     (java.nio.ByteBuffer/wrap))]
      (java.util.UUID. (.getLong buffer) (.getLong buffer)))))
+
+(defn ewt-encode [secret params]
+  (let [payload (biffs/base64-url-encode (nippy/freeze params))]
+    (str payload "." (biffs/signature secret payload))))
+
+(defn ewt-decode [secret token]
+  (let [[payload sig] (str/split token #"\." 2)]
+    (when (= sig (biffs/signature secret payload))
+      (nippy/thaw (biffs/base64-url-decode payload)))))

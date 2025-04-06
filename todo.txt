@@ -54,3 +54,28 @@ short-form rss
     otherwise start a new group ID
   when recommending RSS subs, only recommend first item in group
   when viewing RSS items, show all items in the group
+
+
+things to record when an item is clicked on
+
+  record any skipped items
+  for regular items: mark it as read
+  for ads: ad.click document
+
+  in all cases, click should load a new page which then triggers a post request(s) on load (csrf/automated GETs)
+  when clicking from app: the read item page does the trigger
+    unless use-original-links is set: then use intermediate page
+  when clicking from email: an intermediate page does the trigger
+    post handler uses signature for auth. then:
+      if use-original-links is set: redirect to original url
+      else if user not logged in: redirect to sign-in page (then redirect to read item page)
+      else: redirect to read item page
+
+  maybe we should always use an intermediate page?
+
+  intermediate page:
+    input:
+      session UID or signature (for all params)
+      skips
+      item ID / ad ID
+
