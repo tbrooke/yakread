@@ -9,6 +9,7 @@
             [com.biffweb :as biff]
             [com.yakread.modules :as modules]
             [com.wsscode.pathom3.connect.indexes :as pci]
+            [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.connect.planner :as pcp]
             [com.yakread.email :as email]
             [com.yakread.lib.auth :as lib.auth]
@@ -82,8 +83,9 @@
                     (malli.u/schemas)
                     (keep :schema modules))})
 
-(def pathom-env (pci/register (concat (mapcat :resolvers modules)
-                                      (biffs/pull-resolvers malli-opts))))
+(def pathom-env (pci/register (->> (mapcat :resolvers modules)
+                                   (concat (biffs/pull-resolvers malli-opts))
+                                   (mapv lib.pathom/wrap-debug))))
 
 (defn merge-context [{:keys [com.yakread/spark-model
                              biff/jwt-secret]

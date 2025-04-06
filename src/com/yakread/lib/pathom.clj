@@ -41,3 +41,22 @@
      (f request input))))
 
 (def plan-cache-kw :com.wsscode.pathom3.connect.planner/plan-cache*)
+
+(defn wrap-debug [{:keys [config] f :resolve :as resolver}]
+  (let [{:keys [biff/debug ::pco/op-name]} config]
+    (when debug
+      (println ":biff/debug set for" op-name))
+    (cond-> resolver
+      debug
+      (assoc :resolve (fn [ctx params]
+                        (if (or (not (fn? debug))
+                                (debug ctx params))
+                          (do
+                            (println op-name)
+                            (biff/pprint params)
+                            (println "=>")
+                            (let [ret (f (assoc ctx :biff/debug true) params)]
+                              (biff/pprint ret)
+                              (println)
+                              ret))
+                          (f ctx params)))))))

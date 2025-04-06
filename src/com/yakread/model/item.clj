@@ -90,29 +90,76 @@
                                (keep :item/feed-url items)))]
     (vec
      (for [{:keys [item.feed/feed item/feed-url] :as item} items]
-       (merge (when-some [image (or (:feed/image-url feed)
-                                    (url->image feed-url))]
-                {:item/image-url image})
-              item)))))
+       (when-some [image (or (:feed/image-url feed)
+                             (url->image feed-url))]
+         {:item/image-url image})))))
 
 (defresolver unread [{:keys [item/user-item]}]
-  #::pco{:input [{(? :item/user-item) [:user-item/viewed-at
-                                       :user-item/skipped-at
-                                       :user-item/favorited-at
-                                       :user-item/disliked-at
-                                       :user-item/reported-at]}]}
+  #::pco{:input [{(? :item/user-item) [(? :user-item/viewed-at)
+                                       (? :user-item/skipped-at)
+                                       (? :user-item/favorited-at)
+                                       (? :user-item/disliked-at)
+                                       (? :user-item/reported-at)]}]}
   {:item/unread (not (lib.user-item/read? user-item))})
 
+(defresolver history-items [{:keys [biff/db] :as ctx}
+                            {:keys [session/user
+                                    params/paginate-after]}]
+  #::pco{:input [{:session/user [:xt/id]}
+                 (? :params/paginate-after)]
+         :output [{:user/history-items [:xt/id
+                                        {:item/user-item [:xt/id]}]}]}
+  {:user/history-items
+   (let [{:keys [batch-size]
+          :or {batch-size 100}} (pco/params ctx)]
+     (->> (q db
+           '{:find [item user-item (max t)]
+             :keys [item user-item t]
+             :in [user]
+             :where [[user-item :user-item/user user]
+                     [user-item :user-item/item item]
+                     (or [user-item :user-item/viewed-at t]
+                         [user-item :user-item/favorited-at t]
+                         [user-item :user-item/disliked-at t]
+                         [user-item :user-item/reported-at t])]}
+           (:xt/id user))
+        (sort-by (comp inst-ms :t) >)
+        (drop-while (fn [{:keys [item]}]
+                      (and paginate-after
+                           (not= item paginate-after))))
+        (remove (comp #{paginate-after} :item))
+        (take batch-size)
+        (mapv (fn [{:keys [item user-item]}]
+                {:xt/id item
+                 :item/user-item {:xt/id user-item}}))))})
+
+(defresolver current-item [{:keys [session/user]}]
+  #::pco{:input [{:session/user [{(list :user/history-items {:batch-size 1})
+                                  [:item/id]}]}]
+         :output [{:user/current-item
+                   [:item/id :item/rec-type]}]}
+  (when-some [item-id (-> user :user/history-items first :item/id)]
+    {:user/current-item {:item/id item-id
+                         :item/rec-type :item.rec-type/current}}))
+
+(defresolver source [{:keys [item.email/sub item.feed/feed]}]
+  {::pco/input [{(? :item.email/sub) [:xt/id]}
+                {(? :item.feed/feed) [:xt/id]}]
+   ::pco/output [{:item/source [:xt/id]}]}
+  (when-some [source (or sub feed)]
+    {:item/source source}))
+
 (defresolver sub [{:keys [biff/db session]} {:keys [item/id item.email/sub item.feed/feed]}]
-  #::pco{:input [:item/id
-                 (? :item.email/sub)
-                 (? :item.feed/feed)]
-         :output [{:item/sub [:xt/id]}]}
+  {::pco/input [:item/id
+                {(? :item.email/sub) [:xt/id]}
+                {(? :item.feed/feed) [:xt/id]}]
+   ::pco/output [{:item/sub [:xt/id]}]}
   (when-some [sub (or sub
-                      (some->> (biff/lookup-id db
-                                               :sub/user (:uid session)
-                                               :sub.feed/feed (:xt/id feed))
-                               (hash-map :xt/id)))]
+                      (when feed
+                        (some->> (biff/lookup-id db
+                                                 :sub/user (:uid session)
+                                                 :sub.feed/feed (:xt/id feed))
+                                 (hash-map :xt/id))))]
     {:item/sub sub}))
 
 (defresolver from-params-unsafe [{:keys [path-params params]} _]
@@ -166,8 +213,8 @@
 
 (defresolver doc-type [{:keys [item.feed/feed
                                item.email/sub]}]
-  #::pco{:input [(? :item.feed/feed)
-                 (? :item.email/sub)]
+  #::pco{:input [{(? :item.feed/feed) [:xt/id]}
+                 {(? :item.email/sub) [:xt/id]}]
          :output [:item/doc-type]}
   (cond
     feed {:item/doc-type :item/feed}
@@ -188,4 +235,7 @@
                user-item
                xt-id
                n-skipped
-               unread-bookmarks]})
+               unread-bookmarks
+               history-items
+               current-item
+               source]})

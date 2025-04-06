@@ -6,6 +6,7 @@
   [com.yakread.app.favorites]
   [com.yakread.app.favorites.add]
   [com.yakread.app.for-you]
+  [com.yakread.app.for-you.history]
   [com.yakread.app.home]
   [com.yakread.app.read-later]
   [com.yakread.app.read-later.add]
@@ -13,10 +14,12 @@
   [com.yakread.app.subscriptions]
   [com.yakread.app.subscriptions.add]
   [com.yakread.app.subscriptions.view]
+  [com.yakread.model.feed]
   [com.yakread.model.item]
   [com.yakread.model.params]
   [com.yakread.model.recommend]
   [com.yakread.model.schema]
+  [com.yakread.model.source]
   [com.yakread.model.subscription]
   [com.yakread.model.user]
   [com.yakread.ui-components.item]
@@ -30,6 +33,7 @@
   com.yakread.app.favorites/module
   com.yakread.app.favorites.add/module
   com.yakread.app.for-you/module
+  com.yakread.app.for-you.history/module
   com.yakread.app.home/module
   com.yakread.app.read-later/module
   com.yakread.app.read-later.add/module
@@ -37,10 +41,12 @@
   com.yakread.app.subscriptions/module
   com.yakread.app.subscriptions.add/module
   com.yakread.app.subscriptions.view/module
+  com.yakread.model.feed/module
   com.yakread.model.item/module
   com.yakread.model.params/module
   com.yakread.model.recommend/module
   com.yakread.model.schema/module
+  com.yakread.model.source/module
   com.yakread.model.subscription/module
   com.yakread.model.user/module
   com.yakread.ui-components.item/module

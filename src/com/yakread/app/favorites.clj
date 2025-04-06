@@ -41,5 +41,4 @@
 (def module
   {:routes [page
             ["" {:middleware [lib.mid/wrap-signed-in]}
-             page-content]]
-   :resolvers [item-card]})
+             page-content]]})

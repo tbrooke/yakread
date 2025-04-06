@@ -30,11 +30,9 @@
 (defresolver email-title [{:keys [sub.email/from]}]
   {:sub/title (str/replace from #"\s<.*>" "")})
 
-(defresolver feed-title [{:keys [sub.feed/feed]}]
-  #::pco{:input [{:sub.feed/feed [:feed/url
-                                  (? :feed/title)]}]}
-  {:sub/title (or (:feed/title feed)
-                  (:feed/url feed))})
+(defresolver feed-sub-title [{:keys [sub.feed/feed]}]
+  #::pco{:input [{:sub.feed/feed [:feed/title]}]}
+  {:sub/title (:feed/title feed)})
 
 (defresolver sub-id->xt-id [{:keys [sub/id]}]
   {:xt/id id})
@@ -178,7 +176,7 @@
                          sub-info
                          sub-id->xt-id
                          email-title
-                         feed-title
+                         feed-sub-title
                          unread
                          published-at
                          items

@@ -8,5 +8,11 @@
                (= redirect-sig (some-> redirect sign-redirect :redirect-sig)))
       {:params/redirect-url redirect})))
 
+(defresolver paginate-after [{:keys [params]} _]
+  #::pco{:output [:params/paginate-after]}
+  (when (uuid? (:after params))
+    {:params/paginate-after (:after params)}))
+
 (def module
-  {:resolvers [redirect-url]})
+  {:resolvers [redirect-url
+               paginate-after]})

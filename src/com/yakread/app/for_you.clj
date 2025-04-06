@@ -1,5 +1,6 @@
 (ns com.yakread.app.for-you
   (:require [com.biffweb :as biff]
+            [com.yakread.routes :as routes]
             [com.yakread.lib.content :as lib.content]
             [com.yakread.lib.middleware :as lib.mid]
             [com.yakread.lib.route :refer [defget defpost-pathom href ?]]
@@ -7,11 +8,22 @@
 
 (defget page-content-route "/dev/for-you/content"
   [{:session/user
-    [{:user/for-you-recs
+    [{(? :user/current-item)
+      [:item/ui-read-more-card]}
+     {:user/for-you-recs
       [:item/ui-read-more-card]}]}]
-  (fn [_ {{:user/keys [for-you-recs]} :session/user}]
+  (fn [_ {{:user/keys [current-item for-you-recs]} :session/user}]
     [:div {:class '[flex flex-col gap-6
                     max-w-screen-sm]}
+     (when-some [{:keys [item/ui-read-more-card]} current-item]
+       [:div
+        (ui-read-more-card {:on-click-route `read-page-route
+                            :highlight-unread false
+                            :show-author true})
+        [:.h-5.sm:h-4]
+        [:div.text-center
+         [:a.underline {:href (href routes/history)}
+          "View reading  history"]]])
      (for [{:item/keys [ui-read-more-card]} for-you-recs]
        (ui-read-more-card {:on-click-route `read-page-route
                            :highlight-unread false

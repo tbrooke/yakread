@@ -13,28 +13,36 @@
 (defn- reading-minutes [n-characters]
   (max 1 (Math/round (/ n-characters 900.0))))
 
-(defresolver details [ctx {:item/keys [byline
+(defresolver details [ctx {:item/keys [doc-type
+                                       byline
                                        author-name
                                        site-name
                                        url
                                        published-at
                                        ingested-at
                                        length
-                                       rec-type]}]
-  #::pco{:input [(? :item/byline)
-                 (? :item/author-name)
-                 (? :item/site-name)
-                 (? :item/url)
-                 (? :item/published-at)
-                 (? :item/ingested-at)
-                 (? :item/length)
-                 (? :item/rec-type)]}
+                                       rec-type
+                                       source]
+                           :as params}]
+  {::pco/input [:item/id
+                :item/title
+                :item/ingested-at
+                :item/doc-type
+                (? :item/byline)
+                (? :item/author-name)
+                (? :item/site-name)
+                (? :item/url)
+                (? :item/published-at)
+                (? :item/length)
+                (? :item/rec-type)
+                {(? :item/source) [:source/title]}]}
   {:item/ui-details
    (fn [{:keys [show-author show-reading-time]
          :or {show-reading-time true}}]
      (->> [(when show-author
-             (some-> (or author-name byline) str/trim not-empty))
-           (some-> url uri/uri :host str/trim not-empty)
+             (some-> (or (:source/title source) author-name byline) str/trim not-empty))
+           (when (= doc-type :item/direct)
+             (some-> url uri/uri :host str/trim not-empty))
            (let [offset ZoneOffset/UTC ; TODO get timezone for user
                  odt (.atOffset (or published-at ingested-at) offset)
                  same-year (= (.getYear odt)

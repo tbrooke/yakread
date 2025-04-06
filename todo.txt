@@ -1,6 +1,6 @@
-- for you page
-  - reading history
-  - continue reading card
+- for you
+    create skip documents
+- add sub: use existing feed doc if there is one
 - home page/auth
 - not-found page
 - discover recs
@@ -24,6 +24,7 @@
 - share target -- make a pwa/app
 
 misc
+- organize resolvers -- group by input entity
 - record clicks in :item/ui-read-more-card
 - check all the pages on mobile
 - make sure links in old emails still work

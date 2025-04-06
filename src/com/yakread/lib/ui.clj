@@ -54,12 +54,15 @@
 
 ;;;; Misc
 
-(defn lazy-load [href]
-  [:.flex.justify-center
-   {:hx-get href
-    :hx-trigger "intersect once"
-    :hx-swap "outerHTML"}
-   [:img.h-10 {:src spinner-gif}]])
+(defn lazy-load
+  ([href] (lazy-load {} href))
+  ([opts href]
+   [:.flex.justify-center
+    (merge {:hx-get href
+            :hx-trigger "intersect once"
+            :hx-swap "outerHTML"}
+           opts)
+    [:img.h-10 {:src spinner-gif}]]))
 
 (defn lazy-load-spaced [href]
   [:<>
@@ -389,19 +392,28 @@
     content]
    [:.grow]])
 
-(defn card-grid [{:ui/keys [cols] :as opts} cards]
-  (let [cnt (count cards)]
-    [:div (dom-opts opts
-                    '["grid grid-cols-1 sm:grid-cols-2"
-                      gap-4]
-                    (case cols
-                      4 "xl:grid-cols-3 2xl:grid-cols-4"
-                      5 "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"))
+(defn card-grid-card [{:keys [index total]} card]
+  [:.yak-card
+   {:class "[&>*]:size-full"
+    :style {:z-index (when (and index total)
+                       (- (+ 10 total) index))}}
+   card])
+
+(defn card-grid* [{:ui/keys [cols] :as opts} children]
+  [:div (dom-opts opts
+                  '["grid grid-cols-1 sm:grid-cols-2"
+                    gap-4]
+                  (case cols
+                    4 "xl:grid-cols-3 2xl:grid-cols-4"
+                    5 "lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"))
+   children])
+
+(defn card-grid [opts cards]
+  (let [total (count cards)]
+    (card-grid*
+     opts
      (for [[i card] (map-indexed vector cards)]
-       [:.yak-card
-        {:class "[&>*]:size-full"
-         :style {:z-index (- (+ 10 cnt) i)}}
-        card])]))
+       (card-grid-card {:index i :total total} card)))))
 
 ;;;; Composites
 
