@@ -1,4 +1,3 @@
-- add sub: use existing feed doc if there is one
 - home page/auth
 - not-found page
 - discover recs

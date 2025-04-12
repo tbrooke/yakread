@@ -91,10 +91,13 @@
      :status 204
      :headers {"HX-Redirect" (href `unsubs-page)}}))
 
-(defresolver sub-card [{:sub/keys [id title unread published-at pinned-at]}]
+(defresolver sub-card [{:sub/keys [id title unread published-at pinned-at]
+                        :keys [sub.feed/feed sub.email/from]}]
   #::pco{:input [:sub/id
                  :sub/title
                  :sub/unread
+                 {(? :sub.feed/feed) [:feed/url]}
+                 (? :sub.email/from)
                  (? :sub/published-at)
                  (? :sub/pinned-at)]}
   {:sub.view/card
@@ -122,7 +125,12 @@
                           '[border-l-4
                             border-tealv-500]))}
      [:.truncate.font-semibold.mr-6 (or (not-empty title) "[no title]")]
-     [:.text-neut-800.mr-6 unread " unread posts"]]]})
+     [:.text-neut-600.mr-6 unread " unread posts"
+      ui/interpunct
+      [:span.underline
+       (cond
+         feed "rss"
+         from "email")]]]]})
 
 (defn- empty-state []
   (ui/empty-page-state {:icons ["envelope-regular-sharp"

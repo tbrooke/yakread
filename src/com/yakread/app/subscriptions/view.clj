@@ -55,7 +55,8 @@
 (defget read-content-route "/dev/sub-item/:item-id/content"
   [{(? :params/item) [:item/ui-read-content
                       {:item/sub [:sub/id
-                                  :sub/title]}]}]
+                                  :sub/title
+                                  (? :sub/subtitle)]}]}]
   (fn [_ {{:item/keys [ui-read-content sub]
            :as item} :params/item}]
     (when item
@@ -64,7 +65,10 @@
                          :unsubscribe-redirect (href routes/subs-page)})
        [:div.h-10]
        (ui/page-header {:title     (:sub/title sub)
-                        :back-href (href routes/subs-page)})
+                        :subtitle  (:sub/subtitle sub)
+                        :back-href (href routes/subs-page)
+                        :no-margin true})
+       [:.h-4]
        [:div#content (ui/lazy-load-spaced (href `page-content-route (:sub/id sub)))]])))
 
 (def read-page-route
@@ -121,7 +125,6 @@
   (fn [_ {{:sub/keys [id title items]} :params/sub}]
     [:<>
      [:.flex.gap-4.max-sm:px-4
-      {:class '["-mt-4" mb-8]}
       (ui/button {:ui/type :secondary
                   :ui/size :small
                   :hx-post (href mark-all-read {:sub/id id})}
@@ -131,6 +134,7 @@
                   :hx-post (href routes/unsubscribe! {:sub/id id})
                   :hx-confirm (ui/confirm-unsub-msg title)}
         "Unsubscribe")]
+     [:.h-6]
      [:div {:class '[flex flex-col gap-6
                      max-w-screen-sm]}
       (for [{:item/keys [ui-read-more-card]}
@@ -142,13 +146,17 @@
 (defget page-route "/dev/subscription/:sub-id"
   [:app.shell/app-shell
    {:params/sub [:sub/id
-                 :sub/title]}]
+                 :sub/title
+                 (? :sub/subtitle)]}]
   (fn [_ {:keys [app.shell/app-shell]
-          {:sub/keys [id title]} :params/sub}]
+          {:sub/keys [id title subtitle]} :params/sub}]
     (app-shell
      {:title title}
      (ui/page-header {:title     title
-                      :back-href (href routes/subs-page)})
+                      :subtitle  subtitle
+                      :back-href (href routes/subs-page)
+                      :no-margin true})
+     [:.h-4]
      [:div#content (ui/lazy-load-spaced (href page-content-route id))])))
 
 (def module

@@ -34,6 +34,27 @@
   #::pco{:input [{:sub.feed/feed [:feed/title]}]}
   {:sub/title (:feed/title feed)})
 
+(defresolver email-subtitle [{:keys [sub.email/latest-item]}]
+  {::pco/input [{:sub.email/latest-item [:item.email/reply-to]}]}
+  {:sub/subtitle (:item.email/reply-to latest-item)})
+
+(defresolver feed-sub-subtitle [{:keys [sub.feed/feed]}]
+  #::pco{:input [{:sub.feed/feed [:feed/url]}]}
+  {:sub/subtitle (:feed/url feed)})
+
+(defresolver latest-email-item [{:keys [biff/db]} {:sub/keys [doc-type id]}]
+  {::pco/output [{:sub.email/latest-item [:item/id]}]}
+  (when (= doc-type :sub/email)
+    {:sub.email/latest-item
+     {:item/id (ffirst (q db
+                          '{:find [item t]
+                            :in [sub]
+                            :order-by [[t :desc]]
+                            :limit 1
+                            :where [[item :item.email/sub sub]
+                                    [item :item/ingested-at t]]}
+                          id))}}))
+
 (defresolver sub-id->xt-id [{:keys [sub/id]}]
   {:xt/id id})
 
@@ -183,6 +204,9 @@
                          latest-item
                          from-params
                          params-checked
-                         unread-items]
+                         unread-items
+                         feed-sub-subtitle
+                         latest-email-item
+                         email-subtitle]
              :indexes [last-published-index
                        unread-index]})

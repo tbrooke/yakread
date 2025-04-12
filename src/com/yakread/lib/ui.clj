@@ -313,8 +313,10 @@
 
 ;;;; Layout
 
-(defn page-header [& {:keys [title add-href back-href actions]}]
+(defn page-header [& {:keys [title subtitle add-href back-href actions no-margin]}]
   [:div.max-sm:px-4
+   {:class (when-not no-margin
+             '[mb-8])}
    (when back-href
      [:a {:href back-href
           :class '[text-neut-600
@@ -329,8 +331,11 @@
                    w-fit]}
       (lib.icons/default chevron-left-regular w-3 h-3)
       "Back"])
-   [:.flex.items-center.mb-8.gap-4
-    [:h2.font-bold.text-2xl title]
+   [:.flex.items-center.gap-4
+    [:div
+     [:h2.font-bold.text-2xl title]
+     (when subtitle
+       [:.break-all subtitle])]
     [:.grow]
     actions
     (when add-href
