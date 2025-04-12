@@ -50,10 +50,10 @@
      {:user/for-you-recs
       [:item/id
        :item/ui-read-more-card]}]}]
-  (fn [{:keys [biff/now]} {{:user/keys [current-item for-you-recs]} :session/user}]
+  (fn [{:keys [biff/now params]} {{:user/keys [current-item for-you-recs]} :session/user}]
     [:div {:class '[flex flex-col gap-6
                     max-w-screen-sm]}
-     (when-some [{:keys [item/ui-read-more-card]} current-item]
+     (when-let [{:keys [item/ui-read-more-card]} (and (:show-continue params) current-item)]
        [:div
         (ui-read-more-card {:on-click-route `read-page-route
                             :highlight-unread false
@@ -74,11 +74,12 @@
   (fn [_ {:keys [app.shell/app-shell]}]
     (app-shell
      {}
-     [:div#content (ui/lazy-load-spaced (href page-content-route))])))
+     [:div#content (ui/lazy-load-spaced (href page-content-route {:show-continue true}))])))
 
 ;; TODO
 ;; - handle ads
 ;; - propagate jwt or something for auth from email (redirect should work even if you're not signed in)
+;; - when coming from email, do redirect-on-load if the user isn't signed in
 (def read-page-route
   ["/dev/item/:item-id"
    {:name ::read-page-route

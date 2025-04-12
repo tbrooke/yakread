@@ -1,5 +1,3 @@
-- for you
-  - don't show 'continue reading' card when viewing an item
 - add sub: use existing feed doc if there is one
 - home page/auth
 - not-found page
@@ -12,23 +10,19 @@
   - admin page
   - import referral data
 - make recommendations fast
-- continue reading thing
 - email digests
 - settings
 - premium plans
 - redo subs page layout (use tabs)
 - deploy, migrate
 
+backlog
 - generative testing for get routes + resolvers
 - e2e tests
 - share target -- make a pwa/app
-
-misc
 - organize resolvers -- group by input entity
-- record clicks in :item/ui-read-more-card
 - check all the pages on mobile
 - make sure links in old emails still work
-- always recommend first post of new subscriptions
 - pathom errors: use ex-cause instead of monkey patching?
 - better approach to loading indicators/lazy loads
 - deal with large values in lib.pipeline exceptions, lib.test examples
@@ -38,6 +32,7 @@ misc
   outputs the requested key.
 - see how fulcro's datomic resolvers handle when you query for a ref attr without doing a join -- do they return a full
   map if another part of the query asks for the whole entity
+- throw an error if you make a resolver that queries a ref attr without a sub query
 - optimize page load speed--e.g. use macros to precompile hiccup?
 - check :item/image-url gets set correctly for feed items
 - maybe include wrap-signed-in as part of defget/defpost
@@ -54,38 +49,3 @@ short-form rss
     otherwise start a new group ID
   when recommending RSS subs, only recommend first item in group
   when viewing RSS items, show all items in the group
-
-
-things to record when an item is clicked on
-
-  record any skipped items
-  for regular items: mark it as read
-  for ads: ad.click document
-
-  in all cases, click should load a new page which then triggers a post request(s) on load (csrf/automated GETs)
-  when clicking from app: the read item page does the trigger
-    unless use-original-links is set: then use intermediate page
-  when clicking from email: an intermediate page does the trigger
-    post handler uses signature for auth. then:
-      if use-original-links is set: redirect to original url
-      else if user not logged in: redirect to sign-in page (then redirect to read item page)
-      else: redirect to read item page
-
-  maybe we should always use an intermediate page?
-
-  intermediate page:
-    input:
-      session UID or signature (for all params)
-      skips
-      item ID / ad ID
-
-EWT pros/cons:
-  minimizes authorization code
-  introduces session management problems: handlers can only assume user had access at the time the token was created
-
-
-
-recording stuff when an item is clicked:
-- viewed at (regular items)
-- ad.click (ads)
-- skips
