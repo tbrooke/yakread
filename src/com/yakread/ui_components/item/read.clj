@@ -18,22 +18,6 @@
             [xtdb.api :as xt]
             [rum.core :as rum]))
 
-(defn- redirect-to-sub [sub-id]
-  (if sub-id
-    (href `page-route sub-id)
-    (href routes/subs-page)))
-
-(defpost-pathom mark-read
-  [{:session/user [:xt/id]}
-   {:params/item [:xt/id]}]
-  (fn [_ {:keys [session/user params/item]}]
-    {:status 200
-     :biff.pipe/next [:biff.pipe/tx]
-     :biff.pipe.tx/input [{:db/doc-type :user-item
-                           :db.op/upsert {:user-item/user (:xt/id user)
-                                          :user-item/item (:xt/id item)}
-                           :user-item/viewed-at [:db/default :db/now]}]}))
-
 (defpost-pathom mark-unread
   [{:session/user [:xt/id]}
    {:params/item [:xt/id]}
@@ -211,9 +195,6 @@
                     "  savePosition(elt); "
                     "});")
             :data-item-id id}
-      [:div {:hx-post (href mark-read {:item/id id})
-             :hx-trigger "load"
-             :hx-swap "outerHTML"}]
       [:div {:class '[text-sm text-neut-800
                       max-sm:mx-4
                       flex justify-between gap-6]}
@@ -257,7 +238,6 @@
 
 (def module
   {:routes [["" {:middleware [lib.middle/wrap-signed-in]}
-             mark-read
              mark-unread
              toggle-favorite
              not-interested]]

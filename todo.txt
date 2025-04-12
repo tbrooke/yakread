@@ -1,5 +1,5 @@
 - for you
-    create skip documents
+  - don't show 'continue reading' card when viewing an item
 - add sub: use existing feed doc if there is one
 - home page/auth
 - not-found page
@@ -79,3 +79,13 @@ things to record when an item is clicked on
       skips
       item ID / ad ID
 
+EWT pros/cons:
+  minimizes authorization code
+  introduces session management problems: handlers can only assume user had access at the time the token was created
+
+
+
+recording stuff when an item is clicked:
+- viewed at (regular items)
+- ad.click (ads)
+- skips

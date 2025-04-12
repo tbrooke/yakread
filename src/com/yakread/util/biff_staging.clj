@@ -114,3 +114,6 @@
   "Returns the hmac-sha1 as base64"
   (-> (mac/hash s {:key secret :alg :hmac+sha256})
       base64-url-encode))
+
+(defn unsafe [& html]
+  {:dangerouslySetInnerHTML {:__html (apply str html)}})

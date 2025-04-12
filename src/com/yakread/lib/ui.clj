@@ -1,6 +1,7 @@
 (ns com.yakread.lib.ui
   (:require [clojure.string :as str]
             [com.biffweb :as biff]
+            [com.yakread.util.biff-staging :as biffs]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.route :as lib.route]
             [lambdaisland.uri :as uri]
@@ -498,3 +499,18 @@
 
 (defn on-error-page [ctx]
   (biff/render [:h1 "TODO"]))
+
+(defn redirect-on-load [{:keys [redirect-url beacon-url]}]
+  [:html
+   [:body
+    [:div#params {:data-redirect-url redirect-url}]
+    (biff/form {:action beacon-url})
+    [:script (biffs/unsafe
+              "params = document.querySelector('#params');"
+              "const form = document.querySelector('form');"
+              "const data = new FormData(form);"
+              "const blob = new Blob([new URLSearchParams([...data])], {"
+              "  type: 'application/x-www-form-urlencoded'"
+              "});"
+              "navigator.sendBeacon(form.action, blob);"
+              "window.location = params.getAttribute('data-redirect-url');")]]])

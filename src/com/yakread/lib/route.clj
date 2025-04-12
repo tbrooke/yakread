@@ -33,7 +33,7 @@
       [path query-params]
       (str path
            (when (not-empty query-params)
-             (str "?" (uri/map->query-string {:npy (nippy/freeze-to-string query-params)})))))))
+             (str "?" (uri/map->query-string {:npy (biffs/base64-url-encode (nippy/freeze query-params))})))))))
 
 (defn href-safe [{:keys [session biff/jwt-secret]} route & args]
   (let [path-template (first
@@ -81,7 +81,7 @@
     ([{:keys [biff/jwt-secret params] :as ctx}]
      (handler
       (cond-> ctx
-        (:npy params) (update :params merge (nippy/thaw-from-string (:npy params)))
+        (:npy params) (update :params merge (nippy/thaw (biffs/base64-url-decode (:npy params))))
         (:ewt params) (assoc :biff/safe-params (lib.serialize/ewt-decode jwt-secret (:ewt params))))))
     ([ctx handler-id]
      (handler ctx handler-id))))

@@ -4,6 +4,7 @@
             [com.wsscode.pathom3.interface.smart-map :as psm]
             [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.connect.runner :as runner]
+            [clojure.data.generators :as gen]
             [com.yakread.lib.error :as lib.error]
             [clojure.tools.logging :as log]
             [xtdb.api :as xt]))
@@ -35,8 +36,12 @@
 (defn handler [query f]
   (fn handler*
     ([request]
-     (lib.error/with-ex-data (lib.error/request-ex-data request)
-       (handler* request (process request query))))
+     (let [extra {:biff/now (java.time.Instant/now)
+                  :biff/seed (long (* (rand) Long/MAX_VALUE))}
+           request (merge request extra)]
+       (binding [gen/*rnd* (java.util.Random. (:biff/seed extra))]
+         (lib.error/with-ex-data (merge (lib.error/request-ex-data request) extra)
+           (handler* request (process request query))))))
     ([request input]
      (f request input))))
 

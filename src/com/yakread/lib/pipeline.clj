@@ -16,6 +16,7 @@
             [taoensso.nippy :as nippy]
             [xtdb.api :as xt]))
 
+;; TODO rename to :biff/now, :biff/seed
 (defn make [& {:as id->handler}]
   (fn execute
     ([ctx handler-id]

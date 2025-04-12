@@ -66,8 +66,7 @@
           (map #(vector :span.inline-block %))
           (biff/join ui/interpunct)))})
 
-(defresolver read-more-card [ctx {:item/keys [id ui-details title excerpt unread image-url url]
-                                  {:user/keys [use-original-links]} :session/user}]
+(defresolver read-more-card [{:item/keys [id ui-details title excerpt unread image-url url]}]
   {::pco/input [:item/id
                 :item/unread
                 :item/ui-details
@@ -80,15 +79,11 @@
                 (? :item/length)
                 (? :item/published-at)
                 (? :item/site-name)
-                (? :item/url)
-                {:session/user
-                 [(? :user/use-original-links)]}]}
+                (? :item/url)]}
   {:item/ui-read-more-card
-   (fn [{:keys [highlight-unread on-click-route show-author]}]
-     [:a (if (and use-original-links url)
-           ;; TODO wrap this so we record the click
-           {:href url :target "_blank"}
-           {:href (href on-click-route id)})
+   (fn [{:keys [highlight-unread on-click-route show-author on-click-params]}]
+     [:a {:href (href on-click-route id (when (not-empty on-click-params)
+                                          on-click-params))}
       [:div {:class (concat '[bg-white hover:bg-neut-50
                               p-4
                               sm:shadow]

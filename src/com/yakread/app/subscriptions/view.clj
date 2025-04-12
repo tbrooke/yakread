@@ -2,13 +2,14 @@
   (:require [clojure.string :as str]
             [cheshire.core :as cheshire]
             [com.biffweb :as biff :refer [<<-]]
+            [com.yakread.util.biff-staging :as biffs]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
             [com.yakread.lib.content :as lib.content]
             [com.yakread.lib.htmx :as lib.htmx]
             [com.yakread.lib.icons :as lib.icons]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.route :refer [defget defpost-pathom href ?]]
+            [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
             [com.yakread.lib.serialize :as lib.serialize]
             [com.yakread.lib.ui :as ui]
             [com.yakread.routes :as routes]
@@ -17,10 +18,20 @@
             [xtdb.api :as xt]
             [rum.core :as rum]))
 
-(defn- redirect-to-sub [sub-id]
-  (if sub-id
-    (href `page-route sub-id)
-    (href routes/subs-page)))
+(defpost-pathom mark-read
+  [{:session/user [:xt/id]}
+   {:params/item [:xt/id]}]
+  (fn [{:keys [biff/db]} {:keys [session/user params/item]}]
+    {:status 204
+     :biff.pipe/next [#_:biff.pipe/tx]
+     :biff.pipe.tx/input (when-not (biff/lookup-id
+                                    db
+                                    :user-item/user (:xt/id user)
+                                    :user-item/item (:xt/id item))
+                           [{:db/doc-type :user-item
+                             :db.op/upsert {:user-item/user (:xt/id user)
+                                            :user-item/item (:xt/id item)}
+                             :user-item/viewed-at :db/now}])}))
 
 (defpost-pathom mark-all-read
   [{:session/user [:xt/id]}
@@ -56,20 +67,51 @@
                         :back-href (href routes/subs-page)})
        [:div#content (ui/lazy-load-spaced (href `page-content-route (:sub/id sub)))]])))
 
-(defget read-page-route "/dev/sub-item/:item-id"
-  [:app.shell/app-shell
-   {(? :params/item) [:item/id
-                      :item/title
-                      {:item/sub [:sub/id
-                                  :sub/title]}]}]
-  (fn [_ {:keys [app.shell/app-shell]
-          {:item/keys [id title sub] :as item} :params/item}]
-    (if (nil? item)
-      {:status 303
-       :headers {"Location" (href routes/subs-page)}}
-      (app-shell
-       {:title title}
-       (ui/lazy-load-spaced (href read-content-route id))))))
+(def read-page-route
+  ["/dev/sub-item/:item-id"
+   {:name ::read-page-route
+    :get
+    (let [record-click-url (fn [item]
+                             (href mark-read {:item/id (:item/id item)}))]
+      (lib.route/wrap-nippy-params
+       (lib.pipe/make
+        :start
+        (lib.pipe/pathom-query [{(? :params/item) [:item/id
+                                                   (? :item/url)]}
+                                {:session/user [(? :user/use-original-links)]}]
+                               :start*)
+
+        :start*
+        (fn [{:keys [biff.pipe.pathom/output]}]
+          (let [{:keys [params/item session/user]} output
+                {:item/keys [id url]} item
+                {:user/keys [use-original-links]} user]
+            (cond
+              (nil? id)
+              {:status 303
+               :headers {"Location" (href routes/subs-page)}}
+
+              (and use-original-links url)
+              (ui/redirect-on-load {:redirect-url url
+                                    :beacon-url (record-click-url item)})
+
+              :else
+              {:biff.pipe/next [:biff.pipe/pathom :render]
+               :biff.pipe.pathom/entity output
+               :biff.pipe.pathom/query [:app.shell/app-shell
+                                        {:params/item [:item/id
+                                                       :item/title
+                                                       {:item/sub [:sub/id
+                                                                   :sub/title]}]}]})))
+
+        :render
+        (fn [{:keys [biff.pipe.pathom/output]}]
+          (let [{:keys [app.shell/app-shell params/item]} output
+                {:item/keys [id title sub]} item]
+            (app-shell
+             {:title title}
+             [:div {:hx-post (record-click-url item) :hx-trigger "load" :hx-swap "outerHTML"}]
+             (ui/lazy-load-spaced (href read-content-route id))))))))}])
 
 (defget page-content-route "/dev/subscription/:sub-id/content"
   [{:params/sub [:sub/id
@@ -115,4 +157,5 @@
              page-content-route
              read-page-route
              read-content-route
+             mark-read
              mark-all-read]]})
