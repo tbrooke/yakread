@@ -53,7 +53,7 @@
               ["" {:middleware [biff/wrap-api-defaults]}
                (keep :api-routes modules)]]))
 
-(def handler (-> (biff/reitit-handler {:router router :on-error ui/on-error-page})
+(def handler (-> (biff/reitit-handler {:router router})
                  biff/wrap-base-defaults
                  #_premium/wrap-stripe-event))
 
@@ -138,7 +138,8 @@
                      lib.pathom/plan-cache-kw (atom {})
                      :biff.smtp/accept? #'smtp/accept?
                      :biff.smtp/deliver #'smtp/deliver*
-                     :biff/components components})
+                     :biff/components components
+                     :biff.middleware/on-error #'ui/on-error})
 
 (defn start []
   (let [new-system (reduce (fn [system component]

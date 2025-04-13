@@ -8,9 +8,6 @@
             [com.yakread.routes :as routes]
             [xtdb.api :as xt]))
 
-;; performance optimization since this is the landing page
-(def footer (:app.shell/footer (ui.shell/footer nil)))
-
 (def home-head
   [[:link {:rel "preconnect" :href "https://fonts.googleapis.com"}]
    [:link {:rel "preconnect" :href "https://fonts.gstatic.com" :crossorigin true}]
@@ -25,16 +22,6 @@
    [:link {:href "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
            :rel "stylesheet"}]
    [:script {:src "https://www.google.com/recaptcha/api.js" :async "async" :defer "defer"}]])
-
-(defn base-page [ctx & body]
-  (biff/base-html
-   (-> {:base/title "Yakread"
-        :base/description "Read stuff that matters."
-        :base/image "https://platypub.sfo3.cdn.digitaloceanspaces.com/270d320a-d9d8-4cdf-bbed-2078ca595b16"
-        :base/lang "en-US"}
-       (merge ctx)
-       (update :base/head conj (ui/base-head)))
-   body))
 
 (defn maybe-error [error-code code->message]
   (when error-code
@@ -58,7 +45,7 @@
    content])
 
 (defn base-signin-page [{:keys [::errors params] :as ctx} & content]
-  (base-page
+  (ui/base-page
    (assoc ctx :base/head signin-head)
    (maybe-error (:error params) errors)
    [:div {:class (concat '[bg-neut-75
@@ -74,7 +61,7 @@
     [:.flex-grow]
     [:.flex-grow]
     [:.sm:h-8.flex-shrink-0]
-    footer
+    (ui/footer {:show-recaptcha-message true})
     [:.h-4]]))
 
 (def signin-button-classes
@@ -303,7 +290,7 @@
                (some->> (:uid session) (xt/entity db)))
         {:status 303
          :headers {"location" (str (href routes/for-you) (when query-string "?") query-string)}}
-        (base-page
+        (ui/base-page
          (assoc ctx :base/head home-head)
          [:.bg-neut-75.grow.flex.flex-col.items-center
           navbar
@@ -316,7 +303,7 @@
           vert-sep
           [:.sm:px-4 testimonial]
           [:.h-6.grow]
-          footer
+          (ui/footer {:show-recaptcha-message true})
           [:.h-4]])))}])
 
 (def link-sent-route
@@ -324,20 +311,15 @@
    {:name ::link-sent-route
     :get
     (fn link-sent [{:keys [params] :as ctx}]
-      (base-page
+      (ui/plain-page
        (assoc ctx :base/title "Sign up | Yakread")
-       [:.bg-neut-900.flex-grow.p-3.flex.flex-col.text-white
-        [:.flex.flex-col.max-w-screen-sm.mx-auto.w-full.flex-grow.text-center
-         [:.flex-grow]
-         [:.text-2xl.font-bold "Check your inbox"]
-         [:.h-3]
-         [:.text-lg
-          (if (and (:email params)
-                   (not (str/includes? (str/lower-case (:email params)) "@yakread.com")))
-            [:<> "We've sent a sign-in link to " (:email params) "."]
-            "We've sent you a sign-in link.")]
-         [:.flex-grow]
-         [:.flex-grow]]]))}])
+       [:.text-2xl.font-bold "Check your inbox"]
+       [:.h-3]
+       [:.text-lg
+        (if (and (:email params)
+                 (not (str/includes? (str/lower-case (:email params)) "@yakread.com")))
+          [:<> "We've sent a sign-in link to " (:email params) "."]
+          "We've sent you a sign-in link.")]))}])
 
 (def module
   {:routes [home-page-route

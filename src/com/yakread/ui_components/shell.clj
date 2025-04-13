@@ -180,39 +180,6 @@
                                    "top-[1px]"
                                    text-neut-300]})]])]]})
 
-(defresolver footer [{current-user :user/current}]
-  #::pco{:input [(? :user/current)]}
-  {:app.shell/footer
-   [:.text-sm.text-center.mt-10.text-neut-600
-    [:div
-     (biff/join
-      ui/interpunct
-      ;; TODO use routes.clj
-      (for [[href label target] [["https://obryant.dev" "About"]
-                                 ["/advertise" "Advertise" :same-tab]
-                                 ["mailto:hello@obryant.dev?subject=Yakread" "Contact"]
-                                 ["/tos/" "Terms of Service"]
-                                 ["/privacy/" "Privacy Policy"]]]
-        [:a.underline {:href href
-                       :target (when-not (= target :same-tab)
-                                 "_blank")}
-         label]))]
-    (when-not current-user
-      [:<>
-       [:.h-3]
-       [:div
-        "This site is protected by reCAPTCHA and the Google "
-        [:a.underline
-         {:href "https://policies.google.com/privacy",
-          :target "_blank"}
-         "Privacy Policy"]
-        " and "
-        [:a.underline
-         {:href "https://policies.google.com/terms",
-          :target "_blank"}
-         "Terms of Service"]
-        " apply."]])]})
-
 (def navbar
   [:div
    [:div {:class '[md:hidden
@@ -249,11 +216,10 @@
          :class class}
         (lib.icons/base icon {:class '[w-6 h-6]})])]]])
 
-(defresolver app-shell [{:app.shell/keys [app-head pages sidebar footer]
+(defresolver app-shell [{:app.shell/keys [app-head pages sidebar]
                          :keys [session/signed-in]}]
   #::pco{:input [:app.shell/app-head
                  :app.shell/sidebar
-                 :app.shell/footer
                  :app.shell/pages
                  :session/signed-in]}
   {:app.shell/app-shell
@@ -285,12 +251,11 @@
                                  '[max-w-screen-sm]))}
           content
           [:.grow]
-          footer]
+          (ui/footer {:show-recaptcha-message (not signed-in)})]
          [:.sm:w-8]])))})
 
 (def module
   {:resolvers [app-shell
                app-head
                pages
-               sidebar
-               footer]})
+               sidebar]})

@@ -1,4 +1,3 @@
-- not-found page
 - discover recs
   - for you page
   - admin page

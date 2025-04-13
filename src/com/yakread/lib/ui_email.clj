@@ -1,4 +1,5 @@
-(ns com.yakread.lib.ui-email)
+(ns com.yakread.lib.ui-email
+  (:require [rum.core :as rum]))
 
 (def address "138 E 12300 S, Unit #654, Draper, UT 84020")
 

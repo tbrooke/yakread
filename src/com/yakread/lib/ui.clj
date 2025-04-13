@@ -10,7 +10,8 @@
             [cheshire.core :as cheshire]
             [clojure.data.generators :as gen]
             [com.yakread.lib.serialize :as lib.serialize]
-            [ring.util.response :as ring-response]))
+            [ring.util.response :as ring-response]
+            [rum.core :as rum]))
 
 ;;;; Utilities
 
@@ -47,6 +48,42 @@
               (apply concat opts))))
 
 ;;;; Misc
+
+(defn footer* [{:keys [dark-mode show-recaptcha-message]}]
+  [:.text-sm.text-center.mt-10
+   {:class (if dark-mode
+             '[text-neut-100]
+             '[text-neut-600])}
+   [:div
+    (biff/join
+     interpunct
+     (for [[href label target] [["https://obryant.dev" "About"]
+                                ;; TODO use routes.clj
+                                ["/advertise" "Advertise" :same-tab]
+                                ["mailto:hello@obryant.dev?subject=Yakread" "Contact"]
+                                ["/tos/" "Terms of Service"]
+                                ["/privacy/" "Privacy Policy"]]]
+       [:a.underline {:href href
+                      :target (when-not (= target :same-tab)
+                                "_blank")}
+        label]))]
+   (when show-recaptcha-message
+     [:<>
+      [:.h-3]
+      [:div
+       "This site is protected by reCAPTCHA and the Google "
+       [:a.underline
+        {:href "https://policies.google.com/privacy",
+         :target "_blank"}
+        "Privacy Policy"]
+       " and "
+       [:a.underline
+        {:href "https://policies.google.com/terms",
+         :target "_blank"}
+        "Terms of Service"]
+       " apply."]])])
+
+(def footer (memoize footer*))
 
 (defn signup-error [params]
   (case (not-empty (:error params))
@@ -538,8 +575,52 @@
    [:.grow]
    [:.grow]])
 
-(defn on-error-page [ctx]
-  (biff/render [:h1 "TODO"]))
+(defn base-page [ctx & body]
+  (biff/base-html
+   (-> {:base/title "Yakread"
+        :base/description "Read stuff that matters."
+        :base/image "https://platypub.sfo3.cdn.digitaloceanspaces.com/270d320a-d9d8-4cdf-bbed-2078ca595b16"
+        :base/lang "en-US"}
+       (merge ctx)
+       (update :base/head conj (base-head)))
+   body))
+
+(defn plain-page [ctx & content]
+  (base-page
+   ctx
+   [:.bg-neut-900.flex-grow.p-3.flex.flex-col.text-white
+    [:.flex.flex-col.max-w-screen-sm.mx-auto.w-full.flex-grow.text-center.text-lg
+     [:.flex-grow]
+     content
+     [:.flex-grow]
+     [:.flex-grow]
+     (footer {:dark-mode true :show-recaptcha-message false})
+     [:.h-4]]]))
+
+(def not-found-html
+  (rum/render-static-markup
+   (plain-page
+    {}
+    [:div.text-white "Page not found. Try the "
+     [:a.underline {:href "/"} "home page"] " instead."])))
+
+(def internal-server-error-html
+  (rum/render-static-markup
+   (plain-page
+    {}
+    [:div
+     "There was an unexpected error. If the problem persists, "
+     [:a.underline {:href "mailto:hello@obryant.dev"} "send me an email"]
+     "."])))
+
+(defn on-error [{:keys [status]}]
+  {:status status
+   :headers {"content-type" "text/html"}
+   :body (case status
+           404 not-found-html
+           500 internal-server-error-html
+           405 "<h1>Method Not Allowed</h1>"
+           406 "<h1>Not Acceptable</h1>")})
 
 (defn redirect-on-load [{:keys [redirect-url beacon-url]}]
   [:html
