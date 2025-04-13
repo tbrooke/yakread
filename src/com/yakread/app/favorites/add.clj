@@ -32,14 +32,6 @@
      {:title "Add favorites"}
      (ui/page-header {:title     "Add favorites"
                       :back-href (href routes/favorites-page)})
-     (when-not user
-       [:div {:class '["max-sm:-mx-4"
-                       mb-6]}
-        (ui/signup-box ctx
-                       {:on-success  (href page)
-                        :on-error    (href page)
-                        :title       nil
-                        :description "Create a Yakread account to save articles to your favorites."})])
      [:fieldset.disabled:opacity-60
       {:disabled (when-not user "disabled")}
       (ui/page-well

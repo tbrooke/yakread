@@ -10,6 +10,10 @@
   (when (:uid session)
     {:session/user {:xt/id (:uid session)}}))
 
+(defresolver signed-in [{:keys [session]} _]
+  #::pco{:output [:session/signed-in]}
+  {:session/signed-in (some? (:uid session))})
+
 ;; TODO switch everything to :session/user
 (defresolver current-user [{:keys [session]} _]
   #::pco{:output [{:user/current [:xt/id]}]}
@@ -36,6 +40,7 @@
   {:xt/id id})
 
 (def module {:resolvers [session-user
+                         signed-in
                          current-user
                          suggested-email-username
                          user-id

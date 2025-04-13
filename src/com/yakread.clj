@@ -11,15 +11,16 @@
             [com.wsscode.pathom3.connect.indexes :as pci]
             [com.wsscode.pathom3.connect.operation :as pco]
             [com.wsscode.pathom3.connect.planner :as pcp]
-            [com.yakread.email :as email]
+            [com.yakread.lib.email :as lib.email]
             [com.yakread.lib.auth :as lib.auth]
             [com.yakread.lib.jetty :as lib.jetty]
             [com.yakread.lib.middleware :as lib.middleware]
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.pipeline :as lib.pipeline]
-            [com.yakread.lib.route :as lib.route]
+            [com.yakread.lib.route :as lib.route :refer [href]]
             [com.yakread.lib.smtp :as lib.smtp]
             [com.yakread.lib.ui :as ui]
+            [com.yakread.routes :as routes]
             [com.yakread.smtp :as smtp]
             [com.yakread.util.biff-staging :as biffs]
             [malli.core :as malli]
@@ -38,14 +39,13 @@
             #:biff.auth{:app-path "/"
                         :email-validator lib.auth/email-valid?
                         :link-expire-minutes (* 60 24 7)
-                        ;; TODO use router or something
                         :allowed-redirects #{"/"
-                                             "/home"
-                                             "/advertise"
-                                             "/subscriptions/add"
-                                             "/read-later/add"
-                                             "/favorites/add"
-                                             "/dev/subscriptions/add"}})]))
+                                             (href routes/for-you)
+                                             (href routes/add-sub-page)
+                                             (href routes/add-bookmark-page)
+                                             (href routes/add-favorite-page)
+                                             ;; TODO use routes.clj
+                                             "/advertise"}})]))
 
 (def router (reitit-ring/router
              [["" {:middleware lib.middleware/default-site-middleware}
@@ -128,7 +128,7 @@
                      :biff/handler #'handler
                      :biff/malli-opts #'malli-opts
                      :biff/router router
-                     :biff/send-email #'email/send-email
+                     :biff/send-email #'lib.email/send-email
                      :biff.beholder/on-save #'on-save
                      :biff.pipe/global-handlers lib.pipeline/global-handlers
                      :biff.xtdb/tx-fns biff/tx-fns

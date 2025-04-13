@@ -74,7 +74,7 @@
     [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
     [:link {:rel "mask-icon", :href "/safari-pinned-tab.svg", :color "#5bbad5"}]
     [:meta {:name "msapplication-TileColor", :content "#da532c"}]
-    [:meta {:name "theme-color", :content "#343a40"}]]})
+    [:meta {:name "theme-color", :content "#222222"}]]})
 
 (def default-metadata
   #:base{:title "Yakread"
@@ -187,7 +187,7 @@
     [:div
      (biff/join
       ui/interpunct
-      ;; TODO use router?
+      ;; TODO use routes.clj
       (for [[href label target] [["https://obryant.dev" "About"]
                                  ["/advertise" "Advertise" :same-tab]
                                  ["mailto:hello@obryant.dev?subject=Yakread" "Contact"]
@@ -249,11 +249,13 @@
          :class class}
         (lib.icons/base icon {:class '[w-6 h-6]})])]]])
 
-(defresolver app-shell [{:app.shell/keys [app-head pages sidebar footer]}]
+(defresolver app-shell [{:app.shell/keys [app-head pages sidebar footer]
+                         :keys [session/signed-in]}]
   #::pco{:input [:app.shell/app-head
                  :app.shell/sidebar
                  :app.shell/footer
-                 :app.shell/pages]}
+                 :app.shell/pages
+                 :session/signed-in]}
   {:app.shell/app-shell
    (let [active-page (first (filterv :app.shell.page/active pages))]
      (fn [{:keys [title wide]} & content]
@@ -262,10 +264,13 @@
             (biff/assoc-some :base/title (str (or title (:app.shell.page/title active-page))
                                               " | Yakread"))
             (update :base/head concat app-head))
+        (when-not signed-in
+          (ui/banner {:ui/kind :success}
+                     [:a.underline {:href "/"} "Create an account"]
+                     " to get the full Yakread Experience™."))
         navbar
         [:.bg-neut-75.grow.flex
-         {:hx-boost "true" ; TODO make sure this still works how we want it to
-          :hx-headers (cheshire/generate-string
+         {:hx-headers (cheshire/generate-string
                        {:x-csrf-token csrf/*anti-forgery-token*})}
          sidebar
          [:.sm:w-8]

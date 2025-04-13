@@ -61,14 +61,6 @@
      {:title "Add bookmarks"}
      (ui/page-header {:title     "Add bookmarks"
                       :back-href (href routes/bookmarks-page)})
-     (when-not user
-       [:div {:class '["max-sm:-mx-4"
-                       mb-6]}
-        (ui/signup-box ctx
-                       {:on-success  (href page)
-                        :on-error    (href page)
-                        :title       nil
-                        :description "Create a Yakread account to bookmark articles."})])
      [:fieldset.disabled:opacity-60
       {:disabled (when-not user "disabled")}
       (ui/page-well

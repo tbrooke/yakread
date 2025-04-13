@@ -1,13 +1,18 @@
 (ns com.yakread.lib.ui
   (:require [clojure.string :as str]
+            [clojure.java.io :as io]
             [com.biffweb :as biff]
             [com.yakread.util.biff-staging :as biffs]
             [com.yakread.lib.icons :as lib.icons]
-            [com.yakread.lib.route :as lib.route]
+            [com.yakread.lib.route :as lib.route :refer [href]]
+            [com.yakread.routes :as routes]
             [lambdaisland.uri :as uri]
             [cheshire.core :as cheshire]
             [clojure.data.generators :as gen]
-            [com.yakread.lib.serialize :as lib.serialize]))
+            [com.yakread.lib.serialize :as lib.serialize]
+            [ring.util.response :as ring-response]))
+
+;;;; Utilities
 
 (def ^:private chars* (mapv char (concat (range (int \a) (inc (int \z)))
                                          (range (int \A) (inc (int \Z))))))
@@ -27,8 +32,6 @@
       (update :class concat (flatten classes))
       (dissoc-ns "ui")))
 
-;;;; Utilities
-
 (def spinner-gif "/img/spinner2.gif")
 
 (def interpunct " · ")
@@ -43,6 +46,8 @@
   (str (apply uri/assoc-query "https://images.weserv.nl/"
               (apply concat opts))))
 
+;;;; Misc
+
 (defn signup-error [params]
   (case (not-empty (:error params))
     nil nil
@@ -53,7 +58,24 @@
                        "If the problem persists, try another address.")
     "There was an error."))
 
-;;;; Misc
+(defn css-path []
+  (if-some [last-modified (some-> (io/resource "public/css/main.css")
+                                  ring-response/resource-data
+                                  :last-modified
+                                  (.getTime))]
+    (str "/css/main.css?t=" last-modified)
+    "/css/main.css"))
+
+(defn base-head []
+  [:<>
+   [:link {:rel "stylesheet" :href (css-path)}]
+   [:link {:rel "manifest", :href "/site.webmanifest?a"}]
+   [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
+   [:link {:rel "icon", :type "image/png", :sizes "32x32", :href "/favicon-32x32.png"}]
+   [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
+   [:link {:rel "mask-icon", :href "/safari-pinned-tab.svg", :color "#5bbad5"}]
+   [:meta {:name "msapplication-TileColor", :content "#da532c"}]
+   [:meta {:name "theme-color", :content "#222222"}]] )
 
 (defn lazy-load
   ([href] (lazy-load {} href))
@@ -85,6 +107,20 @@
                       (= type* :info) "circle-info")]
      (lib.icons/base icon {:class '[w-5 pt-1 flex-shrink-0]}))
    contents])
+
+(defn banner [{:keys [ui/kind] :as opts} & content]
+  [:div (dom-opts opts
+                  '[p-3
+                    border-b
+                    text-neut-800]
+                  (case kind
+                    :success '[bg-tealv-50
+                               border-tealv-100]
+                    :error '[bg-redv-50
+                             border-redv-100]
+                    :warning '[bg-yellv-50
+                               border-yellv-100]))
+   content])
 
 (defn confirm-unsub-msg [title]
   (str "Unsubscribe from "
@@ -203,7 +239,7 @@
                  focus:ring-tealv-600
                  py-2])
              (case size
-               :large '[max-sm:text-sm]
+               :large nil
                '[text-sm]))])
 
 (defn text-input [opts]
@@ -426,7 +462,7 @@
 (defn signup-box [{:keys [recaptcha/site-key
                           params]}
                   {:keys [on-success on-error title description]
-                   :or {on-success "/home"
+                   :or {on-success (href routes/for-you)
                         on-error "/"
                         title "Read stuff that matters."
                         description (str "Get a selection of trending articles in your inbox daily "

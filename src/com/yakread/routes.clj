@@ -14,3 +14,5 @@
 (def read-item         'com.yakread.app.for-you/read-page-route)
 (def for-you           'com.yakread.app.for-you/page-route)
 (def history           'com.yakread.app.for-you.history/page)
+
+(def signin            'com.yakread.app.home/signin-page-route)

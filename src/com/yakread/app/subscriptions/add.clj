@@ -121,15 +121,6 @@
      {:title "Add subscriptions"}
      (ui/page-header {:title     "Add subscriptions"
                       :back-href (href routes/subs-page)})
-     (when-not user
-       [:div {:class '["max-sm:-mx-4"
-                       mb-6]}
-        (ui/signup-box ctx
-                       {:on-success  (href page-route)
-                        :on-error    (href page-route)
-                        :title       nil
-                        :description (str "Create a Yakread account to subscribe to "
-                                          "newsletters and RSS feeds.")})])
      [:fieldset.disabled:opacity-60
       {:disabled (when-not user "disabled")}
       (ui/page-well

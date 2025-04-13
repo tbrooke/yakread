@@ -1,12 +1,6 @@
-(ns com.yakread.render
-  (:require [com.biffweb :as biff]
-            [rum.core :as rum]
-            [clojure.data.xml :as xml]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [lambdaisland.uri :as uri])
-  (:import [org.jsoup Jsoup]
-           [org.jsoup.safety Whitelist]))
+(ns com.yakread.lib.ui-email)
+
+(def address "138 E 12300 S, Unit #654, Draper, UT 84020")
 
 (defn centered [& contents]
   [:table
@@ -100,7 +94,7 @@
                      :style {:text-decoration "underline"
                              :color "#3b3b3b"}}
                  "Unsubscribe"]
-           ". 138 E 12300 S, Unit #654, Draper, UT 84020."]]))]])))
+           ". " address "."]]))]])))
 
 (defn h-space [height]
   [:div {:style {:height height}}])

@@ -1,8 +1,8 @@
-- home page/auth
 - not-found page
 - discover recs
   - for you page
   - admin page
+  - not-signed-in users
 - ads
   - for you page
   - ad page
@@ -16,6 +16,7 @@
 - deploy, migrate
 
 backlog
+- make sure we're setting cache-related headers correctly for resources
 - generative testing for get routes + resolvers
 - e2e tests
 - share target -- make a pwa/app
