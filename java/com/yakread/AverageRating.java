@@ -1,4 +1,4 @@
-package stuff;
+package com.yakread;
 
 import scala.Function1;
 import scala.Tuple2;
@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.List;
 import clojure.lang.PersistentVector;
 
-public class MyFunction1 implements Function1<Tuple2<Integer, List<Rating>>, Object>, Serializable {
+public class AverageRating implements Function1<Tuple2<Integer, List<Rating>>, Object>, Serializable {
     @Override
     public Object apply(Tuple2 tuple) {
         Integer itemIndex = (Integer) tuple._1;
@@ -26,4 +26,4 @@ public class MyFunction1 implements Function1<Tuple2<Integer, List<Rating>>, Obj
     }
 }
 
-// javac --release 17 -cp $(clj -Spath) -d target/classes java/stuff/MyFunction1.java -Xlint:-options
+// javac --release 17 -cp $(clj -Spath) -d target/classes java/com/yakread/AverageRating.java -Xlint:-options

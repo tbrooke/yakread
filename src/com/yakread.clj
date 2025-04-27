@@ -19,6 +19,7 @@
             [com.yakread.lib.pipeline :as lib.pipeline]
             [com.yakread.lib.route :as lib.route :refer [href]]
             [com.yakread.lib.smtp :as lib.smtp]
+            [com.yakread.lib.spark :as lib.spark]
             [com.yakread.lib.ui :as ui]
             [com.yakread.routes :as routes]
             [com.yakread.smtp :as smtp]
@@ -88,7 +89,7 @@
                                    (concat (biffs/pull-resolvers malli-opts))
                                    (mapv lib.pathom/wrap-debug))))
 
-(defn merge-context [{:keys [com.yakread/spark-model
+(defn merge-context [{:keys [yakread/model
                              biff/jwt-secret]
                       :as ctx}]
   (let [;snapshots (biff/index-snapshots ctx)
@@ -96,8 +97,7 @@
     (-> ctx
         (biff/assoc-db)
         (merge pathom-env
-               (when spark-model
-                 (biff/select-ns-as @spark-model nil 'com.yakread.spark))
+               (some-> model deref)
                {:biff/router router
                 :biff.pipe/global-handlers lib.pipeline/global-handlers
                 ;:biff/db (:biff/db snapshots)
@@ -114,6 +114,7 @@
 (def components
   [biff/use-aero-config
    biff/use-xt
+   lib.spark/use-spark
    biff/use-queues
    biff/use-tx-listener
    #_train/use-spark
