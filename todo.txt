@@ -1,4 +1,6 @@
 - discover recs
+  - compile java on startup or something
+  - retrain model every n minutes
   - for you page
   - admin page
   - not-signed-in users
@@ -15,6 +17,7 @@
 - deploy, migrate
 
 backlog
+- make auth module store signed humanity token in session after requesting a sign-in code
 - make sure we're setting cache-related headers correctly for resources
 - generative testing for get routes + resolvers
 - e2e tests

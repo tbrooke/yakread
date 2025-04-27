@@ -31,6 +31,12 @@
   (binding [gen/*rnd* (java.util.Random. (hash x))]
     (gen/uuid)))
 
+(defn truncate-stuff [item]
+  (cond-> item
+    (< 1000 (count (:item/title item))) (update :item/title subs 0 100)
+    (< 1000 (count (:item/image-url item))) (dissoc :item/image-url)
+    (< 1000 (count (:item/url item))) (dissoc :item/url)))
+
 ;; indexer rules:
 ;; - items must come before user-items
 (defn all-user-docs [db email]
@@ -105,7 +111,7 @@
                      '{:find (pull item [*])
                        :in [[url ...]]
                        :where [[item :item.rss/feed-url url]]}
-                     (mapv :conn.rss/url rss-conns))
+                     (keep :conn.rss/url rss-conns))
         item->bookmarked-at (into {}
                                   (for [bookmark (biff/lookup-all db :bookmark/user (:xt/id user))
                                         item (:bookmark/items bookmark)]
@@ -147,9 +153,14 @@
                               (base-update-item :item/email)
                               (update :item.email/raw-content-key parse-uuid)
                               (update-some :item.email/list-unsubscribe lib.smtp/decode-header)
+                              (as-> item
+                                (cond-> item
+                                  (< 5000 (count (:item.email/list-unsubscribe item)))
+                                  (dissoc :item.email/list-unsubscribe)))
                               (merge {:item.email/sub sub-id})
                               (cond->
                                 (not (string? (:item/inferred-feed-url item))) (dissoc :item/feed-url))
+                              truncate-stuff
                               (validate :item/email)))])))
              (into {}))
 
@@ -191,6 +202,7 @@
            (-> item
                (base-update-item :item/direct)
                (assoc :item/doc-type :item/direct)
+               truncate-stuff
                (validate :item/direct)))
          [(-> user
               (base-update :user)
@@ -212,10 +224,13 @@
                   (when-some [feed (url->feed (:conn.rss/url conn))]
                     {:sub.feed/feed (:xt/id feed)}))
            (validate :sub/feed)))
-     (for [item rss-items]
+     (for [item rss-items
+           :let [feed-id (:xt/id (url->feed (:item.rss/feed-url item)))]
+           :when feed-id]
        (-> item
            (base-update-item :item/feed)
-           (merge {:item.feed/feed (:xt/id (url->feed (:item.rss/feed-url item)))})
+           (merge {:item.feed/feed feed-id})
+           truncate-stuff
            (validate :item/feed)))
      (keys sub->email-items)
      (mapcat val sub->email-items)
@@ -244,9 +259,9 @@
                                (merge (when (:rec/skipped rec)
                                         {:user-item/skipped-at created-at})
                                       (when (= (:rec/rating rec) :like)
-                                        {:user-item/favorited-at viewed-at})
+                                        {:user-item/favorited-at (or viewed-at created-at)})
                                       (when (= (:rec/rating rec) :dislike)
-                                        {:user-item/disliked-at viewed-at})
+                                        {:user-item/disliked-at (or viewed-at created-at)})
                                       (when-some [t (item->bookmarked-at (:rec/item rec))]
                                         {:user-item/bookmarked-at t}))
                                (base-update :user-item))]
@@ -267,15 +282,9 @@
                                   (filterv :user-item/item)
                                   (group-by (juxt :user-item/user :user-item/item))
                                   (filter #(< 1 (count (val %)))))
-        ]
+        all-docs (remove (set user-items-missing-item) all-docs)]
     (when (not-empty user-items-missing-item)
-      (throw (ex-info "some user-items' items weren't imported"
-                      {:n (count user-items-missing-item)
-                       :user-items (take 10 (shuffle user-items-missing-item))
-                       :items (->> user-items-missing-item
-                                   shuffle
-                                   (take 10)
-                                   (mapv #(xt/entity db (:user-item/item %))))})))
+      (println "WARNING some user-items' items weren't imported"))
     (when (not-empty duplicate-user-items)
       (throw (ex-info "some user-items were duplicated"
                       {:n (count (mapcat val duplicate-user-items))
@@ -312,9 +321,26 @@
     (println "Syncing...")
     (xt/sync to-node)))
 
+(defn liked-user-emails [from-db]
+  (sort (q from-db
+           '{:find email
+             :where [[rec :rec/rating :like]
+                     [rec :rec/user user]
+                     [user :user/email email]]})))
+
+(defn import-liked-users! [from-node to-node]
+  (let [emails (liked-user-emails (xt/db from-node))]
+    (println "importing" (count emails) "users")
+    (doseq [[i email] (drop 733 (map-indexed vector emails))]
+    (println "Importing" i email)
+    (import-user-docs! from-node to-node email)
+    (println "Syncing...")
+    (xt/sync to-node))))
+
 (defn open-from-node []
   (:biff.xtdb/node (biff/use-xtdb {:biff.xtdb/topology :standalone,
-                                   :biff.xtdb/dir "storage/export-xtdb-2"})))
+                                   :biff.xtdb/dir "storage/export-xtdb-2"
+                                   :biff.xtdb/opts {:xtdb/query-engine {:query-timeout 100000}}})))
 
 (comment
 
@@ -326,6 +352,8 @@
   (with-open [from-node (open-from-node)]
     (import-ad-users! from-node to-node))
 
+  (with-open [from-node (open-from-node)]
+    (import-liked-users! from-node to-node))
 
   (try
     (with-open [from-node (open-from-node)]
