@@ -9,6 +9,9 @@
  :biff.nrepl/port #or [#biff/env NREPL_PORT "7888"]
  :biff.system-properties/clojure.tools.logging.factory "clojure.tools.logging.impl/slf4j-factory"
  :biff.system-properties/user.timezone "UTC"
+ :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.spark "error"
+ :biff.system-properties/org.slf4j.simpleLogger.log.org.sparkproject "error"
+
  :biff.tasks/css-output "target/resources/public/css/main.css"
  :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]
  :biff.tasks/deploy-untracked-files [#ref [:biff.tasks/css-output] "config.env"]

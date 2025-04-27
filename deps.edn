@@ -1,4 +1,4 @@
-{:paths ["src" "resources" "target/resources"]
+{:paths ["src" "resources" "target/resources" "target/classes"]
  :deps {com.biffweb/biff                    {:git/url "https://github.com/jacobobryant/biff"
                                              ;; indexes branch
                                              :git/sha "eb24e187f89ec230c923076cd83d2c19eedf4b1c"}
@@ -18,7 +18,6 @@
         metosin/malli                       {:mvn/version "0.16.3"}
         oauth/oauth.one                     {:mvn/version "0.7.0"}
         org.clojure/clojure                 {:mvn/version "1.12.0"}
-        org.slf4j/slf4j-simple              {:mvn/version "2.0.0-alpha5"}
         org.subethamail/subethasmtp         {:mvn/version "3.1.7"}
         remus/remus                         {:mvn/version "0.2.2"}
         com.taoensso/nippy                  {:mvn/version "3.2.0"}
@@ -29,20 +28,27 @@
         org.jsoup/jsoup                     {:mvn/version "1.11.3"}
         com.stripe/stripe-java              {:mvn/version "22.10.0"}
         cld/cld                             {:mvn/version "0.1.0"}
-        org.apache.spark/spark-core_2.13    {:mvn/version "3.4.0"}
-        org.apache.spark/spark-mllib_2.13   {:mvn/version "3.4.0"}
-        ring/ring-jetty-adapter             {:mvn/version "1.13.0"}}
+        org.apache.spark/spark-core_2.13    {:mvn/version "3.5.5"}
+        org.apache.spark/spark-mllib_2.13   {:mvn/version "3.5.5"}
+        ring/ring-jetty-adapter             {:mvn/version "1.13.0"}
+
+        org.slf4j/slf4j-simple     {:mvn/version "2.0.0-alpha5"}
+        org.slf4j/log4j-over-slf4j {:mvn/version "1.7.36"}
+        org.slf4j/jul-to-slf4j     {:mvn/version "1.7.36"}
+        org.slf4j/jcl-over-slf4j   {:mvn/version "1.7.36"}}
  :aliases
  {:run {:extra-deps {com.biffweb/tasks {:git/url "https://github.com/jacobobryant/biff",
                                         :git/sha "c53c273c7e1a1773a57f9df6750a7c4448e47052"
                                         :deps/root "libs/tasks"}}
         :extra-paths ["dev" "test"]
         :jvm-opts ["--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"
+                   "--add-exports=java.base/sun.security.action=ALL-UNNAMED"
                    "-XX:-OmitStackTraceInFastThrow"
                    "-XX:+CrashOnOutOfMemoryError"
                    "-Dbiff.env.BIFF_PROFILE=dev"]
         :main-opts ["-m" "com.biffweb.task-runner" "tasks/tasks"]}
   :prod {:jvm-opts ["--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"
+                    "--add-exports=java.base/sun.security.action=ALL-UNNAMED"
                     "-XX:-OmitStackTraceInFastThrow"
                     "-XX:+CrashOnOutOfMemoryError"
                     "-Dbiff.env.BIFF_PROFILE=prod"]
