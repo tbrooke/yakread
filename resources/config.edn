@@ -11,6 +11,7 @@
  :biff.system-properties/user.timezone "UTC"
  :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.spark "error"
  :biff.system-properties/org.slf4j.simpleLogger.log.org.sparkproject "error"
+ :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.http.client "error"
 
  :biff.tasks/css-output "target/resources/public/css/main.css"
  :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]

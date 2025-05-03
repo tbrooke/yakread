@@ -66,3 +66,7 @@
                            (cons input (step (rest s) (conj seen y)))))))
                    xs seen)))]
      (step coll #{}))))
+
+(defn every-n-minutes [n]
+  (fn []
+    (iterate #(.plusSeconds % (* 60 n)) (java.time.Instant/now))))

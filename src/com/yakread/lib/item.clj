@@ -11,74 +11,88 @@
 
 (def published-at (some-fn :item/published-at :item/ingested-at))
 
-(defn add-item-pipeline [{:keys [user-item-kvs
-                                 redirect-to]}]
-  (let [success (fn [user-id item-id]
-                  (merge {:biff.pipe/next [:biff.pipe/tx]
-                          :biff.pipe.tx/input [(merge {:db/doc-type :user-item
-                                                       :db.op/upsert {:user-item/user user-id
-                                                                      :user-item/item item-id}}
-                                                      user-item-kvs)]}
-                         (some-> redirect-to (hx-redirect {:added true}))))
-        error (fn []
-                (some-> redirect-to (hx-redirect {:error true})))]
-    {:start
-     (fn [{:keys [biff/db session] {:keys [url]} :params}]
-       (let [url (str/trim url)]
-         (if-some [item-id (biff/lookup-id db :item/url url :item/doc-type :item/direct)]
-           (success (:uid session) item-id)
-           {:biff.pipe/next       [:biff.pipe/http :handle-http]
-            :biff.pipe.http/input {:url url
-                                   :method  :get
-                                   :headers {"User-Agent" "https://yakread.com/"}
-                                   :socket-timeout 5000
-                                   :connection-timeout 5000}
-            :biff.pipe/catch      :biff.pipe/http})))
+(defn add-item-pipeline* [{:keys [get-url on-error on-success]}]
+  {:start
+   (fn [{:keys [biff/db] :as ctx}]
+     (let [url (str/trim (get-url ctx))]
+       (if-some [item-id (biff/lookup-id db :item/url url :item/doc-type :item/direct)]
+         (on-success ctx {:item/id item-id :item/url url})
+         {:biff.pipe/next       [:biff.pipe/http :handle-http]
+          :biff.pipe.http/input {:url url
+                                 :method  :get
+                                 :headers {"User-Agent" "https://yakread.com/"}
+                                 :socket-timeout 5000
+                                 :connection-timeout 5000}
+          :biff.pipe/catch      :biff.pipe/http
+          ::url                 url})))
 
-     :handle-http
-     (fn [{:keys [biff.pipe.http/output]}]
-       (if-not (and (some-> output :headers (get "Content-Type") (str/includes? "text"))
-                    (< (count (:body output)) (* 2 1000 1000)))
-         (error)
-         {:biff.pipe/next [:yakread.pipe/js :handle-readability]
-          ::url (:url output)
-          ::raw-html (:body output)
-          :yakread.pipe.js/fn-name "readability"
-          :yakread.pipe.js/input {:url (:url output) :html (:body output)}}))
+   :handle-http
+   (fn [{:keys [biff.pipe.http/output ::url biff.pipe/exception] :as ctx}]
+     (if-not (and (some-> output :headers (get "Content-Type") (str/includes? "text"))
+                  (< (count (:body output)) (* 2 1000 1000)))
+       (on-error ctx {:item/url url})
+       {:biff.pipe/next [:yakread.pipe/js :handle-readability]
+        ::url url
+        ::raw-html (:body output)
+        :yakread.pipe.js/fn-name "readability"
+        :yakread.pipe.js/input {:url url :html (:body output)}}))
 
-     :handle-readability
-     (fn [{:keys [session ::url ::raw-html]
-           {:keys [content title byline length siteName textContent]} :yakread.pipe.js/output}]
-       (if (empty? content)
-         (error)
-         (let [{[image] :og/image
-                [published-time] :article/published-time} (lib.content/pantomime-parse raw-html)
-               content (lib.content/normalize content)
-               inline-content (<= (count content) 1000)
-               item (lib.core/some-vals
-                     {:db/doc-type :item/direct
-                      :item/doc-type :item/direct
-                      :xt/id (gen/uuid)
-                      :item/ingested-at :db/now
-                      :item/title title
-                      :item/url url
-                      :item/content-key (when-not inline-content (gen/uuid))
-                      :item/content (when inline-content content)
-                      :item/published-at (some-> published-time lib.content/parse-instant)
-                      :item/excerpt (some-> textContent lib.content/excerpt)
-                      :item/feed-url (-> (lib.rss/parse-urls* url raw-html) first :url)
-                      :item/lang (lib.content/lang raw-html)
-                      :item/site-name siteName
-                      :item/byline byline
-                      :item/length length
-                      :item/image-url image})]
-           (merge-with into
-                       (when-not inline-content
-                         {:biff.pipe/next [:biff.pipe/s3]
+   :handle-readability
+   (fn [{:keys [::url ::raw-html]
+         {:keys [content title byline length siteName textContent]} :yakread.pipe.js/output
+         :as ctx}]
+     (if (empty? content)
+       (on-error ctx {:item/url url})
+       (let [{[image] :og/image
+              [published-time] :article/published-time} (lib.content/pantomime-parse raw-html)
+             content (lib.content/normalize content)
+             inline-content (<= (count content) 1000)
+             item (lib.core/some-vals
+                   {:db/doc-type :item/direct
+                    :item/doc-type :item/direct
+                    :xt/id (gen/uuid)
+                    :item/ingested-at :db/now
+                    :item/title title
+                    :item/url url
+                    :item/content-key (when-not inline-content (gen/uuid))
+                    :item/content (when inline-content content)
+                    :item/published-at (some-> published-time lib.content/parse-instant)
+                    :item/excerpt (some-> textContent lib.content/excerpt)
+                    :item/feed-url (-> (lib.rss/parse-urls* url raw-html) first :url)
+                    :item/lang (lib.content/lang raw-html)
+                    :item/site-name siteName
+                    :item/byline byline
+                    :item/length length
+                    :item/image-url image})]
+         (merge-with into
+                     (when-not inline-content
+                       {:biff.pipe/next
+                        [{:biff.pipe/current :biff.pipe/s3
                           :biff.pipe.s3/input {:method  "PUT"
                                                :key     (str (:item/content-key item))
                                                :body    content
                                                :headers {"x-amz-acl"    "private"
-                                                         "content-type" "text/html"}}})
-                       {:biff.pipe.tx/input [item]}
-                       (success (:uid session) (:xt/id item))))))}))
+                                                         "content-type" "text/html"}}}]})
+                     {:biff.pipe/next [:biff.pipe/tx]
+                      :biff.pipe.tx/input [item]}
+                     (update (on-success ctx {:item/id (:xt/id item) :item/url url})
+                             :biff.pipe/next
+                             #(remove #{:biff.pipe/tx} %))))))})
+
+(defn add-item-pipeline [{:keys [user-item-kvs redirect-to]}]
+  (add-item-pipeline*
+   {:get-url
+    (comp :url :params)
+
+    :on-success
+    (fn [{:keys [session]} {:item/keys [id]}]
+      (merge {:biff.pipe/next [:biff.pipe/tx]
+              :biff.pipe.tx/input [(merge {:db/doc-type :user-item
+                                           :db.op/upsert {:user-item/user (:uid session)
+                                                          :user-item/item id}}
+                                          user-item-kvs)]}
+             (some-> redirect-to (hx-redirect {:added true}))))
+
+    :on-error
+    (fn [_ _]
+      (some-> redirect-to (hx-redirect {:error true})))}))

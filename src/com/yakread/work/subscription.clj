@@ -9,10 +9,6 @@
             [xtdb.api :as xt])
   (:import [org.jsoup Jsoup]))
 
-(defn- every-n-minutes [n]
-  (fn []
-    (iterate #(.plusSeconds % (* 60 n)) (java.time.Instant/now))))
-
 (def ^:private epoch (java.time.Instant/ofEpochMilli 0))
 
 ;; TODO modify sync waiting period based on user activity, :feed/failed-syncs
@@ -156,7 +152,7 @@
 
 (def module
   {:tasks [{:task     #'sync-all-feeds!
-            :schedule (every-n-minutes 5)}]
+            :schedule (lib.core/every-n-minutes 5)}]
    :queues [{:id        :work.subscription/sync-feed
              :consumer  #'sync-feed!
              :n-threads 10}]})

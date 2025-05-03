@@ -12,14 +12,21 @@
 (defn- median [xs]
   (first (take (/ (count xs) 2) xs)))
 
-(defn update-model! [{:keys [yakread/model
-                             yakread/spark
-                             biff.xtdb/node]}]
+(defn new-model [{:keys [yakread/spark biff/db]}]
   (log/info "updating model")
-  (let [db (xt/db node)
-        url-allowed? (constantly true) ; TODO
+  (let [url-allowed? (constantly true) ; TODO
+        direct-urls (set
+                     (mapv first
+                           (q db
+                              '{:find [url]
+                                :in [direct]
+                                :where [[item :item/url url]
+                                        [item :item/doc-type direct]]}
+                              :item/direct)))
         item-id->url (into {}
-                           (filter (comp url-allowed? second))
+                           (filter (fn [[_ url]]
+                                     (and (url-allowed? url)
+                                          (direct-urls url))))
                            (q db
                               '{:find [item2 url]
                                 :where [[usit :user-item/item item1]
@@ -91,7 +98,6 @@
                       (update-keys index->url))
         median-score (median (sort (vals baselines)))
         get-url->score (fn [user-id]
-                         (prn (some? (user->index user-id)))
                          (let [url->score (if-some [user-idx (user->index user-id)]
                                             (->> (.recommendProducts als user-idx (count index->url))
                                                  (into {} (map (fn [^Rating rating]
@@ -109,16 +115,16 @@
         candidates (->> (vals index->url)
                         (sort-by (juxt url->n-usits (comp - inst-ms url->last-liked)))
                         vec)]
-    (reset! model {:yakread.model/candidates candidates
-                   :yakread.model/url->last-liked url->last-liked
-                   :yakread.model/get-url->score get-url->score})))
+    {:yakread.model/candidates candidates
+     :yakread.model/url->last-liked url->last-liked
+     :yakread.model/get-url->score get-url->score}))
 
-(defn use-spark [ctx]
-  (let [spark (JavaSparkContext. "local[*]" "yakread")
-        ctx (-> ctx
-                (assoc :yakread/spark spark
-                       :yakread/model (atom {}))
-                (update :biff/stop conj #(.close spark)))]
-    (.setCheckpointDir spark "storage/spark-checkpoint")
-    (update-model! ctx)
-    ctx))
+(defn use-spark [{:keys [biff.xtdb/node] :as ctx}]
+  (let [spark (doto (JavaSparkContext. "local[*]" "yakread")
+                (.setCheckpointDir "storage/spark-checkpoint"))
+        model (atom (new-model {:yakread/spark spark
+                                :biff/db (xt/db node)}))]
+    (-> ctx
+        (assoc :yakread/spark spark
+               :yakread/model model)
+        (update :biff/stop conj #(.close spark)))))

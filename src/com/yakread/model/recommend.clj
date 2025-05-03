@@ -4,6 +4,7 @@
             [com.yakread.lib.pathom :as lib.pathom]
             [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.core :as lib.core]
+            [com.yakread.lib.pipeline :as lib.pipe]
             [com.yakread.lib.user-item :as lib.usit]
             [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
@@ -14,8 +15,7 @@
   (:import [org.apache.spark.api.java JavaSparkContext]
            [org.apache.spark.mllib.recommendation Rating ALS MatrixFactorizationModel]
            [scala Tuple2 Function1]
-           [scala.reflect ClassTag$]
-           [stuff MyFunction1]))
+           [scala.reflect ClassTag$]))
 
 (defn take-rand [xs]
   (take (max 1 (* (gen/double) (count xs))) xs))
@@ -235,7 +235,8 @@
                                     yakread.model/get-url->score]}
                             {user-id :user/id}]
   {::pco/input [:user/id]
-   ::pco/output [{:user/discover-recs [:item/url]}]}
+   ::pco/output [{:user/discover-recs [:item/id
+                                       :item/url]}]}
   (let [url->n-skips (into {}
                            (q db
                               '{:find [url (count skip)]
@@ -279,8 +280,19 @@
                           [(conj selected selection)
                            (filterv (complement #{selection}) candidates)]))
                       [[] candidates]
-                      (range 5)))]
-    {:user/discover-recs (mapv #(hash-map :item/url %) urls)}))
+                      (range 5)))
+        url->item-id (into {}
+                           (q db
+                              '{:find [item url]
+                                :in [[url ...] direct]
+                                :where [[item :item/url url]
+                                        [item :item/doc-type direct]]}
+                              urls
+                              :item/direct))]
+    {:user/discover-recs (mapv (fn [url]
+                                 {:item/url url
+                                  :item/id (url->item-id url)})
+                               urls)}))
 
 (def module
   {:resolvers [latest-sub-interactions

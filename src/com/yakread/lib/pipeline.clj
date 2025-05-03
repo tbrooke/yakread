@@ -54,6 +54,9 @@
                                   {:biff.pipe/seed seed
                                    :biff.pipe/db-basis (some-> (:biff/db ctx) xt/db-basis)})))))))))))))
 
+(defmacro defpipe [sym & args]
+  `(def ~sym (lib.pipe/make ~@args)))
+
 ;; TODO move into Biff with option
 (defn- replace-db-now [tx]
   (let [now (java.time.Instant/now)]
@@ -67,17 +70,6 @@
   (constantly
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
-
-(defn s3 [k & [body content-type]]
-  {:biff.pipe/current  :biff.pipe/s3
-   :biff.pipe.s3/input (if body
-                         {:method  "PUT"
-                          :key     (str k)
-                          :body    body
-                          :headers {"x-amz-acl"    "private"
-                                    "content-type" content-type}}
-                         {:method "GET"
-                          :key    (str k)})})
 
 (defn call-js [fn-name opts]
   (:body
@@ -100,7 +92,7 @@
                    (assoc ctx :biff.pipe.tx/output
                           (biff/submit-tx
                             (cond-> ctx
-                              retry (assoc :biff.xtdb/retry retry))
+                              (some? retry) (assoc :biff.xtdb/retry retry))
                             (replace-db-now input))))
    :biff.pipe/pathom (fn [{:biff.pipe.pathom/keys [entity query] :as ctx}]
                        (assoc ctx
@@ -133,4 +125,31 @@
                       (assoc ctx :yakread.pipe.js/output (call-js fn-name input)))
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
                    ;; TODO use config to decide whether to use s3 or filesystem
-                   (assoc ctx :biff.pipe.s3/output (lib.s3/mock-request #_biff/s3-request ctx input)))})
+                   (assoc ctx :biff.pipe.s3/output (lib.s3/mock-request #_biff/s3-request ctx input)))
+   :biff.pipe/sleep (fn [{:keys [biff.pipe.sleep/ms] :as ctx}]
+                      (Thread/sleep ms)
+                      ctx)})
+
+(defn s3 [k & [body content-type]]
+  {:biff.pipe/current  :biff.pipe/s3
+   :biff.pipe.s3/input (if body
+                         {:method  "PUT"
+                          :key     (str k)
+                          :body    body
+                          :headers {"x-amz-acl"    "private"
+                                    "content-type" content-type}}
+                         {:method "GET"
+                          :key    (str k)})})
+
+(defn tx [input-tx]
+  {:biff.pipe/current :biff.pipe/tx
+   :biff.pipe.tx/input input-tx})
+
+(defn queue [id job]
+  {:biff.pipe/current :biff.pipe/queue
+   :biff.pipe.queue/id id
+   :biff.pipe.queue/job job})
+
+(defn sleep [ms]
+  {:biff.pipe/current :biff.pipe/sleep
+   :biff.pipe.sleep/ms ms})

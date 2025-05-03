@@ -1,5 +1,6 @@
 (ns tasks
   (:require [com.biffweb.tasks :as tasks]
+            [clojure.java.shell :as sh]
             [com.biffweb.tasks.lazy.com.biffweb.config :as config]
             [com.biffweb.tasks.lazy.babashka.process :as process]))
 
@@ -22,9 +23,21 @@
   (Thread/sleep 1)
   (recur))
 
+(defn dev []
+  ;; TODO run this in prod
+  ;; also this won't be on the classpath on the first run
+  (sh/sh "javac"
+         "--release" "17"
+         "-cp" (:out (sh/sh "clj" "-Spath"))
+         "-d" "target/classes"
+         "java/com/yakread/AverageRating.java"
+         "-Xlint:-options")
+  (tasks/dev))
+
 ;; Tasks should be vars (#'hello instead of hello) so that `clj -Mdev help` can
 ;; print their docstrings.
 (def custom-tasks
-  {"prod-repl" #'prod-repl})
+  {"prod-repl" #'prod-repl
+   "dev"       #'dev})
 
 (def tasks (merge tasks/tasks custom-tasks))

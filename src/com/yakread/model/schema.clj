@@ -84,7 +84,8 @@
                         [:item.email/maybe-confirmation    ?              :boolean])
    ;; Items fetched from a user-supplied URL (bookmarked or favorited)
    :item/direct (inherit :item/base
-                         [:item/doc-type [:= :item/direct]])
+                         [:item/doc-type [:= :item/direct]]
+                         [:item.direct/candidate-status ? [:enum :ingest-failed :approved :blocked]])
    :item/any    [:or :item/feed :item/email :item/direct]
 
    :feed [:map {:closed true}

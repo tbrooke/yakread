@@ -1,6 +1,4 @@
 - discover recs
-  - compile java on startup or something
-  - retrain model every n minutes
   - for you page
   - admin page
   - not-signed-in users
