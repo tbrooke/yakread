@@ -2,27 +2,16 @@
   (:require [com.biffweb :as biff :refer [q]]
             [clojure.data.generators :as gen]
             [com.yakread.lib.pathom :as lib.pathom]
-            [com.yakread.lib.error :as lib.error]
             [com.yakread.lib.core :as lib.core]
-            [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.user-item :as lib.usit]
-            [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
             [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.wsscode.pathom3.interface.eql :as p.eql]
-            [com.wsscode.pathom3.connect.indexes :as pci]
             [xtdb.api :as xt]
-            [lambdaisland.uri :as uri])
-  (:import [org.apache.spark.api.java JavaSparkContext]
-           [org.apache.spark.mllib.recommendation Rating ALS MatrixFactorizationModel]
-           [scala Tuple2 Function1]
-           [scala.reflect ClassTag$]))
+            [lambdaisland.uri :as uri]))
 
 (defn take-rand [xs]
   (take (max 1 (* (gen/double) (count xs))) xs))
 
-(def n-ads 1)
 (def n-sub-bookmark-recs 22)
-(def n-discover-recs 7)
+(def n-total-recs 30)
 
 (defresolver latest-sub-interactions
   "Returns the 10 most recent interactions (e.g. viewed, liked, etc) for a given sub."
@@ -69,7 +58,7 @@
 (defresolver sub-affinity
   "Models the sub as a beta distribution (constructed from the user's positive and negative
    interactions) and returns the expected value."
-  [{:keys [biff/db biff.xtdb/node]} {:sub/keys [latest-interactions]}]
+  [{:sub/keys [latest-interactions]}]
   #::pco{:input [{:sub/latest-interactions [:sub.interaction/type]}]
          :output [:sub/affinity]}
   (let [;; TODO can we learn the correct weights here? Or use an ML model to predict the probability of the
@@ -172,7 +161,7 @@
                         :item/rec-type rec-type))]
      (vec (take n-sub-bookmark-recs items)))})
 
-(defresolver bookmark-recs [ctx {:user/keys [unread-bookmarks]}]
+(defresolver bookmark-recs [{:user/keys [unread-bookmarks]}]
   #::pco{:input [{:user/unread-bookmarks [:item/id
                                           :item/ingested-at
                                           :item/n-skipped
@@ -211,32 +200,14 @@
    a-items
    b-items))
 
-(defresolver for-you-recs [{:user/keys [sub-recs bookmark-recs]}]
-  #::pco{:input [{:user/sub-recs [:item/id
-                                  :item/n-skipped
-                                  :item/rec-type]}
-                 {:user/bookmark-recs [:item/id
-                                       :item/n-skipped
-                                       :item/rec-type]}]
-         :output [{:user/for-you-recs [:item/id
-                                       :item/rec-type]}]}
-  (let [{new-sub-recs true
-         other-sub-recs false} (group-by #(= :item.rec-type/new-subscription (:item/rec-type %))
-                                         sub-recs)]
-    {:user/for-you-recs (->> (pick-by-skipped bookmark-recs other-sub-recs)
-                             (concat new-sub-recs)
-                             (lib.core/distinct-by :item/id)
-                             (take n-sub-bookmark-recs)
-                             vec)}))
-
-(defresolver discover-urls [{:keys [biff/db
+(defresolver discover-recs [{:keys [biff/db
                                     yakread.model/candidates
                                     yakread.model/url->last-liked
                                     yakread.model/get-url->score]}
                             {user-id :user/id}]
   {::pco/input [:user/id]
    ::pco/output [{:user/discover-recs [:item/id
-                                       :item/url]}]}
+                                       :item/rec-type]}]}
   (let [url->n-skips (into {}
                            (q db
                               '{:find [url (count skip)]
@@ -280,19 +251,46 @@
                           [(conj selected selection)
                            (filterv (complement #{selection}) candidates)]))
                       [[] candidates]
-                      (range 5)))
+                      (range (min n-total-recs (count candidates)))))
         url->item-id (into {}
                            (q db
-                              '{:find [item url]
+                              '{:find [url item]
                                 :in [[url ...] direct]
                                 :where [[item :item/url url]
                                         [item :item/doc-type direct]]}
                               urls
                               :item/direct))]
     {:user/discover-recs (mapv (fn [url]
-                                 {:item/url url
-                                  :item/id (url->item-id url)})
+                                 {:item/id (url->item-id url)
+                                  :item/rec-type :item.rec-type/discover})
                                urls)}))
+
+(defn- take-items [n xs]
+  (->> xs
+       (lib.core/distinct-by :item/id)
+       (take n)))
+
+(defresolver for-you-recs [{:user/keys [sub-recs bookmark-recs discover-recs]}]
+  #::pco{:input [{:user/sub-recs [:item/id
+                                  :item/n-skipped
+                                  :item/rec-type]}
+                 {:user/bookmark-recs [:item/id
+                                       :item/n-skipped
+                                       :item/rec-type]}
+                 {:user/discover-recs [:item/id
+                                       :item/rec-type]}]
+         :output [{:user/for-you-recs [:item/id
+                                       :item/rec-type]}]}
+  (let [{new-sub-recs true
+         other-sub-recs false} (group-by #(= :item.rec-type/new-subscription (:item/rec-type %))
+                                         sub-recs)
+        bookmark-sub-recs (->> (pick-by-skipped bookmark-recs other-sub-recs)
+                               (concat new-sub-recs)
+                               (take-items n-sub-bookmark-recs))
+        recs (->> (concat bookmark-sub-recs discover-recs)
+                  (take-items n-total-recs)
+                  vec)]
+    {:user/for-you-recs recs}))
 
 (def module
   {:resolvers [latest-sub-interactions
@@ -301,7 +299,7 @@
                sub-recs
                bookmark-recs
                for-you-recs
-               discover-urls]})
+               discover-recs]})
 
 (comment
 

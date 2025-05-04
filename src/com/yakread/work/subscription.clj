@@ -1,6 +1,7 @@
 (ns com.yakread.work.subscription
   (:require [clojure.data.generators :as gen]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [com.biffweb :as biff :refer [q]]
             [com.yakread.lib.content :as lib.content]
             [com.yakread.lib.core :as lib.core]
@@ -23,10 +24,11 @@
                                 [(list 'get-attr 'feed :feed/synced-at epoch) '[synced-at ...]]
                                 '[(< synced-at t0)]]}
                        (.minusSeconds now (* 60 60 4)))]
-       {:biff.pipe/next (for [id feed-ids]
-                          {:biff.pipe/current :biff.pipe/queue
-                           :biff.pipe.queue/id :work.subscription/sync-feed
-                           :biff.pipe.queue/job {:feed/id id}})}))))
+       (log/warn "sync-feed! is disabled; remember to re-enable it later.")
+       {:biff.pipe/next [] #_(for [id feed-ids]
+                               {:biff.pipe/current :biff.pipe/queue
+                                :biff.pipe.queue/id :work.subscription/sync-feed
+                                :biff.pipe.queue/job {:feed/id id}})}))))
 
 (defn- entry->html [entry]
   (->> (concat (:contents entry) [(:description entry)])
@@ -102,11 +104,11 @@
                              :item/ingested-at  :db/now
                              :item/lang         (lib.content/lang html)
                              :item/paywalled    (some-> text str/trim (str/ends-with? "Read more"))
-                             :item/url          (:link entry)
+                             :item/url          (some-> (:link entry) str/trim)
                              :item/published-at (some-> (some entry [:published-date :updated-date]) (.toInstant))
                              :item/author-name  (or (-> entry :authors first :name)
                                                     (:feed/title feed-doc))
-                             :item/author-url   (-> entry :authors first :uri)
+                             :item/author-url   (some-> entry :authors first :uri str/trim)
                              :item/excerpt      (lib.content/excerpt
                                                  (if use-text-for-title
                                                    (str (when (str/ends-with? title "…")
@@ -115,7 +117,7 @@
                                                    text))
                              :item/length       (count text)
                              :item/byline       (:byline entry)
-                             :item/image-url    (:og/image entry)
+                             :item/image-url    (some-> (:og/image entry) str/trim)
                              :item/site-name    (:siteName entry)
                              :item.feed/guid    (:uri entry)}))
            existing-titles (set (q db

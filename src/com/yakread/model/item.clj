@@ -1,18 +1,14 @@
 (ns com.yakread.model.item
-  (:require [clojure.string :as str]
-            [com.biffweb :as biff :refer [q <<-]]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.lib.user-item :as lib.user-item]
-            [com.yakread.lib.s3 :as lib.s3]
-            [clojure.set :as set]
-            [lambdaisland.uri :as uri]
-            [xtdb.api :as xt]
-            [rum.core :as rum])
-  (:import (org.jsoup Jsoup)
-           (java.time Instant ZoneId ZoneOffset)
-           (java.time.format DateTimeFormatter)))
+  (:require
+   [clojure.string :as str]
+   [com.biffweb :as biff :refer [q]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.s3 :as lib.s3]
+   [com.yakread.lib.serialize :as lib.serialize]
+   [com.yakread.lib.user-item :as lib.user-item]
+   [rum.core :as rum])
+  (:import
+   (org.jsoup Jsoup)))
 
 (defresolver user-favorites [{:keys [biff/db]} {:keys [user/id]}]
   #::pco{:output [{:user/favorites [:item/id]}]}
@@ -168,14 +164,16 @@
                           (:item/id params))]
     {:params/item-unsafe {:xt/id item-id}}))
 
-(defresolver from-params [{:keys [biff/db session path-params]} {:keys [params/item-unsafe]}]
+(defresolver from-params [{:keys [session yakread.model/candidate-ids]}
+                          {:keys [params/item-unsafe]}]
   #::pco{:input [{:params/item-unsafe [:xt/id
                                        {(? :item/sub) [:xt/id
                                                        :sub/user]}
                                        {(? :item/user-item) [:xt/id]}]}]
          :output [{:params/item [:xt/id]}]}
   (when (or (= (:uid session) (get-in item-unsafe [:item/sub :sub/user :xt/id]))
-            (not-empty (:item/user-item item-unsafe)))
+            (not-empty (:item/user-item item-unsafe))
+            (contains? candidate-ids (:xt/id item-unsafe)))
     {:params/item item-unsafe}))
 
 (defresolver item-id [{:keys [xt/id]}]

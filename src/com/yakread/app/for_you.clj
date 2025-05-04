@@ -2,13 +2,9 @@
   (:require [com.biffweb :as biff]
             [clojure.set :as set]
             [com.yakread.routes :as routes]
-            [com.yakread.lib.content :as lib.content]
-            [com.yakread.lib.middleware :as lib.mid]
             [com.yakread.lib.pipeline :as lib.pipe]
             [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.util.biff-staging :as biffs]
-            [ring.middleware.anti-forgery :as csrf]))
+            [com.yakread.lib.ui :as ui]))
 
 (defpost-pathom record-click
   [{:session/user [:xt/id]}
@@ -61,7 +57,7 @@
         [:.h-5.sm:h-4]
         [:div.text-center
          [:a.underline {:href (href routes/history)}
-          "View reading  history"]]])
+          "View reading history"]]])
      (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
        (ui-read-more-card {:on-click-route `read-page-route
                            :on-click-params {:skip (set (mapv :item/id (take i for-you-recs)))
@@ -121,7 +117,7 @@
         :render
         (fn [{:keys [params biff.pipe.pathom/output]}]
           (let [{:keys [app.shell/app-shell params/item]} output
-                {:item/keys [ui-read-content id title]} item]
+                {:item/keys [ui-read-content title]} item]
             (app-shell
              {:title title}
              [:div {:hx-post (record-click-url params item) :hx-trigger "load" :hx-swap "outerHTML"}]

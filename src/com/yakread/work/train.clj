@@ -12,8 +12,8 @@
 (defpipe add-candidate!
   (lib.item/add-item-pipeline*
    {:get-url    (comp :item/url :biff/job)
-    :on-success (fn [ctx item]
-                  (log/info "Ingested candidate" (:item/url item))
+    :on-success (fn [_ctx item]
+                  (log/info "Ingested candidate" (pr-str (:item/url item)))
                   {})
     :on-error   (fn [ctx {:keys [item/url]}]
                   (let [{:keys [status]} (ex-data (:biff.pipe/exception ctx))]
@@ -50,7 +50,7 @@
             urls (vec (remove direct-urls urls))]
         (when (not-empty urls)
           (log/info "Found" (count urls) "candidate URLs"))
-        {:biff.pipe/next (for [url urls]
+        {:biff.pipe/next [] #_(for [url urls]
                            (lib.pipe/queue :work.train/add-candidate {:item/url url}))}))))
 
 (def module

@@ -1,32 +1,33 @@
 (ns com.yakread.lib.spark
-  (:require [com.biffweb :as biff]
-            [xtdb.api :as xt :refer [q]]
-            [com.yakread.lib.core :as lib.core]
-            [clojure.tools.logging :as log])
-  (:import [org.apache.spark.api.java JavaSparkContext]
-           [org.apache.spark.mllib.recommendation Rating ALS MatrixFactorizationModel]
-           [scala Tuple2 Function1]
-           [scala.reflect ClassTag$]
-           [com.yakread AverageRating]))
+  (:require
+   [clojure.tools.logging :as log]
+   [com.yakread.lib.core :as lib.core]
+   [xtdb.api :as xt :refer [q]])
+  (:import
+   [com.yakread AverageRating]
+   [org.apache.spark.api.java JavaSparkContext]
+   [org.apache.spark.mllib.recommendation ALS Rating]
+   [scala.reflect ClassTag$]))
 
 (defn- median [xs]
   (first (take (/ (count xs) 2) xs)))
 
 (defn new-model [{:keys [yakread/spark biff/db]}]
   (log/info "updating model")
-  (let [url-allowed? (constantly true) ; TODO
-        direct-urls (set
-                     (mapv first
+  (let [direct-items (into []
+                           (comp (map first)
+                                 (remove (fn [{:keys [item.direct/candidate-status]}]
+                                           ;; TODO change to (= :approved candidate-status)
+                                           (#{:ingest-failed :blocked} candidate-status))))
                            (q db
-                              '{:find [url]
+                              '{:find [(pull item [:xt/id :item/url :item.direct/candidate-status])]
                                 :in [direct]
-                                :where [[item :item/url url]
-                                        [item :item/doc-type direct]]}
-                              :item/direct)))
+                                :where [[item :item/doc-type direct]]}
+                              :item/direct))
+
+        direct-urls (into #{} (map :item/url) direct-items)
         item-id->url (into {}
-                           (filter (fn [[_ url]]
-                                     (and (url-allowed? url)
-                                          (direct-urls url))))
+                           (filter (comp direct-urls second))
                            (q db
                               '{:find [item2 url]
                                 :where [[usit :user-item/item item1]
@@ -57,7 +58,7 @@
                        (mapv #(assoc % :user-item/url (item-id->url (:user-item/item %)))))
 
         [[index->url url->index]
-         [index->user user->index]]
+         [_ user->index]]
         (for [k [:user-item/url :user-item/user]
               :let [index->x (->> all-usits
                                   (mapv k)
@@ -114,8 +115,11 @@
                                             (apply max-key inst-ms))))
         candidates (->> (vals index->url)
                         (sort-by (juxt url->n-usits (comp - inst-ms url->last-liked)))
-                        vec)]
+                        vec)
+        candidate-ids (into #{} (map :xt/id) direct-items)]
+    (log/info "done")
     {:yakread.model/candidates candidates
+     :yakread.model/candidate-ids candidate-ids
      :yakread.model/url->last-liked url->last-liked
      :yakread.model/get-url->score get-url->score}))
 

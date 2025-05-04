@@ -13,17 +13,15 @@
 (defn- reading-minutes [n-characters]
   (max 1 (Math/round (/ n-characters 900.0))))
 
-(defresolver details [ctx {:item/keys [doc-type
-                                       byline
-                                       author-name
-                                       site-name
-                                       url
-                                       published-at
-                                       ingested-at
-                                       length
-                                       rec-type
-                                       source]
-                           :as params}]
+(defresolver details [{:item/keys [doc-type
+                                   byline
+                                   author-name
+                                   url
+                                   published-at
+                                   ingested-at
+                                   length
+                                   rec-type
+                                   source]}]
   {::pco/input [:item/id
                 :item/title
                 :item/ingested-at
@@ -66,7 +64,7 @@
           (map #(vector :span.inline-block %))
           (biff/join ui/interpunct)))})
 
-(defresolver read-more-card [{:item/keys [id ui-details title excerpt unread image-url url]}]
+(defresolver read-more-card [{:item/keys [id ui-details title excerpt unread image-url]}]
   {::pco/input [:item/id
                 :item/unread
                 :item/ui-details
