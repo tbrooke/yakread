@@ -205,33 +205,37 @@
                                     yakread.model/url->last-liked
                                     yakread.model/get-url->score]}
                             {user-id :user/id}]
-  {::pco/input [:user/id]
+  {::pco/input [(? :user/id)]
    ::pco/output [{:user/discover-recs [:item/id
                                        :item/rec-type]}]}
-  (let [url->n-skips (into {}
-                           (q db
-                              '{:find [url (count skip)]
-                                :in [user [url ...]]
-                                :where [[skip :skip/user user]
-                                        [skip :skip/items item]
-                                        [item :item/url url]]}
-                              user-id
-                              candidates))
+  (let [url->n-skips (if-not user-id
+                       {}
+                       (into {}
+                             (q db
+                                '{:find [url (count skip)]
+                                  :in [user [url ...]]
+                                  :where [[skip :skip/user user]
+                                          [skip :skip/items item]
+                                          [item :item/url url]]}
+                                user-id
+                                candidates)))
         url->score (get-url->score user-id)
-        read-urls (into #{}
-                        (map first)
-                        (xt/q db
-                              '{:find [url]
-                                :in [user]
-                                :where [[usit :user-item/user user]
-                                        [usit :user-item/item item]
-                                        [item :item/url url]
-                                        (or [usit :user-item/viewed-at _]
-                                            [usit :user-item/skipped-at _]
-                                            [usit :user-item/favorited-at _]
-                                            [usit :user-item/disliked-at _]
-                                            [usit :user-item/reported-at _])]}
-                              user-id))
+        read-urls (if-not user-id
+                    #{}
+                    (into #{}
+                          (map first)
+                          (xt/q db
+                                '{:find [url]
+                                  :in [user]
+                                  :where [[usit :user-item/user user]
+                                          [usit :user-item/item item]
+                                          [item :item/url url]
+                                          (or [usit :user-item/viewed-at _]
+                                              [usit :user-item/skipped-at _]
+                                              [usit :user-item/favorited-at _]
+                                              [usit :user-item/disliked-at _]
+                                              [usit :user-item/reported-at _])]}
+                                user-id)))
         candidates (filterv (complement read-urls) candidates)
         urls (first
               (reduce (fn [[selected candidates] _]
@@ -247,9 +251,13 @@
                                                 [(get url->n-skips url 0)
                                                  (- (url->score url))]))
                                      (rerank 0.25)
-                                     first))]
-                          [(conj selected selection)
-                           (filterv (complement #{selection}) candidates)]))
+                                     first))
+                              new-candidates (filterv (fn [url]
+                                                        (not= (:host (uri/uri url))
+                                                              (:host (uri/uri selection))))
+                                                      candidates)]
+                          (cond-> [(conj selected selection) new-candidates]
+                            (empty? new-candidates) reduced)))
                       [[] candidates]
                       (range (min n-total-recs (count candidates)))))
         url->item-id (into {}
@@ -271,12 +279,12 @@
        (take n)))
 
 (defresolver for-you-recs [{:user/keys [sub-recs bookmark-recs discover-recs]}]
-  #::pco{:input [{:user/sub-recs [:item/id
-                                  :item/n-skipped
-                                  :item/rec-type]}
-                 {:user/bookmark-recs [:item/id
-                                       :item/n-skipped
-                                       :item/rec-type]}
+  #::pco{:input [{(? :user/sub-recs) [:item/id
+                                      :item/n-skipped
+                                      :item/rec-type]}
+                 {(? :user/bookmark-recs) [:item/id
+                                           :item/n-skipped
+                                           :item/rec-type]}
                  {:user/discover-recs [:item/id
                                        :item/rec-type]}]
          :output [{:user/for-you-recs [:item/id

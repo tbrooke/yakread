@@ -1,7 +1,5 @@
 - discover recs
-  - for you page
   - admin page
-  - not-signed-in users
 - ads
   - for you page
   - ad page

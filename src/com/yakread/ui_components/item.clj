@@ -79,9 +79,10 @@
                 (? :item/site-name)
                 (? :item/url)]}
   {:item/ui-read-more-card
-   (fn [{:keys [highlight-unread on-click-route show-author on-click-params]}]
+   (fn [{:keys [highlight-unread on-click-route show-author on-click-params new-tab]}]
      [:a {:href (href on-click-route id (when (not-empty on-click-params)
-                                          on-click-params))}
+                                          on-click-params))
+          :target (when new-tab "_blank")}
       [:div {:class (concat '[bg-white hover:bg-neut-50
                               p-4
                               sm:shadow]

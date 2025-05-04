@@ -1,10 +1,12 @@
 (ns com.yakread.app.for-you
-  (:require [com.biffweb :as biff]
-            [clojure.set :as set]
-            [com.yakread.routes :as routes]
-            [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
-            [com.yakread.lib.ui :as ui]))
+  (:require
+   [clojure.set :as set]
+   [com.biffweb :as biff]
+   [com.yakread.lib.middleware :as lib.mid]
+   [com.yakread.lib.pipeline :as lib.pipe]
+   [com.yakread.lib.route :as lib.route :refer [? defget defpost-pathom href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]))
 
 (defpost-pathom record-click
   [{:session/user [:xt/id]}
@@ -40,13 +42,17 @@
                                 :user-item/viewed-at :db/now}]))})))
 
 (defget page-content-route "/dev/for-you/content"
-  [{:session/user
+  [{(? :session/user)
     [{(? :user/current-item)
       [:item/ui-read-more-card]}
      {:user/for-you-recs
       [:item/id
-       :item/ui-read-more-card]}]}]
-  (fn [{:keys [biff/now params]} {{:user/keys [current-item for-you-recs]} :session/user}]
+       :item/ui-read-more-card]}]}
+   {:user/discover-recs
+      [:item/id
+       :item/ui-read-more-card]}]
+  (fn [{:keys [biff/now params]} {:keys [user/discover-recs session/user]
+                                  {:user/keys [current-item for-you-recs]} :session/user}]
     [:div {:class '[flex flex-col gap-6
                     max-w-screen-sm]}
      (when-let [{:keys [item/ui-read-more-card]} (and (:show-continue params) current-item)]
@@ -58,12 +64,14 @@
         [:div.text-center
          [:a.underline {:href (href routes/history)}
           "View reading history"]]])
-     (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
+     (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector (or for-you-recs discover-recs))]
        (ui-read-more-card {:on-click-route `read-page-route
-                           :on-click-params {:skip (set (mapv :item/id (take i for-you-recs)))
-                                             :t now}
+                           :on-click-params (when user
+                                              {:skip (set (mapv :item/id (take i for-you-recs)))
+                                               :t now})
                            :highlight-unread false
-                           :show-author true}))]))
+                           :show-author true
+                           :new-tab (not user)}))]))
 
 (defget page-route "/dev/for-you"
   [:app.shell/app-shell]
@@ -89,7 +97,7 @@
         :start
         (lib.pipe/pathom-query [{(? :params/item) [:item/id
                                                    (? :item/url)]}
-                                {:session/user [(? :user/use-original-links)]}]
+                                {(? :session/user) [(? :user/use-original-links)]}]
                                :start*)
 
         :start*
@@ -102,9 +110,13 @@
               {:status 303
                :headers {"Location" (href page-route)}}
 
+              (nil? user)
+              {:status 303
+               :headers {"Location" url}}
+
               (and use-original-links url)
               (ui/redirect-on-load {:redirect-url url
-                                    :beacon-url (record-click-url params item)})
+                                    :beacon-url (when-not user (record-click-url params item))})
 
               :else
               {:biff.pipe/next [:biff.pipe/pathom :render]
@@ -128,7 +140,8 @@
              [:div#content (ui/lazy-load-spaced (href page-content-route))]))))))}])
 
 (def module
-  {:routes [record-click
+  {:routes [["" {:middleware [lib.mid/wrap-signed-in]}
+             record-click]
             page-route
             page-content-route
             read-page-route]})
