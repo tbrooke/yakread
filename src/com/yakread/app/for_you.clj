@@ -48,10 +48,11 @@
      {:user/for-you-recs
       [:item/id
        :item/ui-read-more-card]}]}
-   {:user/discover-recs
+   {(? :session/anon)
+    [{:user/discover-recs
       [:item/id
-       :item/ui-read-more-card]}]
-  (fn [{:keys [biff/now params]} {:keys [user/discover-recs session/user]
+       :item/ui-read-more-card]}]}]
+  (fn [{:keys [biff/now params]} {:keys [user/discover-recs session/user session/anon]
                                   {:user/keys [current-item for-you-recs]} :session/user}]
     [:div {:class '[flex flex-col gap-6
                     max-w-screen-sm]}
@@ -64,14 +65,18 @@
         [:div.text-center
          [:a.underline {:href (href routes/history)}
           "View reading history"]]])
-     (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector (or for-you-recs discover-recs))]
-       (ui-read-more-card {:on-click-route `read-page-route
-                           :on-click-params (when user
-                                              {:skip (set (mapv :item/id (take i for-you-recs)))
-                                               :t now})
-                           :highlight-unread false
-                           :show-author true
-                           :new-tab (not user)}))]))
+     (if user
+       (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
+         (ui-read-more-card {:on-click-route `read-page-route
+                             :on-click-params {:skip (set (mapv :item/id (take i for-you-recs)))
+                                               :t now}
+                             :highlight-unread false
+                             :show-author true}))
+       (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector (:user/discover-recs anon))]
+         (ui-read-more-card {:on-click-route `read-page-route
+                             :highlight-unread false
+                             :show-author true
+                             :new-tab true})))]))
 
 (defget page-route "/dev/for-you"
   [:app.shell/app-shell]

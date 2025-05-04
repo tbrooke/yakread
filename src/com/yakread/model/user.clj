@@ -1,14 +1,18 @@
 (ns com.yakread.model.user
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [com.biffweb :as biff :refer [q]]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.yakread.lib.user :as lib.user]))
+  (:require
+   [clojure.string :as str]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.user :as lib.user]))
 
 (defresolver session-user [{:keys [session]} _]
   #::pco{:output [{:session/user [:xt/id]}]}
   (when (:uid session)
     {:session/user {:xt/id (:uid session)}}))
+
+(defresolver session-anon [{:keys [session]} _]
+  #::pco{:output [{:session/anon []}]}
+  (when-not (:uid session)
+    {:session/anon {}}))
 
 (defresolver signed-in [{:keys [session]} _]
   #::pco{:output [:session/signed-in]}
@@ -40,6 +44,7 @@
   {:xt/id id})
 
 (def module {:resolvers [session-user
+                         session-anon
                          signed-in
                          current-user
                          suggested-email-username

@@ -1,11 +1,13 @@
 (ns com.yakread.model.recommend
-  (:require [com.biffweb :as biff :refer [q]]
-            [clojure.data.generators :as gen]
-            [com.yakread.lib.pathom :as lib.pathom]
-            [com.yakread.lib.core :as lib.core]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [xtdb.api :as xt]
-            [lambdaisland.uri :as uri]))
+  (:require
+   [clojure.data.generators :as gen]
+   [clojure.tools.logging :as log]
+   [com.biffweb :as biff :refer [q]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.pathom :as lib.pathom]
+   [lambdaisland.uri :as uri]
+   [xtdb.api :as xt]))
 
 (defn take-rand [xs]
   (take (max 1 (* (gen/double) (count xs))) xs))
@@ -237,6 +239,7 @@
                                               [usit :user-item/reported-at _])]}
                                 user-id)))
         candidates (filterv (complement read-urls) candidates)
+        url->host (into {} (map (juxt identity (comp :host uri/uri))) candidates)
         urls (first
               (reduce (fn [[selected candidates] _]
                         (let [selection
@@ -253,8 +256,8 @@
                                      (rerank 0.25)
                                      first))
                               new-candidates (filterv (fn [url]
-                                                        (not= (:host (uri/uri url))
-                                                              (:host (uri/uri selection))))
+                                                        (not= (url->host url)
+                                                              (url->host selection)))
                                                       candidates)]
                           (cond-> [(conj selected selection) new-candidates]
                             (empty? new-candidates) reduced)))
