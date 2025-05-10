@@ -64,24 +64,20 @@
           (map #(vector :span.inline-block %))
           (biff/join ui/interpunct)))})
 
-(defresolver read-more-card [{:item/keys [id ui-details title excerpt unread image-url]}]
+(defresolver read-more-card [{:item/keys [id ui-details title excerpt unread image-url url]}]
   {::pco/input [:item/id
                 :item/unread
                 :item/ui-details
                 (? :item/title)
                 (? :item/image-url)
-                (? :item/author-name)
-                (? :item/byline)
                 (? :item/excerpt)
-                (? :item/fetched-at)
-                (? :item/length)
-                (? :item/published-at)
-                (? :item/site-name)
                 (? :item/url)]}
   {:item/ui-read-more-card
    (fn [{:keys [highlight-unread on-click-route show-author on-click-params new-tab]}]
-     [:a {:href (href on-click-route id (when (not-empty on-click-params)
-                                          on-click-params))
+     [:a {:href (if on-click-route
+                  (href on-click-route id (when (not-empty on-click-params)
+                                            on-click-params))
+                  url)
           :target (when new-tab "_blank")}
       [:div {:class (concat '[bg-white hover:bg-neut-50
                               p-4

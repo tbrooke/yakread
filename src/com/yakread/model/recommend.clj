@@ -18,15 +18,15 @@
 (defresolver latest-sub-interactions
   "Returns the 10 most recent interactions (e.g. viewed, liked, etc) for a given sub."
   [{:keys [biff/db]} {:sub/keys [user items]}]
-  #::pco{::pco/input [:sub/title
-                 {:sub/user [:xt/id]}
-                 {:sub/items [:xt/id
-                              {(? :item/user-item) [(? :user-item/viewed-at)
-                                                    (? :user-item/favorited-at)
-                                                    (? :user-item/disliked-at)
-                                                    (? :user-item/reported-at)]}]}]
-         ::pco/output [{:sub/latest-interactions [:sub.interaction/type
-                                                  :sub.interaction/occurred-at]}]}
+  {::pco/input [:sub/title
+                {:sub/user [:xt/id]}
+                {:sub/items [:xt/id
+                             {(? :item/user-item) [(? :user-item/viewed-at)
+                                                   (? :user-item/favorited-at)
+                                                   (? :user-item/disliked-at)
+                                                   (? :user-item/reported-at)]}]}]
+   ::pco/output [{:sub/latest-interactions [:sub.interaction/type
+                                            :sub.interaction/occurred-at]}]}
   (let [user-items (keep :item/user-item items)
         ;; maybe move to a batch resolver
         skips (mapv second

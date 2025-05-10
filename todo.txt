@@ -1,5 +1,3 @@
-- discover recs
-  - admin page
 - ads
   - for you page
   - ad page
@@ -10,7 +8,9 @@
 - settings
 - premium plans
 - redo subs page layout (use tabs)
+- make sure it's safe to use nippy on untrusted input
 - deploy, migrate
+- charge ads
 
 backlog
 - make auth module store signed humanity token in session after requesting a sign-in code

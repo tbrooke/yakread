@@ -1,17 +1,17 @@
 (ns com.yakread.lib.ui
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io]
-            [com.biffweb :as biff]
-            [com.yakread.util.biff-staging :as biffs]
-            [com.yakread.lib.icons :as lib.icons]
-            [com.yakread.lib.route :as lib.route :refer [href]]
-            [com.yakread.routes :as routes]
-            [lambdaisland.uri :as uri]
-            [cheshire.core :as cheshire]
-            [clojure.data.generators :as gen]
-            [com.yakread.lib.serialize :as lib.serialize]
-            [ring.util.response :as ring-response]
-            [rum.core :as rum]))
+  (:require
+   [cheshire.core :as cheshire]
+   [clojure.data.generators :as gen]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.yakread.lib.icons :as lib.icons]
+   [com.yakread.lib.route :as lib.route :refer [href]]
+   [com.yakread.routes :as routes]
+   [com.yakread.util.biff-staging :as biffs]
+   [lambdaisland.uri :as uri]
+   [ring.util.response :as ring-response]
+   [rum.core :as rum]))
 
 ;;;; Utilities
 
@@ -373,15 +373,22 @@
      (some->> error input-error)
      (some->> description input-description)]))
 
-(defn checkbox [{:ui/keys [label] :as opts}]
+(defn checkbox [{:ui/keys [label size] :as opts}]
   [:label.flex.items-center.gap-2.cursor-pointer
    [:input (dom-opts (merge {:type "checkbox"} opts)
                      '[text-tealv-500
                        "border border-neut-300"
                        form-checkbox
                        cursor-pointer
-                       focus:ring-1 focus:ring-neut-300])]
-   [:span.inter.text-sm.text-neut-800
+                       focus:ring-1 focus:ring-neut-300]
+                     (case size
+                       :large '[size-6]
+                       nil))]
+   [:span (dom-opts {}
+                    '[inter text-neut-800]
+                    (case size
+                      :large nil
+                      '[text-sm]))
     label]])
 
 ;;;; Layout
@@ -493,6 +500,11 @@
      opts
      (for [[i card] (map-indexed vector cards)]
        (card-grid-card {:index i :total total} card)))))
+
+(defn card-list [& content]
+  [:div {:class '[flex flex-col gap-6
+                  max-w-screen-sm]}
+   content])
 
 ;;;; Composites
 

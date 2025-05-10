@@ -22,10 +22,11 @@
           [:user/send-digest-at     ? :time/local-time]
           [:user/timezone           ? :time/zone-id]
           [:user/digest-last-sent   ? :time/instant]
-          ;; When the user views an item, when possible, open the original URL in a new tab instead of displaying the
-          ;; item within Yakread.
+          ;; When the user views an item, when possible, open the original URL in a new tab instead
+          ;; of displaying the item within Yakread.
           [:user/use-original-links ? :boolean]
-          ;; The user reported our emails as spam or emails to them hard-bounced, so don't send them any more emails.
+          ;; The user reported our emails as spam or emails to them hard-bounced, so don't send them
+          ;; any more emails.
           [:user/suppressed-at      ? :time/instant]
           ;; Used for email subscriptions (<username>@yakread.com)
           [:user/email-username     ? ::string]
@@ -44,8 +45,9 @@
    ;; :sub-email is automatically created when the user receives an email with a new From field.
    :sub/email (inherit :sub/base
                        [:sub.email/from              ::string]
-                       ;; If the user unsubscribes, instead of deleting the :sub-email, we set this flag. Then even if the
-                       ;; newsletter sends more emails, we won't accidentally re-subscribe them.
+                       ;; If the user unsubscribes, instead of deleting the :sub-email, we set this
+                       ;; flag. Then even if the newsletter sends more emails, we won't accidentally
+                       ;; re-subscribe them.
                        [:sub.email/unsubscribed-at ? :time/instant])
    :sub/any   [:or :sub/feed :sub/email]
 
@@ -61,8 +63,9 @@
                 [:item/excerpt      ? ::string]
                 [:item/author-name  ? ::string]
                 [:item/author-url   ? ::string]
-                ;; An autodiscovered feed url, parsed from the item's content. Contrast with :item.feed/feed -> :feed/url,
-                ;; which is the feed URL from which this item was fetched.
+                ;; An autodiscovered feed url, parsed from the item's content. Contrast with
+                ;; :item.feed/feed -> :feed/url, which is the feed URL from which this item was
+                ;; fetched.
                 [:item/feed-url     ? ::string]
                 [:item/lang         ? ::string]
                 [:item/site-name    ? ::string]
@@ -85,7 +88,7 @@
    ;; Items fetched from a user-supplied URL (bookmarked or favorited)
    :item/direct (inherit :item/base
                          [:item/doc-type [:= :item/direct]]
-                         [:item.direct/candidate-status ? [:enum :ingest-failed :approved :blocked]])
+                         [:item.direct/candidate-status ? [:enum :ingest-failed :blocked]])
    :item/any    [:or :item/feed :item/email :item/direct]
 
    :feed [:map {:closed true}
@@ -130,7 +133,8 @@
             [:digest/subject (r :item/any)      :uuid]
             [:digest/items   (r :timeline/item) [:vector :uuid]]]
 
-   ;; When the user clicks on item in For You, any previous items they scrolled past get added to a :skip document.
+   ;; When the user clicks on item in For You, any previous items they scrolled past get added to a
+   ;; :skip document.
    :skip [:map {:closed true}
           [:xt/id                                       :uuid]
           [:skip/user                (r :user)          :uuid]
@@ -188,7 +192,11 @@
                [:ad.credit/created-at            :time/instant]
                ;; We store :xt/id in the Stripe payment intent metadata and use it to look up the
                ;; charge status.
-               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]})
+               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]
+
+   :admin/moderation [:map {:closed true}
+                      [:xt/id [:= :admin/moderation]]
+                      [:admin.moderation/latest-item (r :item/direct) :uuid]]})
 
 (def module
   {:schema schema})

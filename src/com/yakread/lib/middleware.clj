@@ -1,16 +1,14 @@
 (ns com.yakread.lib.middleware
-  (:require [clojure.edn :as edn]
-            [clojure.string :as str]
-            [com.biffweb :as biff :refer [q]]
-            [com.wsscode.pathom3.error :as p.error]
-            [com.yakread.lib.datastar :as lib.d*]
-            [com.yakread.lib.route :as lib.route]
-            [com.yakread.settings :as settings]
-            [com.yakread.util :as util]
-            [ring.middleware.anti-forgery :as anti-forgery]
-            [rum.core :as rum]
-            [taoensso.nippy :as nippy]
-            [xtdb.api :as xt]))
+  (:require
+   [clojure.edn :as edn]
+   [clojure.string :as str]
+   [com.biffweb :as biff :refer [q]]
+   [com.wsscode.pathom3.error :as p.error]
+   [com.yakread.lib.datastar :as lib.d*]
+   [com.yakread.settings :as settings]
+   [com.yakread.util :as util]
+   [rum.core :as rum]
+   [xtdb.api :as xt]))
 
 (defn wrap-signed-in [handler]
   (fn [{:keys [session] :as ctx}]

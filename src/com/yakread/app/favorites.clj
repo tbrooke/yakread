@@ -1,10 +1,10 @@
 (ns com.yakread.app.favorites
-  (:require [com.biffweb :as biff]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.lib.route :as lib.route :refer [href defget defpost-pathom]]
-            [com.yakread.lib.middleware :as lib.mid]
-            [com.yakread.routes :as routes]))
+  (:require
+   [com.wsscode.pathom3.connect.operation :as pco :refer [?]]
+   [com.yakread.lib.middleware :as lib.mid]
+   [com.yakread.lib.route :as lib.route :refer [defget href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]))
 
 (defn- empty-state []
   (ui/empty-page-state {:icons ["star-regular-sharp"]
