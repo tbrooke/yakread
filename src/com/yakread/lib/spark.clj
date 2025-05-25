@@ -44,9 +44,6 @@
   ;; TODO
   b)
 
-;; TODO
-;; rename stuff
-;; do some testing
 (defn new-model [{:keys [yakread/spark biff/db biff/now]}]
   (log/info "updating model")
   (when-some [[screened-to screened-to-id]
@@ -55,11 +52,12 @@
                   '{:find [ingested-at item]
                     :where [[moderation :admin.moderation/latest-item item]
                             [item :item/ingested-at ingested-at]]}))]
-    (let [;;; get the candidates
+    (let [;;; get the candidates ===================================================================
           item-candidates
           (into []
                 (keep (fn [[{:keys [item.direct/candidate-status
-                                    item/ingested-at]
+                                    item/ingested-at
+                                    xt/id]
                              :as candidate}]]
                         (when-not (or (#{:ingest-failed :blocked} candidate-status)
                                       (< (inst-ms screened-to) (inst-ms ingested-at))
@@ -91,7 +89,7 @@
                              (mapv #(assoc % :ad/recent-cost (get ad->recent-cost (:xt/id %) 0)))
                              (filterv lib.ads/active?))
 
-          ;;; get ratings (keys: :user, :candidate, :score)
+          ;;; get ratings (keys: :user, :item, :score) =============================================
           all-item-ids (mapv first
                              (q db
                                 '{:find [item]
@@ -145,7 +143,7 @@
                                           (merge user+item->skips user+ad->skips))
           all-usits (->> (concat (for [usit candidate-usits]
                                    (merge usit (user+candidate->skip-usit (usit-key usit))))
-                                 skip-usits)
+                                 (vals user+candidate->skip-usit))
                          (lib.core/distinct-by usit-key))
           ratings (for [usit all-usits
                         :let [score (cond
@@ -161,7 +159,7 @@
                      :item (:user-item/item usit)
                      :score score})
 
-          ;;; train a model
+          ;;; train a model ========================================================================
           [[index->candidate candidate->index]
            [_ user->index]]
           (for [k [:user :item]
@@ -185,8 +183,7 @@
           _ (log/info "training ALS")
           als (ALS/trainImplicit ratings rank iterations lambda alpha)
 
-
-          ;; Expose the model
+          ;; Expose the model ======================================================================
           _ (log/info "computing baselines")
           baselines (-> (into {} (.. als
                                      (recommendUsersForProducts (count user->index))
@@ -195,13 +192,13 @@
                                      (collect)))
                         (update-keys index->candidate))
 
-          item-candidates-ids (into #{} (map :xt/id) item-candidates)
-          ad-candidates-ids (into #{} (map :xt/id) all-ads)
+          item-candidate-ids (into #{} (map :xt/id) item-candidates)
+          ad-candidate-ids (into #{} (map :xt/id) all-ads)
           type->median-score (as-> baselines $
                                (group-by (fn [[candidate-id _]]
                                            (cond
-                                             (item-candidates-ids candidate-id) :item
-                                             (ad-candidates-ids candidate-id) :ad))
+                                             (item-candidate-ids candidate-id) :item
+                                             (ad-candidate-ids candidate-id) :ad))
                                          $)
                                (update-vals $ #(or (median (sort (mapv val %))) 0.5)))
           candidate->n-usits (update-vals (group-by :user-item/item all-usits)
@@ -222,9 +219,8 @@
                                           (.rating rating)]))))
                     baselines)]
               (into {}
-                    (for [[type* candidates median-score]
-                          [[:item item-candidates item-median-score]
-                           [:ad ad-candidates ad-median-score]]
+                    (for [[type* candidates] [[:item item-candidates]
+                                              [:ad ad-candidates]]
                           :let [median-score (get type->median-score type*)]]
                       [type*
                        (->> (for [c candidates]
@@ -237,164 +233,17 @@
                                      :candidate/n-usits (candidate->n-usits (:xt/id c))))
                             (sort-by (juxt :candidate/n-usits
                                            (comp - inst-ms :candidate/last-liked)))
-                            vec)]))))
-          candidate-ids (set (mapv :xt/id (concat item-candidates ad-candidates)))
-
-
-
-
-
-          direct-items (into []
-                             (comp (map first)
-                                   (remove
-                                    (fn [{:keys [item.direct/candidate-status
-                                                 item/ingested-at
-                                                 xt/id]}]
-                                      (or (#{:ingest-failed :blocked} candidate-status)
-                                          (< (inst-ms screened-to) (inst-ms ingested-at))
-                                          (and (= screened-to ingested-at)
-                                               (< (compare screened-to-id id) 0))))))
-                             (q db
-                                '{:find [(pull item [:xt/id
-                                                     :item/url
-                                                     :item/ingested-at
-                                                     :item.direct/candidate-status])]
-                                  :in [direct]
-                                  :where [[item :item/doc-type direct]]}
-                                :item/direct))
-
-          direct-urls (into #{} (map :item/url) direct-items)
-          ;; For any favorited non-direct items that have URLs, we add a direct item elsewhere. So
-          ;; here we only need to deal with things that do have direct items.
-          item-id->url (into {}
-                             (q db
-                                '{:find [item2 url]
-                                  :in [[url ...]]
-                                  :where [[usit :user-item/item item1]
-                                          [usit :user-item/favorited-at]
-                                          [item1 :item/url url]
-                                          [item2 :item/url url]]}
-                                direct-urls))
-          item-usits (mapv first
-                           (q db
-                              '{:find [(pull usit [*])]
-                                :in [[item ...]]
-                                :where [[usit :user-item/item item]]}
-                              (keys item-id->url)))
-          skip-usits (q db
-                        '{:find [user item (count skip)]
-                          :keys [user-item/user user-item/item user-item/n-skips]
-                          :in [[item ...]]
-                          :where [[skip :skip/items item]
-                                  [skip :skip/user user]]}
-                        (keys item-id->url))
-          usit-key (juxt :user-item/user :user-item/item)
-          user+item->skip-usit (into {}
-                                     (map (juxt usit-key identity))
-                                     skip-usits)
-          ad-usits (q db
-                      '{:find [user ad created-at]
-                        :keys [user-item/user user-item/item user-item/viewed-at]
-                        :where [[click :ad.click/user user]
-                                [click :ad.click/ad ad]
-                                [click :ad.click/created-at created-at]]})
-          all-usits (->> (concat (for [usit (concat item-usits ad-usits)]
-                                   (merge usit (user+item->skip-usit (usit-key usit))))
-                                 skip-usits)
-                         (lib.core/distinct-by usit-key)
-                         (mapv (fn [usit]
-                                 (let [url (or (item-id->url (:user-item/item usit))
-                                               (:user-item/item usit))]
-                                   (assoc usit
-                                          :user-item/url url ; can we get rid of this?
-                                          :candidate-type (if (uuid? url)
-                                                            :ad
-                                                            :item))))))
-          ;; can index->url just be index->item-id?
-          ;; we're already mapping from url to the direct item somewhere...
-          [[index->url url->index]
-           [_ user->index]]
-          (for [k [:user-item/url :user-item/user]
-                :let [index->x (->> all-usits
-                                    (mapv k)
-                                    distinct
-                                    (map-indexed vector)
-                                    (into {}))]]
-            [index->x (into {} (map (fn [[k v]] [v k])) index->x)])
-
-          ratings (->> (for [usit all-usits
-                             :let [score (cond
-                                           (:user-item/favorited-at usit) 1
-                                           (:user-item/disliked-at usit) 0
-                                           (:user-item/reported-at usit) 0
-                                           (:user-item/viewed-at usit) 0.75
-                                           (:user-item/skipped-at usit) (max 0 (- 0.5 (* 0.1 (:user-item/n-skips usit 0))))
-                                           (:user-item/bookmarked-at usit) 0.6
-                                           ;; shouldn't ever happen; just being defensive.
-                                           :else 0.5)]]
-                         (rating. (int (user->index (:user-item/user usit)))
-                                  (int (url->index (:user-item/url usit)))
-                                  (double score)))
-                       (.parallelize spark)
-                       (.rdd)
-                       (.cache))
-          rank 10
-          iterations 20
-          lambda 0.1
-          alpha 0.05
-          _ (log/info "training ALS")
-          als (ALS/trainImplicit ratings rank iterations lambda alpha)
-          _ (log/info "computing baselines")
-          baselines (-> (into {} (.. als
-                                     (recommendUsersForProducts (count user->index))
-                                     (map (AverageRating.)
-                                          (.apply ClassTag$/MODULE$ clojure.lang.PersistentVector))
-                                     (collect)))
-                        (update-keys index->url))
-          candidate-type->urls (-> (group-by :candidate-type all-usits)
-                                   (update-vals (fn [usits]
-                                                  (->> usits
-                                                       (mapv :user-item/url)
-                                                       distinct
-                                                       vec))))
-          [item-median-score
-           ad-median-score] (for [k [:item :ad]]
-                              (or (median (sort (mapv baselines (candidate-type->urls k)))) 0.5))
-          get-url->score (fn [user-id]
-                           (let [url->score (if-some [user-idx (user->index user-id)]
-                                              (->> (.recommendProducts als user-idx (count index->url))
-                                                   (into {} (map (fn [^Rating rating]
-                                                                   [(index->url (.product rating))
-                                                                    (.rating rating)]))))
-                                              baselines)]
-                             (fn [url]
-                               (get url->score url (if (uuid? url)
-                                                     ad-median-score
-                                                     item-median-score)))))
-          url->n-usits (update-vals (group-by :user-item/url all-usits)
-                                    count)
-          url->last-liked (update-vals (group-by :user-item/url all-usits)
-                                       (fn [usits]
-                                         (->> (keep :user-item/favorited-at usits)
-                                              (apply max-key
-                                                     inst-ms
-                                                     (Instant/ofEpochMilli 0)))))
-          item-candidates (->> (candidate-type->urls :item)
-                               (sort-by (juxt url->n-usits (comp - inst-ms url->last-liked)))
-                               vec)
-          candidate-ids (into #{} (map :xt/id) direct-items)]
+                            vec)]))))]
       (log/info "done")
-      {:yakread.model/candidates item-candidates
-       :yakread.model/candidate-ids candidate-ids
-       :yakread.model/url->last-liked url->last-liked
-       :yakread.model/get-url->score get-url->score})))
+      {:yakread.model/get-candidates get-candidates
+       :yakread.model/item-candidate-ids item-candidate-ids})))
 
 (defn use-spark [{:keys [biff.xtdb/node] :as ctx}]
   (let [spark (doto (JavaSparkContext. "local[*]" "yakread")
                 (.setCheckpointDir "storage/spark-checkpoint"))
-        model (atom (new-model {:yakread/spark spark
-                                :biff/db (xt/db node)
-                                :biff/now (Instant/now)}))]
+        model (atom {} #_(new-model {:yakread/spark spark
+                                     :biff/db (xt/db node)
+                                     :biff/now (Instant/now)}))]
     (-> ctx
         (assoc :yakread/spark spark
                :yakread/model model)
