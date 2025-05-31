@@ -1,9 +1,5 @@
 - ads
   - update spark model to include ads
-    - implement merge-usits
-    - update model/recommend.clj
-    - testing
-      - break up new-model into resolvers
   - resolver for ad item
   - for you page
   - ad page

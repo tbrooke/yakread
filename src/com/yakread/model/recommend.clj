@@ -202,30 +202,43 @@
    a-items
    b-items))
 
-(defresolver discover-recs [{:keys [biff/db
-                                    yakread.model/candidates
-                                    yakread.model/url->last-liked
-                                    yakread.model/get-url->score]}
-                            {user-id :user/id}]
+(defresolver candidates [{:keys [yakread.model/get-candidates]}
+                         {user-id :user/id}]
   {::pco/input [(? :user/id)]
-   ::pco/output [{:user/discover-recs [:item/id
+   ::pco/output [{:user/item-candidates [:xt/id
+                                         :candidate/type
+                                         :candidate/score
+                                         :candidate/last-liked]}
+                 {:user/ad-candidates [:xt/id
+                                       :candidate/type
+                                       :candidate/score
+                                       :candidate/last-liked]}]}
+  (let [candidates (get-candidates user-id)]
+    {:user/item-candidates (:item candidates)
+     :user/ad-candidates (:ad candidates)}))
+
+(defresolver discover-recs [{:keys [biff/db]}
+                            {user-id :user/id
+                             candidates :user/item-candidates}]
+  {::pco/input [(? :user/id)
+                {:user/item-candidates [:xt/id
+                                        :item/url
+                                        :candidate/score
+                                        :candidate/last-liked]}]
+   ::pco/output [{:user/discover-recs [:xt/id
                                        :item/rec-type]}]}
-  (let [url->n-skips (if-not user-id
-                       {}
-                       (into {}
-                             (q db
-                                '{:find [url (count skip)]
-                                  :in [user [url ...]]
-                                  :where [[skip :skip/user user]
-                                          [skip :skip/items item]
-                                          [item :item/url url]]}
-                                user-id
-                                candidates)))
-        url->score (get-url->score user-id)
-        read-urls (if-not user-id
-                    #{}
-                    (into #{}
-                          (map first)
+  (let [item-id->n-skips (into {}
+                               (when user-id
+                                 (q db
+                                    '{:find [item (count skip)]
+                                      :in [user [item ...]]
+                                      :where [[skip :skip/user user]
+                                              [skip :skip/items item]]}
+                                    user-id
+                                    (mapv :xt/id candidates))))
+        read-urls (into #{}
+                        (map first)
+                        (when user-id
                           (xt/q db
                                 '{:find [url]
                                   :in [user]
@@ -238,43 +251,34 @@
                                               [usit :user-item/disliked-at _]
                                               [usit :user-item/reported-at _])]}
                                 user-id)))
-        candidates (filterv (complement read-urls) candidates)
-        url->host (into {} (map (juxt identity (comp :host uri/uri))) candidates)
-        urls (first
-              (reduce (fn [[selected candidates] _]
-                        (let [selection
-                              (if (< (gen/double) 0.1)
-                                (gen/rand-nth candidates)
-                                (->> candidates
-                                     take-rand
-                                     (sort-by (comp - inst-ms url->last-liked))
-                                     take-rand
-                                     gen/shuffle
-                                     (sort-by (fn [url]
-                                                [(get url->n-skips url 0)
-                                                 (- (url->score url))]))
-                                     (rerank 0.25)
-                                     first))
-                              new-candidates (filterv (fn [url]
-                                                        (not= (url->host url)
-                                                              (url->host selection)))
-                                                      candidates)]
-                          (cond-> [(conj selected selection) new-candidates]
-                            (empty? new-candidates) reduced)))
-                      [[] candidates]
-                      (range (min n-total-recs (count candidates)))))
-        url->item-id (into {}
-                           (q db
-                              '{:find [url item]
-                                :in [[url ...] direct]
-                                :where [[item :item/url url]
-                                        [item :item/doc-type direct]]}
-                              urls
-                              :item/direct))]
-    {:user/discover-recs (mapv (fn [url]
-                                 {:item/id (url->item-id url)
-                                  :item/rec-type :item.rec-type/discover})
-                               urls)}))
+        candidates (vec (remove (comp read-urls :item/url) candidates))
+        url->host (into {} (map (comp (juxt identity (comp :host uri/uri)) :item/url)) candidates)
+
+        candidates
+        (first
+         (reduce (fn [[selected candidates] _]
+                   (if (empty? candidates)
+                     (reduced [selected candidates])
+                     (let [selection (if (< (gen/double) 0.1)
+                                       (gen/rand-nth candidates)
+                                       (->> candidates
+                                            take-rand
+                                            (sort-by (comp - inst-ms :candidate/last-liked))
+                                            take-rand
+                                            gen/shuffle
+                                            (sort-by (fn [{:keys [xt/id candidate/score]}]
+                                                       [(get item-id->n-skips id 0)
+                                                        (- score)]))
+                                            (rerank 0.25)
+                                            first))
+                           candidates (filterv (fn [{:keys [item/url]}]
+                                                 (not= (url->host url)
+                                                       (url->host selection)))
+                                               candidates)]
+                       [(conj selected selection) candidates])))
+                 [[] candidates]
+                 (range n-total-recs)))]
+    {:user/discover-recs (mapv #(assoc % :item/rec-type :item.rec-type/discover) candidates)}))
 
 (defn- take-items [n xs]
   (->> xs
@@ -310,6 +314,7 @@
                sub-recs
                bookmark-recs
                for-you-recs
+               candidates
                discover-recs]})
 
 (comment

@@ -164,7 +164,7 @@
                           (:item/id params))]
     {:params/item-unsafe {:xt/id item-id}}))
 
-(defresolver from-params [{:keys [session yakread.model/candidate-ids]}
+(defresolver from-params [{:keys [session yakread.model/item-candidate-ids]}
                           {:keys [params/item-unsafe]}]
   #::pco{:input [{:params/item-unsafe [:xt/id
                                        {(? :item/sub) [:xt/id
@@ -173,7 +173,7 @@
          :output [{:params/item [:xt/id]}]}
   (when (or (= (:uid session) (get-in item-unsafe [:item/sub :sub/user :xt/id]))
             (not-empty (:item/user-item item-unsafe))
-            (contains? candidate-ids (:xt/id item-unsafe)))
+            (contains? item-candidate-ids (:xt/id item-unsafe)))
     {:params/item item-unsafe}))
 
 (defresolver item-id [{:keys [xt/id]}]
