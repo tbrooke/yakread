@@ -14,6 +14,7 @@
   [com.yakread.app.subscriptions]
   [com.yakread.app.subscriptions.add]
   [com.yakread.app.subscriptions.view]
+  [com.yakread.model.ad]
   [com.yakread.model.feed]
   [com.yakread.model.item]
   [com.yakread.model.moderation]
@@ -43,6 +44,7 @@
   com.yakread.app.subscriptions/module
   com.yakread.app.subscriptions.add/module
   com.yakread.app.subscriptions.view/module
+  com.yakread.model.ad/module
   com.yakread.model.feed/module
   com.yakread.model.item/module
   com.yakread.model.moderation/module

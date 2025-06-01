@@ -9,8 +9,11 @@
    [lambdaisland.uri :as uri]
    [xtdb.api :as xt]))
 
-(defn take-rand [xs]
-  (take (max 1 (* (gen/double) (count xs))) xs))
+(defn take-rand
+  ([xs]
+   (take-rand 1 xs))
+  ([minimum xs]
+   (take (max minimum (* (gen/double) (count xs))) xs)))
 
 (def n-sub-bookmark-recs 22)
 (def n-total-recs 30)
@@ -202,20 +205,32 @@
    a-items
    b-items))
 
-(defresolver candidates [{:keys [yakread.model/get-candidates]}
+(defresolver candidates [{:keys [biff/db
+                                 yakread.model/get-candidates]}
                          {user-id :user/id}]
   {::pco/input [(? :user/id)]
-   ::pco/output [{:user/item-candidates [:xt/id
-                                         :candidate/type
-                                         :candidate/score
-                                         :candidate/last-liked]}
-                 {:user/ad-candidates [:xt/id
-                                       :candidate/type
-                                       :candidate/score
-                                       :candidate/last-liked]}]}
-  (let [candidates (get-candidates user-id)]
-    {:user/item-candidates (:item candidates)
-     :user/ad-candidates (:ad candidates)}))
+   ::pco/output (vec
+                 (for [k [:user/item-candidates
+                          :user/ad-candidates]]
+                   {k [:xt/id
+                       :candidate/type
+                       :candidate/score
+                       :candidate/last-liked
+                       :candidate/n-skips]}))}
+  (let [{:keys [item ad]} (get-candidates user-id)
+        all-candidates (concat item ad)
+        item-id->n-skips (into {}
+                               (when user-id
+                                 (q db
+                                    '{:find [item (count skip)]
+                                      :in [user [item ...]]
+                                      :where [[skip :skip/user user]
+                                              [skip :skip/items item]]}
+                                    user-id
+                                    (mapv :xt/id all-candidates))))
+        assoc-n-skips #(assoc % :candidate/n-skips (get item-id->n-skips (:xt/id %) 0))]
+    {:user/item-candidates (mapv assoc-n-skips item)
+     :user/ad-candidates (mapv assoc-n-skips ad)}))
 
 (defresolver discover-recs [{:keys [biff/db]}
                             {user-id :user/id
@@ -224,19 +239,11 @@
                 {:user/item-candidates [:xt/id
                                         :item/url
                                         :candidate/score
-                                        :candidate/last-liked]}]
+                                        :candidate/last-liked
+                                        :candidate/n-skips]}]
    ::pco/output [{:user/discover-recs [:xt/id
                                        :item/rec-type]}]}
-  (let [item-id->n-skips (into {}
-                               (when user-id
-                                 (q db
-                                    '{:find [item (count skip)]
-                                      :in [user [item ...]]
-                                      :where [[skip :skip/user user]
-                                              [skip :skip/items item]]}
-                                    user-id
-                                    (mapv :xt/id candidates))))
-        read-urls (into #{}
+  (let [read-urls (into #{}
                         (map first)
                         (when user-id
                           (xt/q db
@@ -252,9 +259,9 @@
                                               [usit :user-item/reported-at _])]}
                                 user-id)))
         candidates (vec (remove (comp read-urls :item/url) candidates))
-        url->host (into {} (map (comp (juxt identity (comp :host uri/uri)) :item/url)) candidates)
+        url->host (into {} (map (juxt :item/url (comp :host uri/uri :item/url))) candidates)
 
-        candidates
+        recommendations
         (first
          (reduce (fn [[selected candidates] _]
                    (if (empty? candidates)
@@ -266,19 +273,69 @@
                                             (sort-by (comp - inst-ms :candidate/last-liked))
                                             take-rand
                                             gen/shuffle
-                                            (sort-by (fn [{:keys [xt/id candidate/score]}]
-                                                       [(get item-id->n-skips id 0)
-                                                        (- score)]))
+                                            (sort-by (fn [{:candidate/keys [score n-skips]}]
+                                                       [n-skips (- score)]))
                                             (rerank 0.25)
                                             first))
                            candidates (filterv (fn [{:keys [item/url]}]
                                                  (not= (url->host url)
-                                                       (url->host selection)))
+                                                       (url->host (:item/url selection))))
                                                candidates)]
                        [(conj selected selection) candidates])))
                  [[] candidates]
                  (range n-total-recs)))]
-    {:user/discover-recs (mapv #(assoc % :item/rec-type :item.rec-type/discover) candidates)}))
+    {:user/discover-recs (mapv #(assoc % :item/rec-type :item.rec-type/discover) recommendations)}))
+
+(defresolver ad-score [{:keys [candidate/score ad/effective-bid]}]
+  {:candidate/ad-score (* (max 0.0001 score) effective-bid)})
+
+(defresolver ad-rec [{:keys [biff/db]}
+                     {user-id :user/id
+                      candidates :user/ad-candidates}]
+  {::pco/input [(? :user/id)
+                {:user/ad-candidates [:xt/id
+                                      :candidate/n-skips
+                                      :candidate/ad-score
+                                      :ad/effective-bid
+                                      :ad/paused
+                                      {:ad/user [:xt/id
+                                                 (? :user/email)]}]}]
+   ::pco/output [{:user/ad-rec [:xt/id
+                                :ad/click-cost
+                                :item/rec-type]}]}
+  ;; TODO return nil if the user has a premium subscription
+  (let [clicked-ads (into #{}
+                          (map first)
+                          (when user-id
+                            (q db
+                               '{:find [ad]
+                                 :in [user [ad ...]]
+                                 :where [[click :ad.click/user user]
+                                         [click :ad.click/ad ad]]}
+                               user-id
+                               (mapv :xt/id candidates))))
+        [first-ad second-ad] (->> candidates
+                                  (remove (fn [{:keys [xt/id ad/user ad/paused]}]
+                                            (or (clicked-ads id)
+                                                (= user-id (:xt/id user))
+                                                paused
+                                                ;; Apparently when people requested to have their
+                                                ;; accounts removed, I did so without changing their
+                                                ;; ads. So we check here to make sure the ad user's
+                                                ;; account wasn't removed.
+                                                (nil? (:user/email user)))))
+                                  gen/shuffle
+                                  (sort-by :candidate/n-skips)
+                                  (take-rand 10)
+                                  (sort-by :candidate/ad-score >))
+        ;; `click-cost` is the minimum amount that (:ad/bid first-ad) could've been while still
+        ;; being first. The ad owner will be charged this amount if the user clicks the ad.
+        click-cost (max 1 (inc (int (* (:ad/effective-bid first-ad)
+                                       (/ (:candidate/ad-score second-ad)
+                                          (:candidate/ad-score first-ad))))))]
+    {:user/ad-rec (assoc first-ad
+                         :ad/click-cost click-cost
+                         :item/rec-type :item.rec-type/ad)}))
 
 (defn- take-items [n xs]
   (->> xs
@@ -313,9 +370,11 @@
                new-sub
                sub-recs
                bookmark-recs
-               for-you-recs
                candidates
-               discover-recs]})
+               ad-score
+               discover-recs
+               ad-rec
+               for-you-recs]})
 
 (comment
 

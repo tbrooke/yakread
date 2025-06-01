@@ -1,6 +1,4 @@
 - ads
-  - update spark model to include ads
-  - resolver for ad item
   - for you page
   - ad page
   - admin page
@@ -9,6 +7,7 @@
 - email digests
 - settings
 - premium plans
+  - hide ads
 - redo subs page layout (use tabs)
 - make sure it's safe to use nippy on untrusted input
 - deploy, migrate
