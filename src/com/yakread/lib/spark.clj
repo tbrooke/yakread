@@ -295,13 +295,15 @@
                          {:xt/id id
                           :candidate/type type*
                           :candidate/score (predict id type*)
-                          :candidate/last-liked (candidate->last-liked id)
-                          :candidate/n-ratings (candidate->n-ratings id)})
+                          :candidate/last-liked (get candidate->last-liked
+                                                     id
+                                                     (Instant/ofEpochMilli 0))
+                          :candidate/n-ratings (get candidate->n-ratings id 0)})
                        (sort-by (juxt :candidate/n-ratings
                                       (comp - inst-ms :candidate/last-liked)))
                        vec)]))))}))
 
-(def pathom-env (pci/register [screening-info
+(def ^:private pathom-env (pci/register [screening-info
                                item-candidates
                                ads
                                ad-ratings
@@ -334,4 +336,8 @@
   (-> (new-model (biff/merge-context @com.yakread/system))
       :yakread.model/item-candidate-ids
       count)
+
+  (reset! (:yakread/model @com.yakread/system)
+          (new-model (biff/merge-context @com.yakread/system)))
+
   )
