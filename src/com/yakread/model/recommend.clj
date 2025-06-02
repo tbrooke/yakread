@@ -315,8 +315,9 @@
                                user-id
                                (mapv :xt/id candidates))))
         [first-ad second-ad] (->> candidates
-                                  (remove (fn [{:keys [xt/id ad/user ad/paused]}]
+                                  (remove (fn [{:keys [xt/id] :ad/keys [user paused approve-state]}]
                                             (or (clicked-ads id)
+                                                (= approve-state :approved)
                                                 (= user-id (:xt/id user))
                                                 paused
                                                 ;; Apparently when people requested to have their
@@ -342,7 +343,7 @@
        (lib.core/distinct-by :item/id)
        (take n)))
 
-(defresolver for-you-recs [{:user/keys [sub-recs bookmark-recs discover-recs]}]
+(defresolver for-you-recs [{:user/keys [ad-rec sub-recs bookmark-recs discover-recs]}]
   #::pco{:input [{(? :user/sub-recs) [:item/id
                                       :item/n-skipped
                                       :item/rec-type]}
@@ -350,7 +351,9 @@
                                            :item/n-skipped
                                            :item/rec-type]}
                  {:user/discover-recs [:item/id
-                                       :item/rec-type]}]
+                                       :item/rec-type]}
+                 {(? :user/ad-rec) [:xt/id
+                                    :item/rec-type]}]
          :output [{:user/for-you-recs [:item/id
                                        :item/rec-type]}]}
   (let [{new-sub-recs true
@@ -359,7 +362,7 @@
         bookmark-sub-recs (->> (pick-by-skipped bookmark-recs other-sub-recs)
                                (concat new-sub-recs)
                                (take-items n-sub-bookmark-recs))
-        recs (->> (concat bookmark-sub-recs discover-recs)
+        recs (->> (concat (when ad-rec [ad-rec]) bookmark-sub-recs discover-recs)
                   (take-items n-total-recs)
                   vec)]
     {:user/for-you-recs recs}))

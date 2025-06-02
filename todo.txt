@@ -1,5 +1,6 @@
 - ads
   - for you page
+    - handle ad clicks
   - ad page
   - admin page
   - import referral data

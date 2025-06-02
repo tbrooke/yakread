@@ -46,8 +46,8 @@
     [{(? :user/current-item)
       [:item/ui-read-more-card]}
      {:user/for-you-recs
-      [:item/id
-       :item/ui-read-more-card]}]}
+      [:xt/id
+       :rec/ui-read-more-card]}]}
    {(? :session/anon)
     [{:user/discover-recs
       [:item/id
@@ -66,9 +66,9 @@
          [:a.underline {:href (href routes/history)}
           "View reading history"]]])
      (if user
-       (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
+       (for [[i {:rec/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
          (ui-read-more-card {:on-click-route `read-page-route
-                             :on-click-params {:skip (set (mapv :item/id (take i for-you-recs)))
+                             :on-click-params {:skip (set (mapv :xt/id (take i for-you-recs)))
                                                :t now}
                              :highlight-unread false
                              :show-author true}))

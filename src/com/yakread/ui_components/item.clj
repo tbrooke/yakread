@@ -55,7 +55,6 @@
                                :item.rec-type/bookmark "Bookmarked"
                                :item.rec-type/subscription "Subscribed"
                                :item.rec-type/new-subscription "New subscription"
-                               :item.rec-type/ad "Ad"
                                :item.rec-type/discover "Discover"
                                :item.rec-type/current "Continue reading"
                                nil)]
@@ -64,7 +63,56 @@
           (map #(vector :span.inline-block %))
           (biff/join ui/interpunct)))})
 
-(defresolver read-more-card [{:item/keys [id ui-details title excerpt unread image-url url]}]
+(defn- read-more-card* [{:keys [href new-tab highlight details title description image-url
+                                clamp]}]
+  [:a {:href href :target (when new-tab "_blank")}
+   [:div {:class (concat '[bg-white hover:bg-neut-50
+                           p-4
+                           sm:shadow]
+                         (when highlight
+                           '[max-sm:border-t-4 sm:border-l-4 border-tealv-500]))}
+    [:.text-neut-600.text-sm.line-clamp-2
+     details]
+    [:.h-1]
+    [:h3 {:class '[font-bold text-xl text-neut-800
+                   leading-tight
+                   line-clamp-2]}
+     title]
+    [:.h-2]
+    [:.flex.gap-3.justify-between
+     [:div
+      (when description
+        [:.text-neut-600.mb-1
+         (when clamp
+           {:style {:overflow-wrap "anywhere"}
+            :class '[line-clamp-4]})
+         description])
+      [:div {:class '[text-tealv-600 font-semibold
+                      hover:underline
+                      inline-block]}
+       "Read more."]]
+     (when image-url
+       [:.relative.flex-shrink-0
+        [:img {:src (ui/weserv {:url image-url
+                                :w 150
+                                :h 150
+                                :fit "cover"
+                                :a "attention"})
+               :_ "on error remove me"
+               :class '[rounded
+                        object-cover
+                        object-center
+                        "mt-[6px]"
+                        "w-[5.5rem]"
+                        "h-[5.5rem]"]}]
+        [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
+               :class '[absolute
+                        inset-x-0
+                        "top-[6px]"
+                        "h-[5.5rem]"
+                        rounded]}]])]]])
+
+(defresolver item-read-more-card [{:item/keys [id ui-details title excerpt unread image-url url]}]
   {::pco/input [:item/id
                 :item/unread
                 :item/ui-details
@@ -74,54 +122,53 @@
                 (? :item/url)]}
   {:item/ui-read-more-card
    (fn [{:keys [highlight-unread on-click-route show-author on-click-params new-tab]}]
-     [:a {:href (if on-click-route
-                  (href on-click-route id (when (not-empty on-click-params)
-                                            on-click-params))
-                  url)
-          :target (when new-tab "_blank")}
-      [:div {:class (concat '[bg-white hover:bg-neut-50
-                              p-4
-                              sm:shadow]
-                            (when (and highlight-unread unread)
-                              '[max-sm:border-t-4 sm:border-l-4 border-tealv-500]))}
-       [:.text-neut-600.text-sm.line-clamp-2
-        (ui-details {:show-author show-author})]
-       [:.h-1]
-       [:h3 {:class '[font-bold text-xl text-neut-800
-                      leading-tight
-                      line-clamp-2]}
-        title]
-       [:.h-2]
-       [:.flex.gap-3.justify-between
-        [:div
-         (when (not= excerpt "Read more")
-           [:.line-clamp-4.text-neut-600.mb-1
-            {:style {:overflow-wrap "anywhere"}}
-            (lib.content/clean-string excerpt)])
-         [:div {:class '[text-tealv-600 font-semibold
-                         hover:underline
-                         inline-block]}
-          "Read more."]]
-        (when image-url
-          [:.relative.flex-shrink-0
-           [:img {:src (ui/weserv {:url image-url
-                                   :w 150
-                                   :h 150
-                                   :fit "cover"
-                                   :a "attention"})
-                  :_ "on error remove me"
-                  :class '[rounded
-                           object-cover
-                           object-center
-                           "mt-[6px]"
-                           "w-[5.5rem]"
-                           "h-[5.5rem]"]}]
-           [:div {:style {:box-shadow "inset 0 0px 6px 1px #0000000d"}
-                  :class '[absolute
-                           inset-x-0
-                           "top-[6px]"
-                           "h-[5.5rem]"
-                           rounded]}]])]]])})
+     (read-more-card* {:href (if on-click-route
+                               (href on-click-route id (when (not-empty on-click-params)
+                                                         on-click-params))
+                               url)
+                       :new-tab new-tab
+                       :highlight (and highlight-unread unread)
+                       :details (ui-details {:show-author show-author})
+                       :title title
+                       :description (when (not= excerpt "Read more")
+                                      (lib.content/clean-string excerpt))
+                       :clamp  true
+                       :image-url image-url}))})
+
+(defresolver ad-read-more-card [{:ad/keys [id url title description image-url]}]
+  {::pco/input [:ad/id
+                :ad/url
+                :ad/title
+                :ad/description
+                :ad/image-url]}
+  {:ad/ui-read-more-card
+   (fn [{:keys [on-click-params]}]
+     [:div
+      (read-more-card* {;; TODO maybe have a dedicated route for ads
+                        :href (href routes/read-item id (when (not-empty on-click-params)
+                                                          on-click-params))
+                        :new-tab true
+                        :highlight true
+                        :details [:<>
+                                  [:span.inline-block (-> url uri/uri :host str/trim)]
+                                  ui/interpunct
+                                  [:span.inline-block.underline "Ad"]]
+                        :title title
+                        :description description
+                        :image-url image-url})
+      [:.h-5.sm:h-4]
+      ;; TODO use routes.clj
+      [:.flex.justify-center.gap-2
+       [:a.underline.text-neut-600 {:href "/upgrade"} "Upgrade"]
+       ui/interpunct
+       [:a.underline.text-neut-600 {:href "/advertise"} "Advertise"]]])})
+
+(defresolver rec-read-more-card [props]
+  {::pco/input [(? :item/ui-read-more-card)
+                (? :ad/ui-read-more-card)]
+   ::pco/output [:rec/ui-read-more-card]}
+  (when-some [ui-card (some props [:item/ui-read-more-card :ad/ui-read-more-card])]
+    {:rec/ui-read-more-card ui-card}))
 
 (defresolver small-card [{:item/keys [id title ui-details]}]
   #::pco{:input [:item/id
@@ -139,5 +186,7 @@
 
 (def module
   {:resolvers [details
-               read-more-card
+               ad-read-more-card
+               item-read-more-card
+               rec-read-more-card
                small-card]})

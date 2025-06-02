@@ -176,7 +176,7 @@
             (contains? item-candidate-ids (:xt/id item-unsafe)))
     {:params/item item-unsafe}))
 
-(defresolver item-id [{:keys [xt/id]}]
+(defresolver item-id [{:keys [xt/id item/ingested-at]}]
   {:item/id id})
 
 (defresolver xt-id [{:keys [item/id]}]

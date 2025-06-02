@@ -1,25 +1,34 @@
 (ns repl
-  (:require [com.biffweb :as biff :refer [q]]
-            [com.yakread :as main]
-            [com.yakread.smtp :as smtp]
-            [com.yakread.lib.route :as lib.route]
-            [com.yakread.lib.pathom :as lib.pathom :refer [?]]
-            [com.yakread.lib.smtp :as lib.smtp]
-            [reitit.core :as reitit]
-            [xtdb.api :as xt]))
+  (:require
+   [com.biffweb :as biff :refer [q]]
+   [com.yakread :as main]
+   [com.yakread.lib.pathom :as lib.pathom]
+   [com.yakread.lib.smtp :as lib.smtp]
+   [xtdb.api :as xt]))
 
-(defn with-context [f]
-  (let [ctx @main/system]
-    (with-open [db (biff/open-db-with-index ctx) #_(xt/open-db (:biff.xtdb/node ctx))]
-      (f (assoc (biff/merge-context ctx)
-                :biff/db db
-                :session {:uid (biff/lookup-id db :user/email "hello@obryant.dev")})))))
+;;;; export these vars to be used in rich-comment forms, e.g.
 
-(defn update-user! [email kvs]
-  (biff/submit-tx @main/system
-    [(merge {:db/doc-type :user
-             :db.op/upsert {:user/email email}}
-            kvs)]))
+;; (comment
+;;   (do-something (repl/context))
+;;   )
+
+(defn context [& {:keys [session-email]
+                  :or {session-email "hello@obryant.dev"}}]
+  (let [{:keys [biff/db] :as ctx} (biff/merge-context @main/system)]
+    (merge ctx
+         (when session-email
+           {:session {:uid (biff/lookup-id db :user/email session-email)}}))))
+
+(defn with-context [f & {:as opts}]
+  (let [ctx (context opts)]
+    (with-open [db (biff/open-db-with-index ctx)]
+      (f (assoc ctx :biff/db db)))))
+
+(def process lib.pathom/process)
+
+(def ? lib.pathom/?)
+
+(def hello-uid #uuid "57f88a5f-2b55-4eb3-8866-e32a48ec8baa")
 
 (defn tapped* [f]
   (let [done (promise)
@@ -29,7 +38,10 @@
                    (deliver done nil)
                    (swap! results conj x)))
         _ (add-tap tap-fn)
-        f-result (f)]
+        f-result (try
+                   (f)
+                   (catch Exception e
+                     e))]
     (tap> ::done)
     @done
     (remove-tap tap-fn)
@@ -38,6 +50,14 @@
 
 (defmacro tapped [& body]
   `(tapped* (fn [] ~@body)))
+
+;;;; ---------------------------------------------------------------------------
+
+(defn- update-user! [email kvs]
+  (biff/submit-tx @main/system
+    [(merge {:db/doc-type :user
+             :db.op/upsert {:user/email email}}
+            kvs)]))
 
 (comment
 
@@ -66,52 +86,32 @@
            [:p "how do you do "
             [:a {:href "https://example.com/"} "click me"]]]]})
 
-  (tapped
-   (try
-     (with-context
-       (fn [{:keys [biff/db session] :as ctx}]
-         (lib.pathom/process
-          (-> ctx
-              (assoc :path-params {:item-id "eWrwK063TYypMDhtG0NP0Q"
-                                   :sub-id "l0irZnG-ST2DzldKN_A6AQ"})
-              #_(dissoc :session))
-          [{:session/user [
-                           {:user/subscriptions [:sub/id]}
-                           {:user/unsubscribed [:sub/id]}]}
-           ;{:params/sub [{:sub/items [:item/id :item/unread]}]}
-           #_{:params/item [:xt/id
-                          {(? :item/sub) [:xt/id]}
-                          {:item/user-item [(? :user-item/disliked-at)
-                                            (? :user-item/favorited-at)
-                                            ]}
-                          ]}]
-          
-          )))
-     (catch clojure.lang.ExceptionInfo e
-       (:missing (ex-data e))
-       )
-     )
-   )
+
+  (context/with-context
+    (fn [{:keys [biff/db biff.xtdb/node session] :as ctx}]
+      #_(xt/entity db :admin/moderation)
+      #_(biff/lookup-all db :item.direct/candidate-status :blocked)
+
+      #_(time
+       (do
+         (mapv first
+               (q db
+                  '{:find [(pull direct-item [*])]
+                    :in [direct]
+                    :where [[usit :user-item/item any-item]
+                            [usit :user-item/favorited-at]
+                            [any-item :item/url url]
+                            [direct-item :item/url url]
+                            [direct-item :item/doc-type direct]]}
+                  :item/direct))
+         nil))
 
 
-  (with-context
-    (fn [{:keys [biff/db biff.xtdb/node] :as ctx}]
-      #_(xt/pull db '[*] #uuid "796af02b-4eb7-4d8c-a930-386d1b434fd1")
-      (q db '{:find (pull doc [*])
-              :where [[doc :item.email/sub]]})
-      ;(xt/submit-tx node [[::xt/delete #uuid "de587b6d-93b4-41db-ad21-7f1a6f669b30"]])
+      (tapped
+       (process ctx [{:user/ad-rec [:ad/title
+                                    :ad/click-cost]}]))
+
 
       ))
 
-  (java.time.Instant/parse "1970-01-01T00:00:00Z")
-
-
-  (com.yakread.app.subscriptions.add-test/get-current-ns)
-  (com.yakread.lib.test/current-ns)
-
-  (update-user! "hello@example.com" {:user/email-username* :db/dissoc})
-
-  main/router
-
-  (clj-http.client/get "https://example.com")
   )

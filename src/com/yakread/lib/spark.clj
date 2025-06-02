@@ -271,7 +271,7 @@
                 {::item-candidates [:xt/id]}
                 {::ad-candidates [:xt/id]}
                 ::predict-fn]
-   ::pco/output [::get-candidates]}
+   ::pco/output [:yakread.model/get-candidates]}
   (let [all-ratings (concat item-ratings ad-ratings)
         candidate->ratings (group-by :rating/candidate all-ratings)
         candidate->n-ratings (update-vals candidate->ratings count)
@@ -284,7 +284,8 @@
                                                   (apply max-key
                                                          inst-ms
                                                          (Instant/ofEpochMilli 0)))))]
-    {::get-candidates
+    (log/info "done")
+    {:yakread.model/get-candidates
      (fn [user-id]
        (let [predict (predict-fn user-id)]
          (into {}
@@ -303,41 +304,47 @@
                                       (comp - inst-ms :candidate/last-liked)))
                        vec)]))))}))
 
+(defresolver item-candidate-ids [{::keys [item-candidates]}]
+  {:yakread.model/item-candidate-ids (into #{} (map :xt/id) item-candidates)})
+
 (def ^:private pathom-env (pci/register [screening-info
-                               item-candidates
-                               ads
-                               ad-ratings
-                               dedupe-item-id
-                               item-ratings
-                               spark-model
-                               get-candidates]))
+                                         item-candidates
+                                         ads
+                                         ad-ratings
+                                         dedupe-item-id
+                                         item-ratings
+                                         spark-model
+                                         get-candidates
+                                         item-candidate-ids]))
 
 (defn new-model [ctx]
   (log/info "updating model")
-  (when-some [{::keys [get-candidates item-candidates]}
-              (process (merge ctx pathom-env) {} [::item-candidates
-                                                  (? ::get-candidates)])]
-    (log/info "done")
-    {:yakread.model/get-candidates get-candidates
-     :yakread.model/item-candidate-ids (into #{} (map :xt/id) item-candidates)}))
+  (merge {:yakread.model/item-candidate-ids #{}
+          :yakread.model/get-candidates (constantly {})}
+         (process (merge ctx pathom-env {:biff/now (Instant/now)})
+                  {}
+                  [(? :yakread.model/item-candidate-ids)
+                   (? :yakread.model/get-candidates)])))
 
-(defn use-spark [{:keys [biff.xtdb/node] :as ctx}]
+(defn use-spark [ctx]
   (let [spark (doto (JavaSparkContext. "local[*]" "yakread")
                 (.setCheckpointDir "storage/spark-checkpoint"))
-        model (atom {} #_(new-model {:yakread/spark spark
-                                     :biff/db (xt/db node)
-                                     :biff/now (Instant/now)}))]
+        ctx (assoc ctx :yakread/spark spark)]
     (-> ctx
-        (assoc :yakread/spark spark
-               :yakread/model model)
+        (assoc :yakread/model (atom (new-model ctx)))
         (update :biff/stop conj #(.close spark)))))
 
 (comment
-  (-> (new-model (biff/merge-context @com.yakread/system))
-      :yakread.model/item-candidate-ids
-      count)
+  (-> @(:yakread/model @com.yakread/system)
+      :yakread.model/get-candidates
+      )
 
-  (reset! (:yakread/model @com.yakread/system)
-          (new-model (biff/merge-context @com.yakread/system)))
+  (-> (new-model (repl/context))
+      :yakread.model/get-candidates
+      )
+
+  (do (reset! (:yakread/model (repl/context))
+              (new-model (repl/context)))
+    :done)
 
   )
