@@ -114,9 +114,7 @@
              :src "/img/logo-navbar.svg"
              :height "27px"}]]
      [:div {:hx-boost "true"
-            :class '[flex
-                     flex-col
-                     gap-1]}
+            :class '[flex flex-col gap-1]}
       (for [{:app.shell.page/keys [href title icon active]} pages]
         [:a {:href href
              :class (concat (if active
@@ -224,11 +222,12 @@
                  :session/signed-in]}
   {:app.shell/app-shell
    (let [active-page (first (filterv :app.shell.page/active pages))]
-     (fn [{:keys [title wide]} & content]
+     (fn [{:keys [title wide description]} & content]
        (biff/base-html
         (-> default-metadata
             (biff/assoc-some :base/title (str (or title (:app.shell.page/title active-page))
-                                              " | Yakread"))
+                                              " | Yakread")
+                             :base/description description)
             (update :base/head concat app-head))
         (when-not signed-in
           (ui/banner {:ui/kind :success}

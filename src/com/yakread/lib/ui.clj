@@ -28,10 +28,12 @@
         (remove #(= ns-str (namespace (key %))))
         m))
 
-(defn dom-opts [opts & classes]
+(defn dom-opts [{name* :name :as opts} & classes]
   (-> opts
       (update :class concat (flatten classes))
-      (dissoc-ns "ui")))
+      (dissoc-ns "ui")
+      (merge (when (or (keyword? name*) (vector? name*))
+               {:name (pr-str name*)}))))
 
 (def spinner-gif "/img/spinner2.gif")
 
@@ -163,6 +165,12 @@
   (str "Unsubscribe from "
        (-> title str/trim (str/replace #"\s+" " "))
        "?"))
+
+(defn muted-link [opts & body]
+  [:a.text-neut-600.underline opts body])
+
+(defn web-link [opts & body]
+  [:a.text-blue-600.hover:underline opts body])
 
 ;;;; Buttons
 
@@ -313,11 +321,14 @@
     (cond-> opts
       icon (update :class concat '[pl-10])))])
 
+(def label-text-classes
+  '[inter font-medium tracking-wide
+    text-sm
+    text-neut-900])
+
 (defn input-label [opts & contents]
   [:label.block.mb-2 opts
-   [:div {:class '[inter font-medium tracking-wide
-                   text-sm
-                   text-neut-900]}
+   [:div {:class label-text-classes}
     contents]])
 
 (defn input-description [& contents]
@@ -373,23 +384,25 @@
      (some->> error input-error)
      (some->> description input-description)]))
 
-(defn checkbox [{:ui/keys [label size] :as opts}]
-  [:label.flex.items-center.gap-2.cursor-pointer
+(defn checkbox [{:ui/keys [label size label-position]
+                 :as opts}]
+  [:label (dom-opts {}
+                    '[flex gap-2 cursor-pointer]
+                    (if (= label-position :above)
+                      [label-text-classes
+                       'flex-col-reverse]
+                      '[items-center
+                        inter text-neut-800])
+                    (when (not= size :large)
+                      '[text-sm]))
    [:input (dom-opts (merge {:type "checkbox"} opts)
                      '[text-tealv-500
                        "border border-neut-300"
                        form-checkbox
-                       cursor-pointer
                        focus:ring-1 focus:ring-neut-300]
-                     (case size
-                       :large '[size-6]
-                       nil))]
-   [:span (dom-opts {}
-                    '[inter text-neut-800]
-                    (case size
-                      :large nil
-                      '[text-sm]))
-    label]])
+                     (when (= size :large)
+                       '[size-6]))]
+   [:span label]])
 
 ;;;; Layout
 
@@ -433,13 +446,8 @@
 (defn page-well [& contents]
   [:div {:class '[bg-white
                   p-4
-                  sm:rounded
-                  shadow
-                  flex
-                  flex-col
-                  gap-10
-                  "max-sm:-ml-[1rem]"
-                  "max-sm:-mr-[1rem]"
+                  sm:rounded shadow
+                  flex flex-col gap-10
                   max-w-screen-sm]}
    contents])
 
@@ -600,6 +608,14 @@
 (defn plain-page [ctx & content]
   (base-page
    ctx
+   [:.p-4.bg-neut-900.w-full
+    [:.flex.mx-auto.max-w-screen-sm
+     [:a {:href "/"}
+      [:img {:class '["h-[27px]"
+                      opacity-85]
+             :src "/img/logo-navbar.svg"
+             :height "27px"}]]
+     [:.grow]]]
    [:.bg-neut-900.flex-grow.p-3.flex.flex-col.text-white
     [:.flex.flex-col.max-w-screen-sm.mx-auto.w-full.flex-grow.text-center.text-lg
      [:.flex-grow]
@@ -630,6 +646,7 @@
    :headers {"content-type" "text/html"}
    :body (case status
            404 not-found-html
+           400 not-found-html
            500 internal-server-error-html
            405 "<h1>Method Not Allowed</h1>"
            406 "<h1>Not Acceptable</h1>")})

@@ -1,5 +1,6 @@
 (ns com.yakread.util.biff-staging
   (:require [buddy.core.mac :as mac]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [clojure.walk :as walk]
@@ -26,6 +27,12 @@
                    (= (:type ast) :map)
                    (contains? (:keys ast) :xt/id))]
     (assoc-in ast [:properties :schema] schema-k)))
+
+(defn field-asts [malli-opts]
+  (into {}
+        (for [ast (doc-asts malli-opts)
+              [k m] (:keys ast)]
+          [k m])))
 
 (def schema-info
   (memoize

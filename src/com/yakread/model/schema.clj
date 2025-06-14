@@ -11,7 +11,7 @@
 (def schema
   {::string  [:string {:max 1000}]
    ::day     [:enum :sunday :monday :tuesday :wednesday :thursday :friday :saturday]
-   ::cents   :int
+   ::cents   [:int {:biff.form/parser #(Math/round (* 100 (Float/parseFloat %)))}]
 
    :user [:map {:closed true}
           [:xt/id                     :uuid]
@@ -31,7 +31,7 @@
           ;; Used for email subscriptions (<username>@yakread.com)
           [:user/email-username     ? ::string]
           ;; Stripe ID
-          [:user/customer-id        ? ::string]
+          [:user/customer-id        ? :string]
           [:user/plan               ? [:enum :quarter :annual]]
           [:user/cancel-at          ? :time/instant]]
 
@@ -140,6 +140,8 @@
           [:skip/user                (r :user)          :uuid]
           [:skip/timeline-created-at                    :time/instant]
           [:skip/items               (r :timeline/item) [:set :uuid]]
+          ;; Used to remove items from :skip/items if they get clicked later. Should NOT be used to
+          ;; determine if an item/ad has ever been clicked/viewed.
           [:skip/clicked             (r :timeline/item) [:set :uuid]]]
 
    ;; Split this out of :user-item because it'll change very frequently.
@@ -153,19 +155,21 @@
         [:xt/id                       :uuid]
         [:ad/user           (r :user) :uuid]
         [:ad/approve-state            [:enum :pending :approved :rejected]]
+        [:ad/updated-at               :time/instant]
         [:ad/balance                  ::cents]
         ;; Balance accrued from ad clicks in the past 7 days
-        [:ad/recent-cost              ::cents]
+        [:ad/recent-cost              ::cents] ; remove?
         [:ad/bid            ?         ::cents]
         ;; Max amount that balance should increase by in a 7-day period
         [:ad/budget         ?         ::cents]
-        [:ad/url            ?         :string]
-        [:ad/title          ?         :string]
-        [:ad/description    ?         :string]
-        [:ad/image-url      ?         :string]
+        [:ad/url            ?         ::string]
+        [:ad/title          ?         [:string {:max 75}]]
+        [:ad/description    ?         [:string {:max 250}]]
+        [:ad/image-url      ?         ::string]
         [:ad/paused         ?         :boolean]
         [:ad/payment-failed ?         :boolean]
         ;; Stripe info
+        ;; TODO dedupe with :user/customer-id
         [:ad/customer-id    ?         :string]
         [:ad/session-id     ?         :string]
         [:ad/payment-method ?         :string]

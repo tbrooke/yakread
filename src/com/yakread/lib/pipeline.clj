@@ -121,7 +121,7 @@
                       (assoc ctx :yakread.pipe.js/output (call-js fn-name input)))
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
                    ;; TODO use config to decide whether to use s3 or filesystem
-                   (assoc ctx :biff.pipe.s3/output (lib.s3/mock-request #_biff/s3-request ctx input)))
+                   (assoc ctx :biff.pipe.s3/output (biff/s3-request #_lib.s3/mock-request ctx input)))
    :biff.pipe/sleep (fn [{:keys [biff.pipe.sleep/ms] :as ctx}]
                       (Thread/sleep ms)
                       ctx)})

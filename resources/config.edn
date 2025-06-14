@@ -29,14 +29,16 @@
  :biff/jwt-secret #biff/secret JWT_SECRET
  :biff/port 8080
  :biff.s3/origin "https://nyc3.digitaloceanspaces.com"
- :biff.s3/access-key "DO00YP8ZPFEDAV32RH6W"
- :biff.s3/secret-key #biff/secret S3_SECRET_KEY
+ :biff.s3/access-key #profile {:prod "DO00YP8ZPFEDAV32RH6W" :default "DO801VTL3JG3NXVC2UC7"}
+ :biff.s3/secret-key #profile {:prod #biff/secret S3_SECRET_KEY_PROD
+                               :default #biff/secret S3_SECRET_KEY_DEV}
+ :biff.s3/bucket #profile {:prod "yakread" :default "yakread-dev"}
+ :biff.s3/edge #join ["https://" #ref [:biff.s3/bucket] ".nyc3.cdn.digitaloceanspaces.com"]
  ;; buckets:
  ;; - yakread: advertising image uploads
  ;; - yakread-content: parsed/processed html content
  ;; - yakread-emails: raw emails
- :biff.s3/bucket "yakread"
- :biff.s3/edge "https://yakread.nyc3.cdn.digitaloceanspaces.com"
+ ;; - yakread-dev: advertising image uploads. TODO use for everything with prefixes.
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
  :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY
  :yakread/domain #biff/env DOMAIN}

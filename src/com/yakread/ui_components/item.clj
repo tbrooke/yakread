@@ -13,6 +13,12 @@
 (defn- reading-minutes [n-characters]
   (max 1 (Math/round (/ n-characters 900.0))))
 
+(defn- detail-list [list-items]
+  [:<>
+   (->> list-items
+        (mapv #(vector :span.inline-block %))
+        (biff/join ui/interpunct))])
+
 (defresolver details [{:item/keys [doc-type
                                    byline
                                    author-name
@@ -60,8 +66,7 @@
                                nil)]
              [:span.underline label])]
           (filter some?)
-          (map #(vector :span.inline-block %))
-          (biff/join ui/interpunct)))})
+          detail-list))})
 
 (defn- read-more-card* [{:keys [href new-tab highlight details title description image-url
                                 clamp]}]
@@ -123,8 +128,7 @@
   {:item/ui-read-more-card
    (fn [{:keys [highlight-unread on-click-route show-author on-click-params new-tab]}]
      (read-more-card* {:href (if on-click-route
-                               (href on-click-route id (when (not-empty on-click-params)
-                                                         on-click-params))
+                               (href on-click-route id on-click-params)
                                url)
                        :new-tab new-tab
                        :highlight (and highlight-unread unread)
@@ -135,33 +139,37 @@
                        :clamp  true
                        :image-url image-url}))})
 
-(defresolver ad-read-more-card [{:ad/keys [id url title description image-url]}]
+(defresolver ad-read-more-card [{:keys [biff/href-safe session]}
+                                {:ad/keys [id url title description image-url click-cost]}]
   {::pco/input [:ad/id
                 :ad/url
                 :ad/title
                 :ad/description
-                :ad/image-url]}
+                :ad/image-url
+                :ad/click-cost]}
   {:ad/ui-read-more-card
    (fn [{:keys [on-click-params]}]
      [:div
-      (read-more-card* {;; TODO maybe have a dedicated route for ads
-                        :href (href routes/read-item id (when (not-empty on-click-params)
-                                                          on-click-params))
+      (read-more-card* {:href (href-safe routes/click-ad (merge on-click-params
+                                                                {:action :action/click-ad
+                                                                 :ad/id id
+                                                                 :ad/url url
+                                                                 :ad/click-cost click-cost
+                                                                 :ad.click/source :web
+                                                                 :user/id (:uid session)}))
                         :new-tab true
                         :highlight true
-                        :details [:<>
-                                  [:span.inline-block (-> url uri/uri :host str/trim)]
-                                  ui/interpunct
-                                  [:span.inline-block.underline "Ad"]]
+                        :details (detail-list [(-> url uri/uri :host str/trim)
+                                               [:span.underline "Ad"]])
                         :title title
                         :description description
                         :image-url image-url})
       [:.h-5.sm:h-4]
       ;; TODO use routes.clj
       [:.flex.justify-center.gap-2
-       [:a.underline.text-neut-600 {:href "/upgrade"} "Upgrade"]
+       (ui/muted-link {:href "/upgrade"} "Upgrade")
        ui/interpunct
-       [:a.underline.text-neut-600 {:href "/advertise"} "Advertise"]]])})
+       (ui/muted-link {:href "/advertise"} "Advertise")]])})
 
 (defresolver rec-read-more-card [props]
   {::pco/input [(? :item/ui-read-more-card)

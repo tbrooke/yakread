@@ -4,42 +4,72 @@
    [com.biffweb :as biff]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pipeline :as lib.pipe]
-   [com.yakread.lib.route :as lib.route :refer [? defget defpost-pathom href]]
+   [com.yakread.lib.route :as lib.route :refer [? defget defpost defpost-pathom href]]
    [com.yakread.lib.ui :as ui]
    [com.yakread.routes :as routes]))
 
-(defpost-pathom record-click
+(defn- skip-tx [{:keys [biff/db skip t]
+                 user-id :user/id
+                 rec-id :rec/id}]
+  (let [existing-skip (biff/lookup db :skip/user user-id :skip/timeline-created-at t)
+        old-clicked (:skip/clicked existing-skip #{})
+        new-clicked (conj old-clicked rec-id)]
+    (when (not= old-clicked new-clicked)
+      [{:db/doc-type :skip
+        :db.op/upsert {:skip/user user-id
+                       :skip/timeline-created-at t}
+        :skip/items (-> (:skip/items existing-skip #{})
+                        (set/union skip)
+                        (set/difference new-clicked))
+        :skip/clicked new-clicked}])))
+
+(defpost-pathom record-item-click
   [{:session/user [:xt/id]}
    {:params/item [:xt/id]}]
   (fn [{:keys [biff/db params]} {:keys [session/user params/item]}]
-    (let [existing-skip (biff/lookup db :skip/user (:xt/id user) :skip/timeline-created-at (:t params))]
-      {:status 204
-       :biff.pipe/next [:biff.pipe/tx]
-       :biff.pipe.tx/input (concat
-                            (when (:t params)
-                              [(if existing-skip
-                                 (let [clicked (conj (:skip/clicked existing-skip) (:xt/id item))]
-                                   {:db/doc-type :skip
-                                    :db/op :update
-                                    :xt/id (:xt/id existing-skip)
-                                    :skip/items (-> (:skip/items existing-skip)
-                                                    (set/union (:skip params))
-                                                    (set/difference clicked))
-                                    :skip/clicked clicked})
-                                 {:db/doc-type :skip
-                                  :db/op :create
-                                  :skip/user (:xt/id user)
-                                  :skip/timeline-created-at (:t params)
-                                  :skip/items (:skip params)
-                                  :skip/clicked #{(:xt/id item)}})])
-                            (when-not (biff/lookup-id
-                                       db
-                                       :user-item/user (:xt/id user)
-                                       :user-item/item (:xt/id item))
-                              [{:db/doc-type :user-item
-                                :db.op/upsert {:user-item/user (:xt/id user)
-                                               :user-item/item (:xt/id item)}
-                                :user-item/viewed-at :db/now}]))})))
+    {:status 204
+     :biff.pipe/next [:biff.pipe/tx]
+     :biff.pipe.tx/input (concat
+                          (when (:t params)
+                            (skip-tx {:biff/db db
+                                      :user/id (:xt/id user)
+                                      :rec/id (:xt/id item)
+                                      :skip (:skip params)
+                                      :t (:t params)}))
+                          (when-not (biff/lookup-id
+                                     db
+                                     :user-item/user (:xt/id user)
+                                     :user-item/item (:xt/id item))
+                            [{:db/doc-type :user-item
+                              :db.op/upsert {:user-item/user (:xt/id user)
+                                             :user-item/item (:xt/id item)}
+                              :user-item/viewed-at :db/now}]))}))
+
+(defpost record-ad-click
+  :start
+  (fn [{:biff/keys [db safe-params]}]
+    (let [{:keys [action skip t ad/click-cost ad.click/source]
+           ad-id :ad/id
+           user-id :user/id} safe-params]
+      (if (not= action :action/click-ad)
+        (ui/on-error {:status 400})
+        {:status 204
+         :biff.pipe/next [:biff.pipe/tx]
+         :biff.pipe.tx/input (concat
+                              (skip-tx {:biff/db db
+                                        :user/id user-id
+                                        :rec/id ad-id
+                                        :skip  skip
+                                        :t t})
+                              (when-not (biff/lookup-id db
+                                                        :ad.click/user user-id
+                                                        :ad.click/ad ad-id)
+                                [{:db/doc-type :ad.click
+                                  :db.op/upsert {:ad.click/user user-id
+                                                 :ad.click/ad ad-id}
+                                  :ad.click/created-at :db/now
+                                  :ad.click/cost click-cost
+                                  :ad.click/source (or source :web)}]))}))))
 
 (defget page-content-route "/dev/for-you/content"
   [{(? :session/user)
@@ -63,8 +93,8 @@
                             :show-author true})
         [:.h-5.sm:h-4]
         [:div.text-center
-         [:a.underline {:href (href routes/history)}
-          "View reading history"]]])
+         (ui/muted-link {:href (href routes/history)}
+                        "View reading history")]])
      (if user
        (for [[i {:rec/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
          (ui-read-more-card {:on-click-route `read-page-route
@@ -86,7 +116,6 @@
      [:div#content (ui/lazy-load-spaced (href page-content-route {:show-continue true}))])))
 
 ;; TODO
-;; - handle ads
 ;; - propagate jwt or something for auth from email (redirect should work even if you're not signed in)
 ;; - when coming from email, do redirect-on-load if the user isn't signed in
 (def read-page-route
@@ -94,9 +123,9 @@
    {:name ::read-page-route
     :get
     (let [record-click-url (fn [params item]
-                             (href record-click {:item/id (:item/id item)
-                                                 :skip (:skip params)
-                                                 :t (:t params)}))]
+                             (href record-item-click {:item/id (:item/id item)
+                                                      :skip (:skip params)
+                                                      :t (:t params)}))]
       (lib.route/wrap-nippy-params
        (lib.pipe/make
         :start
@@ -137,16 +166,33 @@
                 {:item/keys [ui-read-content title]} item]
             (app-shell
              {:title title}
-             [:div {:hx-post (record-click-url params item) :hx-trigger "load" :hx-swap "outerHTML"}]
+             [:div {:hx-post (record-click-url params item)
+                    :hx-trigger "load"
+                    :hx-swap "outerHTML"}]
              (ui-read-content {:leave-item-redirect (href page-route)
                                :unsubscribe-redirect (href page-route)})
              [:div.h-10]
              ;; todo make sure mark-read finishes before this queries
              [:div#content (ui/lazy-load-spaced (href page-content-route))]))))))}])
 
+(def click-ad-route
+  ["/dev/c/:ewt"
+   {:name ::click-ad-route
+    :get (lib.route/wrap-nippy-params
+          (fn [{:biff/keys [safe-params href-safe]
+                :keys [params]}]
+            (let [{:keys [action ad/url]} safe-params]
+              (if (not= action :action/click-ad)
+                (ui/on-error {:status 400})
+                (ui/redirect-on-load
+                 {:redirect-url url
+                  :beacon-url (href-safe record-ad-click safe-params)})))))}])
+
 (def module
   {:routes [["" {:middleware [lib.mid/wrap-signed-in]}
-             record-click]
+             record-item-click]
+            record-ad-click
             page-route
             page-content-route
-            read-page-route]})
+            read-page-route
+            click-ad-route]})

@@ -327,7 +327,7 @@
                                                 (nil? (:user/email user)))))
                                   gen/shuffle
                                   (sort-by :candidate/n-skips)
-                                  (take-rand 10)
+                                  (take-rand 2)
                                   (sort-by :candidate/ad-score >))
         ;; `click-cost` is the minimum amount that (:ad/bid first-ad) could've been while still
         ;; being first. The ad owner will be charged this amount if the user clicks the ad.
@@ -340,22 +340,24 @@
 
 (defn- take-items [n xs]
   (->> xs
-       (lib.core/distinct-by :item/id)
+       (lib.core/distinct-by :xt/id)
        (take n)))
 
 (defresolver for-you-recs [{:user/keys [ad-rec sub-recs bookmark-recs discover-recs]}]
-  #::pco{:input [{(? :user/sub-recs) [:item/id
+  #::pco{:input [{(? :user/sub-recs) [:xt/id
                                       :item/n-skipped
                                       :item/rec-type]}
-                 {(? :user/bookmark-recs) [:item/id
+                 {(? :user/bookmark-recs) [:xt/id
                                            :item/n-skipped
                                            :item/rec-type]}
-                 {:user/discover-recs [:item/id
+                 {:user/discover-recs [:xt/id
                                        :item/rec-type]}
                  {(? :user/ad-rec) [:xt/id
-                                    :item/rec-type]}]
-         :output [{:user/for-you-recs [:item/id
-                                       :item/rec-type]}]}
+                                    :item/rec-type
+                                    :ad/click-cost]}]
+         :output [{:user/for-you-recs [:xt/id
+                                       :item/rec-type
+                                       :ad/click-cost]}]}
   (let [{new-sub-recs true
          other-sub-recs false} (group-by #(= :item.rec-type/new-subscription (:item/rec-type %))
                                          sub-recs)

@@ -1,20 +1,24 @@
 - ads
-  - for you page
-    - handle ad clicks
   - ad page
+      preview
+      results
+      payment method
   - admin page
   - import referral data
 - make recommendations fast
 - email digests
 - settings
 - premium plans
+  - upgrade page / settings page
   - hide ads
 - redo subs page layout (use tabs)
-- make sure it's safe to use nippy on untrusted input
+- tos, privacy policy
 - deploy, migrate
 - charge ads
 
 backlog
+- can we use lazy-map on malli-opts while still doing late binding?
+- compare pipeline stuff to core.async flow
 - make auth module store signed humanity token in session after requesting a sign-in code
 - make sure we're setting cache-related headers correctly for resources
 - generative testing for get routes + resolvers

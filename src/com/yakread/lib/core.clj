@@ -1,4 +1,7 @@
-(ns com.yakread.lib.core)
+(ns com.yakread.lib.core
+  (:require
+   [clojure.pprint :as pprint]
+   [potemkin.collections :as potemkin.c]))
 
 (defn pred->
   "(if (pred x) (f x) x)"
@@ -70,3 +73,19 @@
 (defn every-n-minutes [n]
   (fn []
     (iterate #(.plusSeconds % (* 60 n)) (java.time.Instant/now))))
+
+(potemkin.c/def-map-type DerefMap [m]
+  (get [_ k default-value] (get @m k default-value))
+  (assoc [_ k v] (assoc @m k v))
+  (dissoc [_ k] (dissoc @m k))
+  (keys [_] (keys @m))
+  (meta [_] (meta @m))
+  (empty [_] {})
+  (with-meta [_ new-meta] (with-meta @m new-meta))
+  clojure.lang.IDeref
+  (deref [this] @m))
+
+(defmethod clojure.core/print-method DerefMap [x writer]
+  (print-method @x writer))
+
+(prefer-method pprint/simple-dispatch clojure.lang.IPersistentMap clojure.lang.IDeref)

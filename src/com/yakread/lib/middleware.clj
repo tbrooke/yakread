@@ -5,6 +5,7 @@
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.error :as p.error]
    [com.yakread.lib.datastar :as lib.d*]
+   [com.yakread.lib.form :as lib.form]
    [com.yakread.settings :as settings]
    [com.yakread.util :as util]
    [rum.core :as rum]
@@ -194,7 +195,8 @@
    wrap-auth-aliases
    wrap-edn-json-params
    wrap-pathom-error
-   lib.d*/wrap-sse-response])
+   lib.d*/wrap-sse-response
+   lib.form/wrap-parse-form])
 
 (defn wrap-options [handler options]
   (fn [ctx]

@@ -1,37 +1,35 @@
 (ns com.yakread
-  (:require [cld.core :as cld]
-            [clojure.data.generators :as gen]
-            [clojure.string :as str]
-            [clojure.test :as test]
-            [clojure.tools.logging :as log]
-            [clojure.tools.namespace.repl :as tn-repl]
-            [clojure.java.io :as io]
-            [com.biffweb :as biff]
-            [com.yakread.modules :as modules]
-            [com.wsscode.pathom3.connect.indexes :as pci]
-            [com.wsscode.pathom3.connect.operation :as pco]
-            [com.wsscode.pathom3.connect.planner :as pcp]
-            [com.yakread.lib.email :as lib.email]
-            [com.yakread.lib.auth :as lib.auth]
-            [com.yakread.lib.jetty :as lib.jetty]
-            [com.yakread.lib.middleware :as lib.middleware]
-            [com.yakread.lib.pathom :as lib.pathom]
-            [com.yakread.lib.pipeline :as lib.pipeline]
-            [com.yakread.lib.route :as lib.route :refer [href]]
-            [com.yakread.lib.smtp :as lib.smtp]
-            [com.yakread.lib.spark :as lib.spark]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.routes :as routes]
-            [com.yakread.smtp :as smtp]
-            [com.yakread.util.biff-staging :as biffs]
-            [malli.core :as malli]
-            [malli.experimental.time :as malli.t]
-            [malli.util :as malli.u]
-            [malli.registry :as malr]
-            [nrepl.cmdline :as nrepl-cmd]
-            [reitit.ring :as reitit-ring]
-            [time-literals.read-write :as time-literals]
-            [clojure.tools.namespace.find :as ns-find])
+  (:require
+   [cld.core :as cld]
+   [clojure.data.generators :as gen]
+   [clojure.test :as test]
+   [clojure.tools.logging :as log]
+   [clojure.tools.namespace.repl :as tn-repl]
+   [com.biffweb :as biff]
+   [com.wsscode.pathom3.connect.indexes :as pci]
+   [com.wsscode.pathom3.connect.planner :as pcp]
+   [com.yakread.lib.auth :as lib.auth]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.email :as lib.email]
+   [com.yakread.lib.jetty :as lib.jetty]
+   [com.yakread.lib.middleware :as lib.middleware]
+   [com.yakread.lib.pathom :as lib.pathom]
+   [com.yakread.lib.pipeline :as lib.pipeline]
+   [com.yakread.lib.route :as lib.route :refer [href]]
+   [com.yakread.lib.smtp :as lib.smtp]
+   [com.yakread.lib.spark :as lib.spark]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.modules :as modules]
+   [com.yakread.routes :as routes]
+   [com.yakread.smtp :as smtp]
+   [com.yakread.util.biff-staging :as biffs]
+   [malli.core :as malli]
+   [malli.experimental.time :as malli.t]
+   [malli.registry :as malr]
+   [malli.util :as malli.u]
+   [nrepl.cmdline :as nrepl-cmd]
+   [reitit.ring :as reitit-ring]
+   [time-literals.read-write :as time-literals])
   (:gen-class))
 
 (def modules
@@ -106,7 +104,7 @@
                 :com.yakread/sign-redirect (fn [url]
                                              {:redirect url
                                               :redirect-sig (biffs/signature (jwt-secret) url)})
-                :biff/href (partial lib.route/href-safe ctx)})
+                :biff/href-safe (partial lib.route/href-safe ctx)})
         (pcp/with-plan-cache (atom {})))))
 
 (defonce system (atom {}))
@@ -117,7 +115,6 @@
    lib.spark/use-spark
    biff/use-queues
    biff/use-tx-listener
-   #_train/use-spark
    lib.jetty/use-jetty
    biff/use-chime
    biff/use-beholder
@@ -127,7 +124,7 @@
                      :biff/merge-context-fn #'merge-context
                      :biff/after-refresh `start
                      :biff/handler #'handler
-                     :biff/malli-opts #'malli-opts
+                     :biff/malli-opts (lib.core/->DerefMap #'malli-opts)
                      :biff/router router
                      :biff/send-email #'lib.email/send-email
                      :biff.beholder/on-save #'on-save
