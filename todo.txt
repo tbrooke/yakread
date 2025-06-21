@@ -1,8 +1,8 @@
 - ads
   - ad page
-      preview
-      results
       payment method
+      approval
+      results
   - admin page
   - import referral data
 - make recommendations fast

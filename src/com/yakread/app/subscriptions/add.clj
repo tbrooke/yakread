@@ -1,6 +1,7 @@
 (ns com.yakread.app.subscriptions.add
   (:require [clojure.data.generators :as gen]
             [com.biffweb :as biff :refer [q <<-]]
+            [com.yakread.lib.content :as lib.content]
             [com.yakread.lib.middleware :as lib.middle]
             [com.yakread.lib.pathom :as lib.pathom :refer [?]]
             [com.yakread.lib.route :refer [defget defpost href redirect]]
@@ -71,7 +72,7 @@
   :start
   (fn [{{:keys [url]} :params}]
     {:biff.pipe/next       [:biff.pipe/http :add-urls]
-     :biff.pipe.http/input {:url     (lib.rss/fix-url url)
+     :biff.pipe.http/input {:url     (lib.content/add-protocol url)
                             :method  :get
                             :headers {"User-Agent" "https://yakread.com/"}}
      :biff.pipe/catch      :biff.pipe/http})

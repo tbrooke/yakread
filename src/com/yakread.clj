@@ -39,12 +39,7 @@
                         :email-validator lib.auth/email-valid?
                         :link-expire-minutes (* 60 24 7)
                         :allowed-redirects #{"/"
-                                             (href routes/for-you)
-                                             (href routes/add-sub-page)
-                                             (href routes/add-bookmark-page)
-                                             (href routes/add-favorite-page)
-                                             ;; TODO use routes.clj
-                                             "/advertise"}})]))
+                                             (href routes/for-you)}})]))
 
 (def router (reitit-ring/router
              [["" {:middleware lib.middleware/default-site-middleware}

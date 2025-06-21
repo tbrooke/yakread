@@ -3,12 +3,20 @@
    [clojure.data.generators :as gen]
    [clojure.string :as str]
    [com.biffweb :as biff]
-   [com.yakread.lib.form :as lib.form]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+   [com.yakread.lib.content :as lib.content]
+   [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pathom :refer [?]]
+   [com.yakread.lib.pipeline :as lib.pipe]
    [com.yakread.lib.route :refer [defget defpost defpost-pathom href]]
    [com.yakread.lib.ui :as ui]
    [rum.core :as rum]))
+
+(defn render [& body]
+  {:status 200
+   :headers {"content-type" "text/html"}
+   :body (rum/render-static-markup [:<> body])})
 
 (declare page-route)
 (declare image-upload-input)
@@ -31,7 +39,8 @@
        (? :ad/image-url)
        :ad/approve-state]}]}]
   (fn [{:keys [biff.form/params]} {:keys [session/user]}]
-    (let [{old-ad :user/ad} user
+    (let [{:ad/keys [budget url]} params
+          {old-ad :user/ad} user
           keys* [:ad/bid
                  :ad/budget
                  :ad/url
@@ -41,8 +50,10 @@
                  :ad/paused]
           new-ad (-> (merge (zipmap keys* (repeat :db/dissoc)) params)
                      (select-keys keys*)
-                     (merge (when-some [budget (:ad/budget params)]
-                              {:ad/budget (max budget (* 10 (:ad/bid params 0)))})))
+                     (merge (when budget
+                              {:ad/budget (max budget (* 10 (:ad/bid params 0)))})
+                            (when url
+                              {:ad/url (lib.content/add-protocol url)})))
           state (if (every? #(= (% old-ad) (% new-ad))
                             [:ad/url :ad/title :ad/description :ad/image-url])
                   (:ad/approve-state old-ad :pending)
@@ -54,20 +65,19 @@
                       :ad/recent-cost [:db/default 0]
                       :ad/updated-at :db/now}
                      new-ad)]]
-      {:status 303
-       :headers {"Location" (href page-route)}
+      {:status 200
+       :headers {"HX-Location" (href page-route {:saved true})}
        :biff.pipe/next [:biff.pipe/tx]
        :biff.pipe.tx/input tx})))
 (obfuscate-url! #'save-ad)
 
-
 (defpost upload-image
   :start
-  (fn [{:keys [biff.s3/edge params multipart-params]}]
+  (fn [{:keys [biff.s3/edge biff.form/params multipart-params]}]
     (let [image-id (gen/uuid)
           file-info (get multipart-params "image-file")
           url (str edge "/" image-id)]
-      {:biff.pipe/next [:biff.pipe/s3 :biff.pipe/http]
+      {:biff.pipe/next [:biff.pipe/s3 :biff.pipe/http :biff.pipe/pathom :render]
        :biff.pipe.s3/input {:method "PUT"
                             :key (str image-id)
                             :body (:tempfile file-info)
@@ -80,36 +90,86 @@
                                                    :a "attention"})
                               :method  :get
                               :headers {"User-Agent" "https://yakread.com/"}}
-       :status 200
-       :headers {"content-type" "text/html"}
-       :body (rum/render-static-markup
-              [:<>
-               (image-upload-input {:value url})
-               #_(preview (assoc ctx ::oob true))])})))
+       :biff.form/params (assoc params :ad/image-url url)
+       :biff.pipe.pathom/query [{::form-ad [:ad/ui-preview-card]}]
+       ::url url}))
+
+  :render
+  (fn [{:keys [biff.pipe.pathom/output ::url]}]
+    (render (image-upload-input {:value url})
+            [:div#preview {:hx-swap-oob "true"}
+             (get-in output [::form-ad :ad/ui-preview-card])])))
 (obfuscate-url! #'upload-image)
 
 (defpost change-image
   :start
-  (constantly (image-upload-input {})))
+  (let [ret (delay (image-upload-input {}))]
+    (fn [_] @ret)))
+(obfuscate-url! #'change-image)
 
+(let [form-keys [:ad/bid
+                 :ad/budget
+                 :ad/title
+                 :ad/description
+                 :ad/image-url
+                 :ad/url]]
+  (defresolver form-ad [ctx params]
+    {::pco/input [{:session/user
+                   [{(? :user/ad) [:xt/id]}]}]
+     ::pco/output [{::form-ad (into [:xt/id] form-keys)}]}
+    {::form-ad (merge (when-some [id (get-in params [:session/user :user/ad :xt/id])]
+                        {:xt/id id})
+                      (select-keys (:biff.form/params ctx) form-keys))}))
 
-;; (defn fetch-metadata [url]
-;;   (let [result (biff/catchall (util/http-get url))
-;;         parsed (or (util/panto-parse (:body result)) {})]
-;;     {:title (some-> (some parsed [:title :og/title :dc/title])
-;;                     (str/replace #" \| Substack$" "")
-;;                     (util/truncate 75))
-;;      :description (some-> (some parsed [:description :og/description])
-;;                           (util/truncate 250))
-;;      :image (util/pred-> (some parsed [:image :og/image :twitter/image])
-;;                          :url
-;;                          :url)}))
+(defget refresh-preview
+  [{::form-ad [:ad/ui-preview-card]}]
+  (fn [ctx params]
+    [:div#preview (get-in params [::form-ad :ad/ui-preview-card])]))
+(obfuscate-url! #'refresh-preview)
+
+(def autocomplete
+  ["/wompvertise/autocomplete"
+   {:get
+    (lib.pipe/make
+     :start
+     (fn [{:keys [biff.form/params]}]
+       (let [{:ad/keys [url]} params]
+         {:biff.pipe/next [(lib.pipe/http :get url)
+                           :query]
+          :biff.pipe/catch :biff.pipe/http}))
+
+     :query
+     (fn [{:keys [biff.form/params biff.pipe.http/output]}]
+       (let [parsed (or (lib.content/pantomime-parse (:body output)) {})
+             ad-from-url {:ad/title (some-> (some parsed [:title :og/title :dc/title])
+                                            first
+                                            (str/replace #" \| Substack$" "")
+                                            (lib.content/truncate 75))
+                          :ad/description (some-> (some parsed [:description :og/description])
+                                                  first
+                                                  (lib.content/truncate 250))
+                          :ad/image-url (lib.core/pred-> (first (some parsed [:image :og/image :twitter/image]))
+                                                         :url
+                                                         :url)}
+             ad (merge params
+                       ad-from-url
+                       (lib.core/filter-vals params lib.core/something?))]
+         {:biff.form/params ad
+          :biff.pipe/next [(lib.pipe/pathom {} [{::form-ad [:ad/ui-preview-card]}])
+                           :render]}))
+
+     :render
+     (fn [{:keys [biff.pipe.pathom/output biff.form/params]}]
+       (render (form {:ad params})
+               [:div#preview {:hx-swap-oob "true"
+                              :hx-swap "morph"}
+                (get-in output [::form-ad :ad/ui-preview-card])])))}])
 
 (def preview-hx-opts
-  {}
-  #_{:hx-get "/fiddlesticks/preview"
+  {:hx-get (href refresh-preview)
    :hx-target "#preview"
-   :hx-swap "outerHTML"
+   :hx-trigger "input changed delay:0.5s"
+   :hx-swap "morph"
    :hx-include "closest form"
    :hx-params "not __anti-forgery-token"})
 
@@ -155,8 +215,7 @@
 
 (defn form [{:keys [ad params]}]
   (biff/form
-   {:action (href save-ad)
-    :hx-boost "true"
+   {:hx-post (href save-ad)
     :class '[flex flex-col gap-6]}
    [:.grid.sm:grid-cols-2.gap-6
     (ui/form-input {:ui/label "Maximum cost-per-click"
@@ -164,47 +223,45 @@
                     :ui/description "The higher you bid, the more frequently your ad will be shown."
                     :name :ad/bid
                     :placeholder "1.50"
-                    :value (or (:bid params)
-                               (some-> (:ad/bid ad) fmt-dollars))})
+                    :value (some-> (:ad/bid ad) fmt-dollars)})
     (ui/form-input {:ui/label "Maximum weekly budget"
                     :ui/icon "dollar-sign-regular"
                     :ui/description "Must be at least 10x your maximum cost-per-click."
                     :name :ad/budget
                     :placeholder "75.00"
-                    :value (or (:budget params)
-                               (some-> (:ad/budget ad) fmt-dollars))})]
+                    :value (some-> (:ad/budget ad) fmt-dollars)})]
    (ui/form-input {:ui/label "Ad URL"
                    :name :ad/url
                    :placeholder "https://example.com?utm_source=yakread"
-                   :hx-get "/fiddlesticks/autocomplete"
+                   :hx-get (href autocomplete)
                    :hx-target "closest form"
-                   :hx-swap "outerHTML"
+                   :hx-swap "morph"
                    :hx-include "closest form"
                    :hx-params "not __anti-forgery-token"
                    :hx-indicator "#autocomplete-indicator"
-                   :value (or (:url params) (:ad/url ad))})
+                   :value (:ad/url ad)})
    (ui/form-input (merge {:ui/label "Title"
                           :ui/description "Maximum 75 characters."
                           :name :ad/title
-                          :value (or (:title params) (:ad/title ad))}
+                          :value (:ad/title ad)}
                          preview-hx-opts))
    (ui/form-input (merge {:ui/input-type :textarea
                           :ui/label "Description"
                           :ui/description "Maximum 250 characters."
                           :rows 3
                           :name :ad/description
-                          :value (or (:description params) (:ad/description ad))}
+                          :value (:ad/description ad)}
                          preview-hx-opts))
-   (image-upload-input {:value (or (:image params) (:ad/image-url ad))
+   (image-upload-input {:value (:ad/image-url ad)
                         :error (when (= (:error params) "image")
                                  "We weren't able to upload that file.")})
    (ui/checkbox {:ui/label "Pause ad"
                  :ui/label-position :above
                  :id "pause"
                  :name :ad/paused
-                 :checked (when (or (:paused params) (:ad/paused ad))
+                 :checked (when (:ad/paused ad)
                             "checked")})
-   [:div (ui/button {:type "submit"} "Save")]))
+   [:div (ui/confirmed-submit {:ui/submitted (:saved params)})]))
 
 ;; TODO add param to app-shell for including plausible
 (defget page-route "/advertise"
@@ -222,34 +279,45 @@
        :ad/approve-state
        (? :ad/balance)
        (? :ad/payment-failed)
-       (? :ad/card-details)]}]}]
-  (fn [{:keys [params]} {:keys [app.shell/app-shell session/user]}]
-    (app-shell
-     {:title "Advertise"}
-     (ui/page-header {:title "Advertise"
-                      :description "Grow your newsletter with Yakread's self-serve, pay-per-click ads."})
-     [:fieldset.disabled:opacity-60
-      {:disabled (when-not user "disabled")}
+       (? :ad/card-details)
+       :ad/ui-preview-card]}]}
+   {(? :session/anon)
+    [:ad/ui-preview-card]}]
+  (fn [{:keys [params] form-params :biff.form/params}
+       {:keys [app.shell/app-shell session/user session/anon]}]
+    (let [{:user/keys [ad]} user]
+      (app-shell
+       {:title "Advertise"}
+       (ui/page-header {:title "Advertise"
+                        :description "Grow your newsletter with Yakread's self-serve, pay-per-click ads."})
+       [:fieldset.disabled:opacity-60
+        {:disabled (when-not user "disabled")}
 
-      (ui/page-well
-       (ui/section
-        {}
-        [:div "Your ad will be displayed on the For You page and in the digest emails. "
-         "You'll be charged for each unique click your ad receives."]
-        [:.my-4 "<payment method>" #_(view-payment-method ctx)]
-        (form {:params params :ad (:user/ad user)})
-        [:.text-sm.text-neut-600
-         "Ads are approved manually before running. See the "
-         [:a.link.inline-block {:href "/ad-policy" :target "_blank"} "ad content policy"] "."])
-       (ui/section
-        {:title "Preview"}
-        [:div "<preview>"]
-        #_(preview ctx))
-       (when user
-         [:div "<results>"]
-         #_(ui/section
-          {:title "Results"}
-          (ui/lazy-load {:href "/fiddlesticks/results"}))))])))
+        (ui/page-well
+         (ui/section
+          {}
+          [:div "Your ad will be displayed on the For You page and in the digest emails. "
+           "You'll be charged for each unique click your ad receives."]
+          [:.my-4 "<payment method>" #_(view-payment-method ctx)]
+          (form {:ad (merge ad params) :params params})
+          [:.text-sm.text-neut-600
+           "Ads are approved manually before running. See the "
+           [:a.link.inline-block {:href "/ad-policy" :target "_blank"} "ad content policy"] "."]))
+
+        [:.h-10]
+        [:h3.font-bold.text-lg.max-sm:px-4 "Preview"]
+        [:.h-3]
+        [:div#preview
+         (if user
+           (:ad/ui-preview-card ad)
+           (:ad/ui-preview-card anon))]
+
+         #_(when user
+           [:<>
+            [:.h-10]
+            (ui/section
+             {:title "Results"}
+             (ui/lazy-load {:href "/fiddlesticks/results"}))])]))))
 
 (def policy-page
   (ui/plain-page
@@ -272,9 +340,11 @@
                       ["" {:middleware [lib.mid/wrap-signed-in]}
                        save-ad
                        upload-image
-                       change-image]]
-             :static {"/ad-policy/" policy-page}})
-
+                       change-image
+                       autocomplete
+                       refresh-preview]]
+             :static {"/ad-policy/" policy-page}
+             :resolvers [form-ad]})
 
 ;; (ns com.yakread.new.advertise
 ;;   (:require [com.biffweb :as biff :refer [q letd]]
@@ -288,10 +358,6 @@
 ;;             [clj-http.client :as http]
 ;;             [clojure.data.csv :as csv]
 ;;             [clojure.string :as str]))
-;; 
-;; (defn maybe-fmt-currency [cents]
-;;   (when (and cents (< 0 cents))
-;;     (format "$%.2f" (/ cents 100.0))))
 ;; 
 ;; (defn status-alert [{:keys [ad ::oob]}]
 ;;   (let [{:keys [status steps]} (util/ad-status ad)]
@@ -351,25 +417,6 @@
 ;; 
 
 
-;; (defn preview-card [ad]
-;;   [:a.block {:href (:ad/url ad)
-;;              :target "_blank"
-;;              :style {:box-shadow "0 0 5px 1px #0000004d"}}
-;;    (ui/ad-card ad)])
-;; 
-;; (defn preview [{:keys [ad params ::oob]}]
-;;   (let [ad (merge {:ad/title "Lorem ipsum dolor sit amet"
-;;                    :ad/description (str "Consectetur adipiscing elit, sed do eiusmod "
-;;                                         "tempor incididunt ut labore et dolore magna aliqua. "
-;;                                         "Ut enim ad minim veniam, quis nostrud exercitation "
-;;                                         "ullamco laboris nisi ut aliquip ex ea commodo consequat.")
-;;                    :ad/url "https://example.com"
-;;                    :ad/image "https://yakread.com/android-chrome-512x512.png"}
-;;                   ad
-;;                   (-> (into {} (filter (comp not-empty val) params))
-;;                       (biff/select-ns-as nil 'ad)))]
-;;     [:.p-3#preview {:hx-swap-oob (when oob "true")}
-;;      (preview-card ad)]))
 ;; 
 ;; (defn results [{:keys [biff/db biff/base-url user ad admin]}]
 ;;   (letd [{:keys [status]} (util/ad-status ad)
@@ -596,18 +643,6 @@
 ;;      (view-payment-method ctx)
 ;;      #_(status-alert (assoc ctx ::oob true))]))
 ;; 
-;; 
-;; (defn autocomplete [{:keys [ad params] :as ctx}]
-;;   (let [params (update params :url util/fix-url)
-;;         new-params (if (->> (map params [:title :description :image])
-;;                             (some empty?))
-;;                      (fetch-metadata (:url params))
-;;                      {})
-;;         ctx (assoc ctx :params (->> (filter (comp not-empty val) params)
-;;                                     (into new-params)))]
-;;     [:<>
-;;      (ad-form ctx)
-;;      (preview (assoc ctx ::oob true))]))
 ;; 
 ;; 
 ;; (defn wrap-ad [handler]

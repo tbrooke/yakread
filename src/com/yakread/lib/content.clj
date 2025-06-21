@@ -64,3 +64,9 @@
                                   s))
                #"\s+"
                " "))
+
+(defn add-protocol [url]
+  (if (and (not-empty url)
+           (not (str/starts-with? url "http")))
+    (str "https://" url)
+    url))

@@ -149,3 +149,12 @@
 (defn sleep [ms]
   {:biff.pipe/current :biff.pipe/sleep
    :biff.pipe.sleep/ms ms})
+
+(defn http [method url & [opts]]
+  {:biff.pipe/current :biff.pipe/http
+   :biff.pipe.http/input (merge {:method method :url url} opts)})
+
+(defn pathom [entity query]
+  {:biff.pipe/current :biff.pipe/pathom
+   :biff.pipe.pathom/entity entity
+   :biff.pipe.pathom/query query})

@@ -52,11 +52,12 @@
 (def ^:private memo-parsers (memoize-latest parsers))
 
 (defn wrap-parse-form [handler]
-  (fn [{:keys [biff/malli-opts biff.form/parser-overrides form-params] :as ctx}]
-     (let [new-params (lib.core/->DerefMap
+  (fn [{:keys [biff/malli-opts biff.form/parser-overrides form-params query-params] :as ctx}]
+     (let [params (merge form-params query-params)
+           new-params (lib.core/->DerefMap
                        (delay (-> (memo-parsers @malli-opts)
                                   (merge parser-overrides)
-                                  (parse-form form-params))))]
+                                  (parse-form params))))]
        (handler (cond-> ctx
-                  (not-empty form-params)
+                  (not-empty params)
                   (assoc :biff.form/params new-params))))))

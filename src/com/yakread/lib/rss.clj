@@ -8,12 +8,6 @@
   (:import [org.jsoup Jsoup]
            [org.xml.sax SAXParseException]))
 
-(defn fix-url [url]
-  (if (and (not-empty url)
-           (not (str/starts-with? url "http")))
-    (str "https://" url)
-    url))
-
 (defn- remus-parse [response]
   (biff/catchall
    (remus/parse-http-resp (cond-> response

@@ -87,19 +87,26 @@
     ([ctx handler-id]
      (handler ctx handler-id))))
 
-(defmacro defget [sym path query handler]
-  `(def ~sym [~path {:name ~(keyword (str *ns*) (str sym))
-                     :get (wrap-nippy-params (lib.pathom/handler ~query ~handler))}]))
-
 (defn safe-for-url? [s]
   (boolean (re-matches #"[a-zA-Z0-9-_.+!*]+" s)))
 
-(defmacro defpost [sym & pipe-args]
-  (let [href (str "/_biff/api/" *ns* "/" sym)]
+(defn- autogen-endpoint [ns* sym]
+  (let [href (str "/_biff/api/" ns* "/" sym)]
     (assert (safe-for-url? (str sym)) (str "URL segment would contain invalid characters: " sym))
-    (assert (safe-for-url? (str *ns*)) (str "URL segment would contain invalid characters: " *ns*))
-    `(def ~sym [~href {:name ~(keyword (str *ns*) (str sym))
-                       :post (wrap-nippy-params (lib.pipe/make ~@pipe-args))}])))
+    (assert (safe-for-url? (str ns*)) (str "URL segment would contain invalid characters: " ns*))
+    href))
+
+(defmacro defget
+  ([sym query handler]
+   `(defget ~sym ~(autogen-endpoint *ns* sym) ~query ~handler))
+  ([sym path query handler]
+   `(def ~sym [~path {:name ~(keyword (str *ns*) (str sym))
+                      :get (wrap-nippy-params (lib.pathom/handler ~query ~handler))}])))
+
+(defmacro defpost [sym & pipe-args]
+  `(def ~sym [~(autogen-endpoint *ns* sym)
+              {:name ~(keyword (str *ns*) (str sym))
+               :post (wrap-nippy-params (lib.pipe/make ~@pipe-args))}]))
 
 (def ? lib.pathom/?)
 

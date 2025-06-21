@@ -55,6 +55,12 @@
   {:app.shell/app-head
    [[:link {:rel "stylesheet" :href (css-path)}]
     [:script {:src "https://unpkg.com/htmx.org@2.0.2"}]
+    [:script {:src "https://unpkg.com/idiomorph@0.7.3"
+              :integrity "sha384-JcorokHTL/m+D6ZHe2+yFVQopVwZ+91GxAPDyEZ6/A/OEPGEx1+MeNSe2OGvoRS9"
+              :crossorigin "anonymous"}]
+    [:script {:src "https://unpkg.com/idiomorph@0.7.3/dist/idiomorph-ext.min.js"
+              :integrity "sha384-szktAZju9fwY15dZ6D2FKFN4eZoltuXiHStNDJWK9+FARrxJtquql828JzikODob"
+              :crossorigin "anonymous"}]
     [:script {:src "https://unpkg.com/hyperscript.org@0.9.12"}]
     [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js"}]
     [:script {:src "/js/main.js"}]
@@ -236,7 +242,8 @@
         navbar
         [:.bg-neut-75.grow.flex
          {:hx-headers (cheshire/generate-string
-                       {:x-csrf-token csrf/*anti-forgery-token*})}
+                       {:x-csrf-token csrf/*anti-forgery-token*})
+          :hx-ext "morph"}
          sidebar
          [:.sm:w-8]
          [:div {:class (concat '[mx-auto

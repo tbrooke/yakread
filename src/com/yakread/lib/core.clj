@@ -89,3 +89,11 @@
   (print-method @x writer))
 
 (prefer-method pprint/simple-dispatch clojure.lang.IPersistentMap clojure.lang.IDeref)
+
+(defn something? [x]
+  (if (or (coll? x) (string? x))
+    (boolean (not-empty x))
+    (some? x)))
+
+(defn filter-vals [m f]
+  (into {} (filter (comp f val)) m))

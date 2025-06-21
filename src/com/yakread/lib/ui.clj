@@ -261,6 +261,14 @@
                      contents])
        (= direction :up) reverse)]))
 
+(defn confirmed-submit
+  ([{:keys [ui/submitted] :as opts} content confirmed-content]
+   (if submitted
+     (button {:type "submit" :_ "init wait 1.5s then put 'Save' into me"} confirmed-content)
+     (button {:type "submit"} content)))
+  ([opts]
+   (confirmed-submit opts "Save" "Saved 🗸")))
+
 ;;;; Inputs
 
 (defn- text-input* [element {:ui/keys [size] type_ :type :as opts}]
@@ -515,70 +523,6 @@
    content])
 
 ;;;; Composites
-
-(defn signup-box [{:keys [recaptcha/site-key
-                          params]}
-                  {:keys [on-success on-error title description]
-                   :or {on-success (href routes/for-you)
-                        on-error "/"
-                        title "Read stuff that matters."
-                        description (str "Get a selection of trending articles in your inbox daily "
-                                         "and unlock the full reading experience.")}}]
-  [:div {:class '[max-sm:p-3
-                  max-w-screen-sm]}
-   (when title
-     [:h1 {:class '[text-2xl sm:text-3xl
-                    font-bold proximanova-bold underline]}
-      title])
-   (when (and title description) [:.h-1])
-   (when description
-     [:.sm:text-xl description])
-   (when (or title description) [:.h-5])
-   (biff/form
-     {:id "signup-form"
-      :action "/auth/send-link"
-      :hx-boost "false"
-      :hidden {:on-error on-error
-               :redirect on-success}}
-     [:input {:type "hidden" :name "href" :_ "on load set my value to window.location.href"}]
-     [:input {:type "hidden" :name "referrer" :_ "on load set my value to document.referrer"}]
-     (biff/recaptcha-callback "onSubscribe" "signup-form")
-     [:.flex.gap-3.w-full
-      [:input {:type "email"
-               :id "email"
-               :name "email"
-               :placeholder "Enter your email"
-               :class '[w-full
-                        shadow
-                        border-0 rounded
-                        text-black inter leading-6
-                        bg-neut-50 disabled:opacity-70
-                        focus:ring-inset focus:ring-tealv-600
-                        py-1.5
-                        sm:text-lg
-                        grow]}]
-      [:div
-       [:button {:type "submit"
-                 :class '[g-recaptcha
-                          px-5 py-2
-                          bg-tealv-500 hover:bg-tealv-600 disabled:bg-tealv-500 disabled:opacity-70
-                          text-neut-50 inter font-medium leading-6
-                          sm:text-lg
-                          whitespace-nowrap
-                          shadow
-                          rounded]
-                 ;:_ "on click toggle @disabled until htmx:afterOnLoad"
-                 :data-sitekey site-key
-                 :data-callback "onSubscribe"
-                 :data-action "subscribe"}
-        "Sign up"]]]
-     [:.h-1]
-     (if-some [error (signup-error params)]
-       (input-error error)
-       (input-description
-        "(Already have an account? "
-        [:a.link {:href "/signin"} "Sign in"] ")"))
-     [:.h-3])])
 
 (defn empty-page-state [{:keys [icons text btn-label btn-href]}]
   [:.flex.flex-col.h-full
