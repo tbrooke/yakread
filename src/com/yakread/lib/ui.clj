@@ -161,6 +161,15 @@
                                border-yellv-100]))
    content])
 
+(defn banner-success [& content]
+  (banner {:ui/kind :success} content))
+
+(defn banner-warning [& content]
+  (banner {:ui/kind :warning} content))
+
+(defn banner-error [& content]
+  (banner {:ui/kind :error} content))
+
 (defn confirm-unsub-msg [title]
   (str "Unsubscribe from "
        (-> title str/trim (str/replace #"\s+" " "))

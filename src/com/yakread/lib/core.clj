@@ -1,5 +1,6 @@
 (ns com.yakread.lib.core
   (:require
+   [clojure.string :as str]
    [clojure.pprint :as pprint]
    [potemkin.collections :as potemkin.c]))
 
@@ -91,8 +92,14 @@
 (prefer-method pprint/simple-dispatch clojure.lang.IPersistentMap clojure.lang.IDeref)
 
 (defn something? [x]
-  (if (or (coll? x) (string? x))
+  (cond
+    (string? x)
+    (boolean (not-empty (str/trim x)))
+
+    (coll? x)
     (boolean (not-empty x))
+
+    :else
     (some? x)))
 
 (defn filter-vals [m f]

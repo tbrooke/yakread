@@ -1,10 +1,9 @@
 (ns com.yakread.lib.form
-  (:require [clojure.pprint :as pprint]
-            [com.biffweb :as biff]
-            [fast-edn.core :as fedn]
-            [com.yakread.util.biff-staging :as biffs]
-            [com.yakread.lib.core :as lib.core]
-            [potemkin.collections :as potemkin.c]))
+  (:require
+   [com.biffweb :as biff]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.util.biff-staging :as biffs]
+   [fast-edn.core :as fedn]))
 
 ;; TODO handle multiple checkboxes with same name
 

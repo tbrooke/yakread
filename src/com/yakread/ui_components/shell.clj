@@ -228,7 +228,7 @@
                  :session/signed-in]}
   {:app.shell/app-shell
    (let [active-page (first (filterv :app.shell.page/active pages))]
-     (fn [{:keys [title wide description]} & content]
+     (fn [{:keys [title wide description banner]} & content]
        (biff/base-html
         (-> default-metadata
             (biff/assoc-some :base/title (str (or title (:app.shell.page/title active-page))
@@ -245,20 +245,17 @@
                        {:x-csrf-token csrf/*anti-forgery-token*})
           :hx-ext "morph"}
          sidebar
-         [:.sm:w-8]
-         [:div {:class (concat '[mx-auto
-                                 py-4
-                                 sm:pt-8
-                                 sm:pb-6
-                                 flex
-                                 flex-col
-                                 w-full]
-                               (when-not wide
-                                 '[max-w-screen-sm]))}
-          content
-          [:.grow]
-          (ui/footer {:show-recaptcha-message (not signed-in)})]
-         [:.sm:w-8]])))})
+         [:.grow
+          banner
+          [:div {:class (concat '[mx-auto sm:px-8
+                                  py-4 sm:pt-8 sm:pb-6
+                                  flex flex-col
+                                  w-full]
+                                (when-not wide
+                                  '[max-w-screen-sm]))}
+           content
+           [:.grow]
+           (ui/footer {:show-recaptcha-message (not signed-in)})]]])))})
 
 (def module
   {:resolvers [app-shell

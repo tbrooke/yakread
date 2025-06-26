@@ -6,12 +6,22 @@
    [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
    [com.yakread.lib.content :as lib.content]
    [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.icons :as lib.icons]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pathom :refer [?]]
    [com.yakread.lib.pipeline :as lib.pipe]
-   [com.yakread.lib.route :refer [defget defpost defpost-pathom href]]
+   [com.yakread.lib.route :as lib.route :refer [defget defpost defpost-pathom defget-pipe href]]
    [com.yakread.lib.ui :as ui]
    [rum.core :as rum]))
+
+(def required-field->label
+  {:ad/payment-method "Payment Method"
+   :ad/bid "Maximum cost-per-click"
+   :ad/budget "Maximum weekly budget"
+   :ad/url "Ad URL"
+   :ad/title "Title"
+   :ad/description "Description"
+   :ad/image-url "Image"})
 
 (defn render [& body]
   {:status 200
@@ -20,6 +30,7 @@
 
 (declare page-route)
 (declare image-upload-input)
+(declare form)
 
 (defn fmt-dollars [amount]
   (format "%.2f" (/ amount 100.0)))
@@ -28,6 +39,121 @@
   "Some ad blockers block requests to URLs that include 'advertise' in them."
   [route-var]
   (alter-var-root route-var update 0 str/replace #"ad" "womp"))
+
+(defpost-pathom delete-payment-method
+  [{:session/user [{:user/ad [:ad/id :ad/payment-method]}]}]
+  (fn [{:keys [biff/secret]} {{{:ad/keys [id payment-method]} :user/ad} :session/user}]
+    {:biff.pipe/next [(lib.pipe/tx
+                       [{:db/doc-type :ad
+                         :db/op :update
+                         :xt/id id
+                         :ad/payment-method :db/dissoc
+                         :ad/card-details :db/dissoc
+                         :ad/updated-at :db/now}])
+                      (lib.pipe/http
+                       :post
+                       (str "https://api.stripe.com/v1/payment_methods/" payment-method "/detach")
+                       {:basic-auth [(secret :stripe/api-key)]})]
+     :status 200
+     :headers {"HX-Location" "/advertise"}}))
+
+(defget-pipe receive-payment-method
+  :start
+  (fn [{:keys [biff/db biff/secret params]}]
+    (let [{:keys [session-id]} params
+          ad-id (biff/lookup-id db :ad/session-id session-id)]
+      (if ad-id
+        {:biff.pipe/next [(lib.pipe/http
+                           :get
+                           (str "https://api.stripe.com/v1/checkout/sessions/" session-id)
+                           {:basic-auth [(secret :stripe/api-key)]
+                            :multi-param-style :array
+                            :as :json
+                            :query-params {:expand ["setup_intent" "setup_intent.payment_method"]}})
+                          :save-payment-method]
+         :ad/id ad-id}
+        {:biff.pipe/next [:redirect]})))
+
+  :save-payment-method
+  (fn [{:keys [biff.pipe.http/output] ad-id :ad/id}]
+    (let [pm (get-in output [:body :setup_intent :payment_method])]
+      {:biff.pipe/next [(lib.pipe/tx
+                         [{:db/doc-type :ad
+                           :db/op :update
+                           :xt/id ad-id
+                           :ad/session-id :db/dissoc
+                           :ad/payment-method (:id pm)
+                           :ad/card-details (select-keys (:card pm)
+                                                         [:brand :last4 :exp_year :exp_month])
+                           :ad/updated-at :db/now}])
+                        :redirect]}))
+
+  :redirect
+  (constantly {:status 303
+               :headers {"Location" "/advertise"}}))
+
+(defpost add-payment-method
+  :start
+  (lib.pipe/pathom-query [{:session/user
+                           [:xt/id
+                            :user/email
+                            {(? :user/ad)
+                             [(? :ad/customer-id)]}]}]
+                         :check-for-customer)
+
+  :check-for-customer
+  (fn [{:keys [biff/secret biff.pipe.pathom/output]}]
+    (if-some [customer-id (get-in output [:session/user :user/ad :ad/customer-id])]
+      {:biff.pipe/next [:create-session]
+       :ad/customer-id customer-id}
+      {:biff.pipe/next [(lib.pipe/http
+                         :post
+                         "https://api.stripe.com/v1/customers"
+                         {:basic-auth [(secret :stripe/api-key)]
+                          :form-params {:email (get-in output [:session/user :user/email])}
+                          :as :json})
+                        :create-customer]}))
+
+  :create-customer
+  (fn [{:keys [biff.pipe.http/output session]}]
+    (let [customer-id (get-in output [:body :id])]
+      {:biff.pipe/next [(lib.pipe/tx [{:db/doc-type :ad
+                                       :db.op/upsert {:ad/user (:uid session)}
+                                       :ad/customer-id customer-id
+                                       :ad/approve-state [:db/default :pending]
+                                       :ad/balance [:db/default 0]
+                                       :ad/recent-cost [:db/default 0]
+                                       :ad/updated-at :db/now}])
+                        :create-session]
+       :ad/customer-id customer-id}))
+
+  :create-session
+  (fn [{:keys [biff/base-url biff/secret ad/customer-id]}]
+    {:biff.pipe/next [(lib.pipe/http
+                       :post
+                       "https://api.stripe.com/v1/checkout/sessions"
+                       {:basic-auth [(secret :stripe/api-key)]
+                        :multi-param-style :array
+                        :form-params
+                        {:payment_method_types ["card"]
+                         :mode "setup"
+                         :customer customer-id
+                         :success_url (str base-url
+                                           (href receive-payment-method)
+                                           "?session-id={CHECKOUT_SESSION_ID}")
+                         :cancel_url (str base-url (href page-route))}
+                        :as :json})
+                      :redirect]})
+
+  :redirect
+  (fn [{:keys [biff.pipe.http/output session]}]
+    (let [{:keys [url id]} (:body output)]
+      {:biff.pipe/next [(lib.pipe/tx [{:db/doc-type :ad
+                                       :db.op/upsert {:ad/user (:uid session)}
+                                       :ad/session-id id
+                                       :ad/updated-at :db/now}])]
+       :status 303
+       :headers {"Location" url}})))
 
 (defpost-pathom save-ad
   [{:session/user
@@ -65,8 +191,8 @@
                       :ad/recent-cost [:db/default 0]
                       :ad/updated-at :db/now}
                      new-ad)]]
-      {:status 200
-       :headers {"HX-Location" (href page-route {:saved true})}
+      {:status 303
+       :headers {"Location" (href page-route {:saved true})}
        :biff.pipe/next [:biff.pipe/tx]
        :biff.pipe.tx/input tx})))
 (obfuscate-url! #'save-ad)
@@ -178,7 +304,7 @@
     [:input {:type "hidden" :name (pr-str :ad/image-url) :value value}]
     (if value
       [:<>
-       (ui/input-label {} "Image")
+       (ui/input-label {} (required-field->label :ad/image-url))
        [:.flex.items-center
         [:img.rounded
          {:src (ui/weserv {:url value
@@ -198,7 +324,7 @@
           :hx-swap "outerHTML"}
          "Change"]]]
       (ui/form-input
-       {:ui/label "Image"
+       {:ui/label (required-field->label :ad/image-url)
         :ui/description "Should be at least 150x150"
         :type "file"
         :indicator-id "image-upload-indicator"
@@ -213,9 +339,14 @@
     (when error
       (ui/input-error error))])
 
+(defn form-input [opts]
+  (let [label (or (:ui/label opts)
+                  (required-field->label (:name opts)))]
+    (ui/form-input (assoc opts :ui/label label))))
+
 (defn form [{:keys [ad params]}]
   (biff/form
-   {:hx-post (href save-ad)
+   {:action (href save-ad)
     :class '[flex flex-col gap-6]}
    [:.grid.sm:grid-cols-2.gap-6
     (ui/form-input {:ui/label "Maximum cost-per-click"
@@ -230,28 +361,25 @@
                     :name :ad/budget
                     :placeholder "75.00"
                     :value (some-> (:ad/budget ad) fmt-dollars)})]
-   (ui/form-input {:ui/label "Ad URL"
-                   :name :ad/url
-                   :placeholder "https://example.com?utm_source=yakread"
-                   :hx-get (href autocomplete)
-                   :hx-target "closest form"
-                   :hx-swap "morph"
-                   :hx-include "closest form"
-                   :hx-params "not __anti-forgery-token"
-                   :hx-indicator "#autocomplete-indicator"
-                   :value (:ad/url ad)})
-   (ui/form-input (merge {:ui/label "Title"
-                          :ui/description "Maximum 75 characters."
-                          :name :ad/title
-                          :value (:ad/title ad)}
-                         preview-hx-opts))
-   (ui/form-input (merge {:ui/input-type :textarea
-                          :ui/label "Description"
-                          :ui/description "Maximum 250 characters."
-                          :rows 3
-                          :name :ad/description
-                          :value (:ad/description ad)}
-                         preview-hx-opts))
+   (form-input {:name :ad/url
+                :placeholder "https://example.com?utm_source=yakread"
+                :hx-get (href autocomplete)
+                :hx-target "closest form"
+                :hx-swap "morph"
+                :hx-include "closest form"
+                :hx-params "not __anti-forgery-token"
+                :hx-indicator "#autocomplete-indicator"
+                :value (:ad/url ad)})
+   (form-input (merge {:ui/description "Maximum 75 characters."
+                       :name :ad/title
+                       :value (:ad/title ad)}
+                      preview-hx-opts))
+   (form-input (merge {:ui/input-type :textarea
+                       :ui/description "Maximum 250 characters."
+                       :rows 3
+                       :name :ad/description
+                       :value (:ad/description ad)}
+                      preview-hx-opts))
    (image-upload-input {:value (:ad/image-url ad)
                         :error (when (= (:error params) "image")
                                  "We weren't able to upload that file.")})
@@ -262,6 +390,32 @@
                  :checked (when (:ad/paused ad)
                             "checked")})
    [:div (ui/confirmed-submit {:ui/submitted (:saved params)})]))
+
+(defn view-payment-method [{:keys [ad]}]
+  [:div#payment-method
+   (if-some [{:keys [brand last4 exp_year exp_month]} (:ad/card-details ad)]
+     [:<>
+      [:div
+       (lib.icons/base "check-solid" {:class "w-5 h-5 text-tealv-600 inline align-middle"})
+       [:span.align-middle " " (str/upper-case brand) " ending in " last4
+        " (expires " exp_month "/" exp_year ")"]]
+      [:.h-3]
+      [:.flex.items-center
+       (ui/button
+         {:ui/type :secondary
+          :hx-post (href delete-payment-method)
+          :hx-indicator "#delete-pm-indicator"}
+         "Remove card")
+       [:.w-3]
+       [:img.h-6.htmx-indicator.hidden
+        {:id "delete-pm-indicator"
+         :src "/img/spinner2.gif"}]]]
+     (biff/form
+       {:action (href add-payment-method)
+        :hx-boost "false"}
+       (ui/button
+         {:type "Submit"}
+         "Add a payment method")))])
 
 ;; TODO add param to app-shell for including plausible
 (defget page-route "/advertise"
@@ -276,18 +430,46 @@
        (? :ad/description)
        (? :ad/image-url)
        (? :ad/paused)
-       :ad/approve-state
        (? :ad/balance)
        (? :ad/payment-failed)
        (? :ad/card-details)
-       :ad/ui-preview-card]}]}
+       :ad/ui-preview-card
+       :ad/state
+       :ad/incomplete-fields]}]}
    {(? :session/anon)
     [:ad/ui-preview-card]}]
   (fn [{:keys [params] form-params :biff.form/params}
        {:keys [app.shell/app-shell session/user session/anon]}]
     (let [{:user/keys [ad]} user]
       (app-shell
-       {:title "Advertise"}
+       {:title "Advertise"
+        :banner (case (:ad/state ad)
+                  :payment-failed
+                  (ui/banner-error
+                   "Your ad is paused because payment failed. "
+                   "Update your payment method to resume.")
+
+                  :running
+                  (ui/banner-success "Your ad is running.")
+
+                  :pending
+                  (ui/banner-warning "Your ad will begin running after it is approved.")
+
+                  :rejected
+                  (ui/banner-error
+                   "Your ad was rejected. If you update your ad, it will be "
+                   "reviewed again.")
+
+                  :incomplete
+                  (ui/banner-warning
+                   [:div "Your ad is incomplete. Please fill out the remaining fields: "
+                    (str/join ", " (keep required-field->label (:ad/incomplete-fields ad)))
+                    "."])
+
+                  :paused
+                  (ui/banner-warning "Your ad is paused.")
+
+                  nil)}
        (ui/page-header {:title "Advertise"
                         :description "Grow your newsletter with Yakread's self-serve, pay-per-click ads."})
        [:fieldset.disabled:opacity-60
@@ -298,7 +480,7 @@
           {}
           [:div "Your ad will be displayed on the For You page and in the digest emails. "
            "You'll be charged for each unique click your ad receives."]
-          [:.my-4 "<payment method>" #_(view-payment-method ctx)]
+          [:.my-4 (view-payment-method {:ad ad})]
           (form {:ad (merge ad params) :params params})
           [:.text-sm.text-neut-600
            "Ads are approved manually before running. See the "
@@ -342,7 +524,10 @@
                        upload-image
                        change-image
                        autocomplete
-                       refresh-preview]]
+                       refresh-preview
+                       add-payment-method
+                       receive-payment-method
+                       delete-payment-method]]
              :static {"/ad-policy/" policy-page}
              :resolvers [form-ad]})
 
@@ -359,63 +544,6 @@
 ;;             [clojure.data.csv :as csv]
 ;;             [clojure.string :as str]))
 ;; 
-;; (defn status-alert [{:keys [ad ::oob]}]
-;;   (let [{:keys [status steps]} (util/ad-status ad)]
-;;     (when (not= status :none)
-;;       (ui/alert
-;;        ::ui/color
-;;        (case status
-;;          (:running :pending) :teal
-;;          :rejected :red
-;;          :yellow)
-;; 
-;;        ::ui/message
-;;        (case status
-;;          :running "Your ad is running."
-;;          :pending "Your ad will start running once it's approved. Ads are usually reviewed within 24 hours."
-;;          :rejected [:<>
-;;                     "Your ad was not approved. See the "
-;;                     [:a.underline {:href "/ad-policy" :target "_blank"}
-;;                      "ad content policy"]
-;;                     ". You may have received additional feedback via email. "
-;;                     "After you update your ad, it will be reviewed again."]
-;;          :paused "Your ad is paused."
-;;          :incomplete [:<>
-;;                       [:div "Complete the following steps to run your ad:"]
-;;                       [:ul.mb-0 (for [step steps]
-;;                                   [:li step])]])))))
-;; 
-;; (defn view-payment-method [{:keys [ad]}]
-;;   [:div#payment-method
-;;    (if-some [{:keys [brand last4 exp_year exp_month]} (:ad/card-details ad)]
-;;      [:<>
-;;       [:div
-;;        (icons/base "check-solid" {:class "w-5 h-5 text-tealv-600 inline align-middle"})
-;;        [:span.align-middle " " (str/upper-case brand) " ending in " last4
-;;         " (expires " exp_month "/" exp_year ")"]]
-;;       [:.h-3]
-;;       [:.flex.items-center
-;;        (ui/button
-;;         {::ui/type :secondary
-;;          :hx-delete "/fiddlesticks/payment-method"
-;;          :hx-target "#payment-method"
-;;          :hx-swap "outerHTML"
-;;          :hx-indicator "#delete-pm-indicator"}
-;;         "Remove card")
-;;        [:.w-3]
-;;        [:img.h-6.htmx-indicator.hidden
-;;         {:id "delete-pm-indicator"
-;;          :src "/img/spinner2.gif"}]]]
-;;      (biff/form
-;;       {:action "/fiddlesticks/payment-method"
-;;        :hx-boost "false"}
-;;       (ui/button
-;;        {:type "Submit"}
-;;        "Add a payment method")))])
-;; 
-;; 
-;; 
-
 
 ;; 
 ;; (defn results [{:keys [biff/db biff/base-url user ad admin]}]
@@ -566,89 +694,6 @@
 ;;                "content-disposition" "attachment; filename=\"yakread-transaction-history.csv\""}
 ;;      :body body}))
 ;; 
-;; (defn create-customer! [{:keys [biff/secret user] :as ctx}]
-;;   (let [id (-> (http/post "https://api.stripe.com/v1/customers"
-;;                           {:basic-auth [(secret :stripe/api-key)]
-;;                            :form-params {:email (:user/email user)}
-;;                            :as :json})
-;;                :body
-;;                :id)]
-;;     (biff/submit-tx ctx
-;;       [{:db/doc-type :ad
-;;         :db.op/upsert {:ad/user (:xt/id user)}
-;;         :ad/customer-id id
-;;         :ad/state [:db/default :pending]
-;;         :ad/balance [:db/default 0]
-;;         :ad/recent-cost [:db/default 0]
-;;         :ad/updated-at :db/now}])
-;;     id))
-;; 
-;; (defn add-payment-method [{:keys [biff/secret biff/base-url user ad] :as ctx}]
-;;   (let [customer-id (or (:ad/customer-id ad)
-;;                         (create-customer! ctx))
-;;         response (http/post "https://api.stripe.com/v1/checkout/sessions"
-;;                             {:basic-auth [(secret :stripe/api-key)]
-;;                              :multi-param-style :array
-;;                              :form-params {:payment_method_types ["card"]
-;;                                            :mode "setup"
-;;                                            :customer customer-id
-;;                                            :success_url (str base-url "/fiddlesticks/payment-method?session-id={CHECKOUT_SESSION_ID}")
-;;                                            :cancel_url (str base-url "/advertise")}
-;;                              :as :json})
-;;         {:keys [url id]} (:body response)]
-;;     (biff/submit-tx ctx
-;;       [{:db/doc-type :ad
-;;         :db.op/upsert {:ad/user (:xt/id user)}
-;;         :ad/session-id id
-;;         :ad/updated-at :db/now}])
-;;     {:status 303
-;;      :headers {"Location" url}}))
-;; 
-;; (defn receive-payment-method [{:keys [biff/secret biff/db params] :as ctx}]
-;;   (let [{:keys [session-id]} params
-;;         pm (-> (http/get (str "https://api.stripe.com/v1/checkout/sessions/" session-id)
-;;                          {:basic-auth [(secret :stripe/api-key)]
-;;                           :multi-param-style :array
-;;                           :as :json
-;;                           :query-params {:expand ["setup_intent" "setup_intent.payment_method"]}})
-;;                :body
-;;                :setup_intent
-;;                :payment_method)]
-;;     (when-some [ad-id (biff/lookup-id db :ad/session-id session-id)]
-;;       (biff/submit-tx ctx
-;;         [{:db/doc-type :ad
-;;           :db/op :update
-;;           :xt/id ad-id
-;;           :ad/session-id :db/dissoc
-;;           :ad/payment-method (:id pm)
-;;           :ad/card-details (select-keys (:card pm) [:brand :last4 :exp_year :exp_month])
-;;           :ad/updated-at :db/now}])))
-;;   {:status 303
-;;    :headers {"Location" "/advertise"}})
-;; 
-;; (defn delete-payment-method [{:keys [biff/secret ad] :as ctx}]
-;;   (let [ctx (update ctx :ad dissoc :ad/payment-method :ad/card-details)]
-;;     (biff/submit-tx ctx
-;;       [{:db/doc-type :ad
-;;         :db/op :update
-;;         :xt/id (:xt/id ad)
-;;         :ad/payment-method :db/dissoc
-;;         :ad/card-details :db/dissoc
-;;         :ad/updated-at :db/now}])
-;;     (http/post (str "https://api.stripe.com/v1/payment_methods/"
-;;                     (:ad/payment-method ad)
-;;                     "/detach")
-;;                {:basic-auth [(secret :stripe/api-key)]})
-;;     [:<>
-;;      (view-payment-method ctx)
-;;      #_(status-alert (assoc ctx ::oob true))]))
-;; 
-;; 
-;; 
-;; (defn wrap-ad [handler]
-;;   (fn [{:keys [biff/db user] :as ctx}]
-;;     (handler (cond-> ctx
-;;                user (assoc :ad (biff/lookup db :ad/user (:xt/id user)))))))
 ;; 
 ;; (def ^:biff plugin
 ;;   {:routes [["/advertise" {:middleware [mid/wrap-maybe-signed-in

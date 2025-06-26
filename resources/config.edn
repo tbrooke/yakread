@@ -41,4 +41,5 @@
  ;; - yakread-dev: advertising image uploads. TODO use for everything with prefixes.
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
  :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY
+ :stripe/api-key #profile {:dev #biff/secret STRIPE_TEST_SECRET_KEY}
  :yakread/domain #biff/env DOMAIN}

@@ -117,3 +117,8 @@
                (fn [ctx#]
                  (f# ctx# (:biff.pipe.pathom/output ctx#))))
      ~@args))
+
+(defmacro defget-pipe [sym & pipe-args]
+  `(def ~sym [~(autogen-endpoint *ns* sym)
+              {:name ~(keyword (str *ns*) (str sym))
+               :get (wrap-nippy-params (lib.pipe/make ~@pipe-args))}]))

@@ -16,7 +16,7 @@
    :user [:map {:closed true}
           [:xt/id                     :uuid]
           [:user/email                ::string]
-          [:user/roles              ? [:set [:= :admin]]]
+          [:user/roles              ? [:set [:enum :admin]]]
           [:user/joined-at          ? :time/instant]
           [:user/digest-days        ? [:set ::day]]
           [:user/send-digest-at     ? :time/local-time]

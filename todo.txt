@@ -1,9 +1,8 @@
 - ads
   - ad page
-      payment method
-      approval
       results
   - admin page
+      approval
   - import referral data
 - make recommendations fast
 - email digests
