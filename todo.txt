@@ -1,9 +1,3 @@
-- ads
-  - ad page
-      results
-  - admin page
-      approval
-  - import referral data
 - make recommendations fast
 - email digests
 - settings
@@ -13,7 +7,10 @@
 - redo subs page layout (use tabs)
 - tos, privacy policy
 - deploy, migrate
-- charge ads
+  - import referral data
+- finish ads
+    charge
+    admin page approvals
 
 backlog
 - can we use lazy-map on malli-opts while still doing late binding?

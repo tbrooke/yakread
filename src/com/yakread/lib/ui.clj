@@ -200,6 +200,7 @@
                :danger '[bg-redv-700 hover:bg-redv-800 disabled:bg-redv-200 disabled:hover:bg-redv-200
                          text-neut-50 disabled:text-white]
                :link   '[text-blue-600]
+               :muted-link '[text-gray-600]
                '[bg-neut-700 hover:bg-neut-800 disabled:hover:bg-neut-700
                  text-neut-50])
              (case size

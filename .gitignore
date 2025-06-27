@@ -20,3 +20,4 @@ timeline.edn
 .idea
 storage-bak
 resources/emails
+resources/public/vendor

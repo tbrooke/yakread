@@ -2,7 +2,7 @@
   (:require
    [clojure.data.generators :as gen]
    [clojure.string :as str]
-   [com.biffweb :as biff]
+   [com.biffweb :as biff :refer [letd]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
    [com.yakread.lib.content :as lib.content]
    [com.yakread.lib.core :as lib.core]
@@ -393,23 +393,22 @@
 
 (defn view-payment-method [{:keys [ad]}]
   [:div#payment-method
+   (ui/input-label {} (:ad/payment-method required-field->label))
    (if-some [{:keys [brand last4 exp_year exp_month]} (:ad/card-details ad)]
-     [:<>
+     [:.flex.items-baseline.gap-3
       [:div
-       (lib.icons/base "check-solid" {:class "w-5 h-5 text-tealv-600 inline align-middle"})
-       [:span.align-middle " " (str/upper-case brand) " ending in " last4
-        " (expires " exp_month "/" exp_year ")"]]
-      [:.h-3]
-      [:.flex.items-center
-       (ui/button
-         {:ui/type :secondary
-          :hx-post (href delete-payment-method)
-          :hx-indicator "#delete-pm-indicator"}
-         "Remove card")
-       [:.w-3]
-       [:img.h-6.htmx-indicator.hidden
-        {:id "delete-pm-indicator"
-         :src "/img/spinner2.gif"}]]]
+       [:span.align-middle (str/upper-case brand) " ending in " last4
+        " (expires " exp_month "/" exp_year ")"]
+       ". "
+       [:button {:class '[font-medium text-neut-400 hover:underline]
+                 :hx-post (href delete-payment-method)
+                 :hx-confirm "Remove your payment method? Your ad will stop running."
+                 :hx-indicator "#delete-pm-indicator"}
+        "Remove card"]
+       "."]
+      [:img.h-6.htmx-indicator.hidden
+       {:id "delete-pm-indicator"
+        :src "/img/spinner2.gif"}]]
      (biff/form
        {:action (href add-payment-method)
         :hx-boost "false"}
@@ -433,6 +432,7 @@
        (? :ad/balance)
        (? :ad/payment-failed)
        (? :ad/card-details)
+       :ad/n-clicks
        :ad/ui-preview-card
        :ad/state
        :ad/incomplete-fields]}]}
@@ -440,10 +440,11 @@
     [:ad/ui-preview-card]}]
   (fn [{:keys [params] form-params :biff.form/params}
        {:keys [app.shell/app-shell session/user session/anon]}]
-    (let [{:user/keys [ad]} user]
+    (let [{:user/keys [ad]} user
+          {:ad/keys [n-clicks balance state]} ad]
       (app-shell
        {:title "Advertise"
-        :banner (case (:ad/state ad)
+        :banner (case state
                   :payment-failed
                   (ui/banner-error
                    "Your ad is paused because payment failed. "
@@ -453,7 +454,7 @@
                   (ui/banner-success "Your ad is running.")
 
                   :pending
-                  (ui/banner-warning "Your ad will begin running after it is approved.")
+                  (ui/banner-success "Your ad will begin running after it is approved.")
 
                   :rejected
                   (ui/banner-error
@@ -480,7 +481,24 @@
           {}
           [:div "Your ad will be displayed on the For You page and in the digest emails. "
            "You'll be charged for each unique click your ad receives."]
-          [:.my-4 (view-payment-method {:ad ad})]
+          (when (or (#{:running :pending} state)
+                    (not= 0 n-clicks)
+                    (not= 0 balance))
+            [:<>
+             [:ul.my-0.gap-2.flex.flex-col
+              [:li
+               "Your ad has received "
+               [:span.font-bold n-clicks] " click" (when (not= 1 n-clicks) "s")
+               "."]
+              (if (<= 0 balance)
+                [:li "Your balance is "
+                 [:span.font-bold "$" (fmt-dollars balance)]
+                 "."]
+                [:li "You have "
+                 [:span.font-bold "$" (fmt-dollars (- balance))]
+                 " of ad credit."])]
+             [:hr]])
+          [:div (view-payment-method {:ad ad})]
           (form {:ad (merge ad params) :params params})
           [:.text-sm.text-neut-600
            "Ads are approved manually before running. See the "
@@ -492,14 +510,7 @@
         [:div#preview
          (if user
            (:ad/ui-preview-card ad)
-           (:ad/ui-preview-card anon))]
-
-         #_(when user
-           [:<>
-            [:.h-10]
-            (ui/section
-             {:title "Results"}
-             (ui/lazy-load {:href "/fiddlesticks/results"}))])]))))
+           (:ad/ui-preview-card anon))]]))))
 
 (def policy-page
   (ui/plain-page
@@ -530,186 +541,3 @@
                        delete-payment-method]]
              :static {"/ad-policy/" policy-page}
              :resolvers [form-ad]})
-
-;; (ns com.yakread.new.advertise
-;;   (:require [com.biffweb :as biff :refer [q letd]]
-;;             [com.yakread.middleware :as mid]
-;;             [com.yakread.ui :as old-ui]
-;;             [com.yakread.new.ui :as ui]
-;;             [com.yakread.settings :as settings]
-;;             [com.yakread.ui.icons :as icons]
-;;             [com.yakread.util :as util]
-;;             [com.yakread.util.s3 :as s3]
-;;             [clj-http.client :as http]
-;;             [clojure.data.csv :as csv]
-;;             [clojure.string :as str]))
-;; 
-
-;; 
-;; (defn results [{:keys [biff/db biff/base-url user ad admin]}]
-;;   (letd [{:keys [status]} (util/ad-status ad)
-;;          clicks (biff/lookup-all db :ad.click/ad (:xt/id ad))
-;;          referrals (biff/lookup-all db :user/referred-by (:xt/id user))
-;;          ref-value (apply + (keep :user/referral-value referrals))
-;;          n-clicks (->> clicks
-;;                        (map :ad.click/user)
-;;                        distinct
-;;                        count)
-;;          src->n-views (into {} (q db
-;;                                   '{:find [source (count view)]
-;;                                     :in [item]
-;;                                     :where [[view :view/items item]
-;;                                             [(get-attr view :view/source :web) [source ...]]]}
-;;                                   (:xt/id ad)))
-;;          n-views-min (get src->n-views :web 0)
-;;          n-views-max (+ n-views-min (get src->n-views :email 0))
-;;          [[recent-clicks
-;;            median-cost]] (vec (q db
-;;                                  '{:find [(count click) (median cost)]
-;;                                    :in [t0]
-;;                                    :where [[click :ad.click/created-at t]
-;;                                            [click :ad.click/cost cost]
-;;                                            [(<= t0 t)]
-;;                                            [(< 0 cost)]]}
-;;                                  (biff/add-seconds (java.util.Date.) (* -60 60 24 7))))
-;;          recent-clicks (or recent-clicks 0)
-;;          median-cost (or median-cost 0)
-;;          threshold 3000]
-;;     [:<>
-;;      (if (= status :none)
-;;        [:div "Your ad results will be displayed here."]
-;;        [:<>
-;;         [:ul.my-0.gap-2.flex.flex-col
-;;          [:li
-;;           [:span.font-bold n-views-min "+"]
-;;           " impression" (when (not= 1 n-views-min) "s")
-;;           " and "
-;;           [:span.font-bold n-clicks] " click" (when (not= 1 n-clicks) "s")
-;;           " so far."]
-;;          (if (<= 0 (:ad/balance ad))
-;;            [:li "Your balance is "
-;;             [:span.font-bold "$" (fmt-dollars (:ad/balance ad))]
-;;             ". You'll be charged after it reaches "
-;;             [:span.font-bold "$" (fmt-dollars threshold)] ", or after one month."]
-;;            [:li "You have "
-;;             [:span.font-bold "$" (fmt-dollars (- (:ad/balance ad)))]
-;;             " of ad credit. "
-;;             (if (:ad/payment-method ad)
-;;               "We'll start charging your card after your credit is used up."
-;;               (str "After your credit is used up, you'll need to add a payment method "
-;;                    "to continue advertising."))])
-;;          [:li "Across Yakread in the past week, there "
-;;           (if (= 1 recent-clicks)
-;;             "has"
-;;             "have")
-;;           " been "
-;;           [:span.font-bold recent-clicks] " click" (when (not= 1 recent-clicks) "s")
-;;           " at a median cost of "
-;;           [:span.font-bold "$" (fmt-dollars median-cost)] " per click."]
-;;          [:li [:a.link {:href "/advertise/history" :hx-boost false :target "_blank"} "Download"]
-;;           " your transaction history."]]])
-;; 
-;;      (when-some [code (:user/referral-code user)]
-;;        [:div
-;;         [:.h-4]
-;;         (ui/section
-;;         {:title "Referral program"}
-;;         [:.flex.flex-col.gap-2
-;;          [:div "We'll give you " [:span.font-bold "$" (fmt-dollars settings/referral-reward)]
-;;           " of ad credit for each new user you refer to Yakread. You can refer people by sharing this link: "
-;;           [:a.link {:href (str base-url "?ref=" code)}
-;;            (str base-url "?ref=" code)] "."
-;;           " See " [:a.link {:href "https://tfos.co/sharing-yakread/" :target "_blank"}
-;;                    "resources for sharing Yakread"] "."]
-;;          [:div "Please be considerate."
-;;           " We recommend sharing your referral links in your "
-;;           "newsletter or on your social media accounts. "
-;;           "Please do not post your links in community spaces. "
-;;           "See also the " [:a.link {:href (str base-url "/referral-policy") :target "_blank"}
-;;                            "referral policy"] "."]
-;;          [:div "You've referred " [:span.font-bold (count referrals)] " new user"
-;;           (when (not= (count referrals) 1) "s")
-;;           " to Yakread."]])])]))
-;; 
-;; (defn download-history [{:keys [biff/db ad user]}]
-;;   (let [clicks (q db
-;;                   '{:find (pull click [*])
-;;                     :in [ad]
-;;                     :where [[click :ad.click/ad ad]]}
-;;                   (:xt/id ad))
-;;         credit (q db
-;;                   '{:find (pull credit [*])
-;;                     :in [ad]
-;;                     :where [[credit :ad.credit/ad ad]]}
-;;                   (:xt/id ad))
-;;         referrals (q db
-;;                      '{:find (pull referral [*])
-;;                        :in [user]
-;;                        :where [[referral :user/referred-by user]]}
-;;                      (:xt/id user))
-;;         events (concat
-;;                 (for [{:ad.click/keys [created-at cost]} clicks]
-;;                   {:timestamp created-at
-;;                    :debit cost
-;;                    :description (if (< 0 cost)
-;;                                   "Ad click"
-;;                                   "Duplicate ad click")})
-;;                 (for [{:ad.credit/keys [type
-;;                                         amount
-;;                                         created-at
-;;                                         status]} credit
-;;                       :when (= status :confirmed)]
-;;                   {:timestamp created-at
-;;                    :credit amount
-;;                    :description (if (= type :charge)
-;;                                   "Credit card charged"
-;;                                   "Credit added to account manually")})
-;;                 (for [{:user/keys [joined-at referral-value]} referrals
-;;                       :when (some? referral-value)]
-;;                   {:timestamp joined-at
-;;                    :credit referral-value
-;;                    :description "Referred user to Yakread"}))
-;;         events (->> events
-;;                     (sort-by :timestamp)
-;;                     (reduce (fn [events event]
-;;                               (let [balance (+ (:balance (peek events) 0)
-;;                                                (:debit event 0)
-;;                                                (- (:credit event 0)))]
-;;                                 (conj events (assoc event :balance balance))))
-;;                             []))
-;;         body (str
-;;               (with-open [w (java.io.StringWriter.)]
-;;                 (csv/write-csv
-;;                  w
-;;                  (into [["Date" "Description" "Credit" "Debit" "Balance"]]
-;;                        (for [event (reverse events)]
-;;                          [(biff/format-date (:timestamp event))
-;;                           (:description event)
-;;                           (maybe-fmt-currency (:credit event 0))
-;;                           (maybe-fmt-currency (:debit event 0))
-;;                           (format "$%.2f" (/ (:balance event 0) 100.0))])))
-;;                 w))]
-;;     {:status 200
-;;      :headers {"content-type" "text/csv"
-;;                "content-disposition" "attachment; filename=\"yakread-transaction-history.csv\""}
-;;      :body body}))
-;; 
-;; 
-;; (def ^:biff plugin
-;;   {:routes [["/advertise" {:middleware [mid/wrap-maybe-signed-in
-;;                                         wrap-ad]}
-;;              ["" {:get main}]]
-;;             ["/fiddlesticks" {:middleware [mid/wrap-signed-in
-;;                                            wrap-ad]}
-;;              ["/save" {:post save-ad}]
-;;              ["/payment-method" {:get receive-payment-method
-;;                                  :post add-payment-method
-;;                                  :delete delete-payment-method}]
-;;              ["/autocomplete" {:get autocomplete}]
-;;              ["/image"        {:post upload-image}]
-;;              ["/change-image" {:get change-image}]
-;;              ["/results"      {:get results}]]
-;;             ["/advertise" {:middleware [mid/wrap-signed-in
-;;                                         wrap-ad]}
-;;              ["/history"      {:get download-history}]]]
-;;    :static {"/referral-policy/" referral-policy}})

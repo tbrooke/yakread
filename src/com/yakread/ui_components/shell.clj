@@ -54,15 +54,15 @@
   #::pco{:input [(? :user/current)]}
   {:app.shell/app-head
    [[:link {:rel "stylesheet" :href (css-path)}]
-    [:script {:src "https://unpkg.com/htmx.org@2.0.2"}]
-    [:script {:src "https://unpkg.com/idiomorph@0.7.3"
+    [:script {:src "/vendor/cdn.jsdelivr.net/npm/htmx.org@2.0.5/dist/htmx.min.js"}]
+    [:script {:src "/vendor/unpkg.com/idiomorph@0.7.3.js"
               :integrity "sha384-JcorokHTL/m+D6ZHe2+yFVQopVwZ+91GxAPDyEZ6/A/OEPGEx1+MeNSe2OGvoRS9"
               :crossorigin "anonymous"}]
-    [:script {:src "https://unpkg.com/idiomorph@0.7.3/dist/idiomorph-ext.min.js"
+    [:script {:src "/vendor/unpkg.com/idiomorph@0.7.3/dist/idiomorph-ext.min.js"
               :integrity "sha384-szktAZju9fwY15dZ6D2FKFN4eZoltuXiHStNDJWK9+FARrxJtquql828JzikODob"
               :crossorigin "anonymous"}]
-    [:script {:src "https://unpkg.com/hyperscript.org@0.9.12"}]
-    [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js"}]
+    [:script {:src "/vendor/unpkg.com/hyperscript.org@0.9.14.js"}]
+    [:script {:src "/vendor/cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"}]
     [:script {:src "/js/main.js"}]
     ;[:script {:src "https://unpkg.com/@popperjs/core@2"}]
     ;[:script {:src "https://unpkg.com/tippy.js@6"}]
@@ -72,7 +72,7 @@
                 :data-domain "yakread.com"}])
     (when (and (nil? user) include-recaptcha)
       [:script {:src "https://www.google.com/recaptcha/api.js" :async "async" :defer "defer"}])
-    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-beta.9/bundles/datastar.js"}]
+    [:script {:type "module" :src "/vendor/cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-beta.9/bundles/datastar.js"}]
     ;; TODO
     ;[:link {:rel "manifest", :href "/site.webmanifest?a"}]
     [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]

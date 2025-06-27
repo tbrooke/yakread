@@ -1,6 +1,6 @@
 (ns com.yakread.model.ad
   (:require
-   [com.biffweb :as biff]
+   [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.content :as lib.content]
    [com.yakread.lib.core :as lib.core]))
@@ -52,9 +52,21 @@
                  (= approve-state :pending) :pending)
      :ad/incomplete-fields incomplete-fields}))
 
+(defresolver n-clicks [{:keys [biff/db]} {:keys [ad/id]}]
+  {:ad/n-clicks
+   (or (first
+        (q db
+           '{:find (count-distinct user)
+             :in [ad]
+             :where [[click :ad.click/ad ad]
+                     [click :ad.click/user user]]}
+           id))
+       0)})
+
 (def module {:resolvers [ad-id
                          xt-id
                          effective-bid
                          user-ad
                          url-with-protocol
-                         state]})
+                         state
+                         n-clicks]})
