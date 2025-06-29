@@ -482,8 +482,8 @@
           [:div "Your ad will be displayed on the For You page and in the digest emails. "
            "You'll be charged for each unique click your ad receives."]
           (when (or (#{:running :pending} state)
-                    (not= 0 n-clicks)
-                    (not= 0 balance))
+                    (not= 0 (or n-clicks 0))
+                    (not= 0 (or balance 0)))
             [:<>
              [:ul.my-0.gap-2.flex.flex-col
               [:li
