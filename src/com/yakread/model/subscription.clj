@@ -1,16 +1,16 @@
 (ns com.yakread.model.subscription
-  (:require [com.biffweb :as biff :refer [q <<-]]
-            [com.yakread.util.biff-staging :as biffs]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.yakread.lib.error :as lib.error]
-            [com.yakread.lib.item :as lib.item]
-            [com.yakread.lib.route :as lib.route]
-            [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.user-item :as lib.user-item]
-            [clojure.string :as str]
-            [clojure.set :as set]
-            [xtdb.api :as xt])
-  (:import [java.time Instant]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [com.biffweb :as biff :refer [q]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.item :as lib.item]
+   [com.yakread.lib.serialize :as lib.serialize]
+   [com.yakread.lib.user-item :as lib.user-item]
+   [com.yakread.util.biff-staging :as biffs]
+   [taoensso.tufte :refer [p]]
+   [xtdb.api :as xt]))
 
 (defresolver user-subs [{:keys [biff/db]} {:keys [user/id]}]
   #::pco{:output [{:user/subscriptions [:sub/id]}
@@ -86,20 +86,31 @@
   (when-some [published-at (biff/index-get db :last-published source-id)]
     {:sub/published-at published-at}))
 
-;; TODO experiment with making this batch
-(defresolver items [{:keys [biff/db]} {:sub/keys [source-id doc-type]}]
-  {::pco/output [{:sub/items [:xt/id]}]}
-  {:sub/items
-   (mapv #(hash-map :xt/id %)
-         (q db
-            {:find 'item
-             :in '[source]
-             :where [['item
-                      (case doc-type
-                        :sub/feed :item.feed/feed
-                        :sub/email :item.email/sub)
-                      'source]]}
-            source-id))})
+(defresolver items [{:keys [biff/db]} subscriptions]
+  {::pco/input [:sub/source-id
+                :sub/doc-type]
+   ::pco/output [{:sub/items [:xt/id]}]
+   ::pco/batch? true}
+  (let [{feed-subs :sub/feed
+         email-subs :sub/email} (group-by :sub/doc-type subscriptions)
+        feed-source->items (->> (q db
+                                   '{:find [source item]
+                                     :in [[source ...]]
+                                     :where [[item :item.feed/feed source]]}
+                                   (mapv :sub/source-id feed-subs))
+                                (lib.core/group-by-to first #(array-map :xt/id (second %))))
+        email-source->items (->> (q db
+                                    '{:find [source item]
+                                      :in [[source ...]]
+                                      :where [[item :item.email/sub source]]}
+                                    (mapv :sub/source-id email-subs))
+                                 (lib.core/group-by-to first #(array-map :xt/id (second %))))
+        doc-type->source->items {:sub/email email-source->items
+                                 :sub/feed feed-source->items}]
+    (mapv (fn [{:sub/keys [source-id doc-type] :as sub}]
+            (merge sub
+                   {:sub/items (get-in doc-type->source->items [doc-type source-id] [])}))
+          subscriptions)))
 
 (defresolver latest-item [{:keys [biff/db]} {:sub/keys [source-id doc-type]}]
   {::pco/output [{:sub/latest-item [:xt/id]}]}
