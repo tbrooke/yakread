@@ -105,38 +105,54 @@
                  (? :params/paginate-after)]
          :output [{:user/history-items [:xt/id
                                         {:item/user-item [:xt/id]}]}]}
-  {:user/history-items
-   (let [{:keys [batch-size]
-          :or {batch-size 100}} (pco/params ctx)]
+  (let [{:keys [batch-size]
+         :or {batch-size 100}} (pco/params ctx)]
+    {:user/history-items
      (->> (q db
-           '{:find [item user-item (max t)]
-             :keys [item user-item t]
-             :in [user]
-             :where [[user-item :user-item/user user]
-                     [user-item :user-item/item item]
-                     (or [user-item :user-item/viewed-at t]
-                         [user-item :user-item/favorited-at t]
-                         [user-item :user-item/disliked-at t]
-                         [user-item :user-item/reported-at t])]}
-           (:xt/id user))
-        (sort-by (comp inst-ms :t) >)
-        (drop-while (fn [{:keys [item]}]
-                      (and paginate-after
-                           (not= item paginate-after))))
-        (remove (comp #{paginate-after} :item))
-        (take batch-size)
-        (mapv (fn [{:keys [item user-item]}]
-                {:xt/id item
-                 :item/user-item {:xt/id user-item}}))))})
+             '{:find [(pull user-item [*])]
+               :in [user]
+               :where [[user-item :user-item/user user]]}
+             (:xt/id user))
+          (keep (fn [[usit]]
+                  (when-some [t (some->> [:user-item/viewed-at
+                                          :user-item/favorited-at
+                                          :user-item/disliked-at
+                                          :user-item/reported-at]
+                                         (keep usit)
+                                         not-empty
+                                         (apply max-key inst-ms))]
+                    (assoc usit :t t))))
+          (sort-by :t #(compare %2 %1))
+          (drop-while (fn [{:keys [user-item/item]}]
+                        (and paginate-after
+                             (not= item paginate-after))))
+          (remove (comp #{paginate-after} :user-item/item))
+          (take batch-size)
+          (mapv (fn [{:keys [xt/id user-item/item]}]
+                  {:xt/id item
+                   :item/user-item {:xt/id id}})))}))
 
-(defresolver current-item [{:keys [session/user]}]
-  #::pco{:input [{:session/user [{(list :user/history-items {:batch-size 1})
-                                  [:item/id]}]}]
-         :output [{:user/current-item
-                   [:item/id :item/rec-type]}]}
-  (when-some [item-id (-> user :user/history-items first :item/id)]
-    {:user/current-item {:item/id item-id
-                         :item/rec-type :item.rec-type/current}}))
+(defresolver current-item [{:keys [biff/db]} {user-id :user/id}]
+  #::pco{:input [:user/id]
+         :output [{:user/current-item [:item/id :item/rec-type]}]}
+  (when-some [viewed-at (ffirst
+                         (q db
+                            '{:find [(max t)]
+                              :in [user]
+                              :where [[user-item :user-item/user user]
+                                      [user-item :user-item/viewed-at t]]}
+                            user-id))]
+    {:user/current-item
+     {:item/id (ffirst
+                (q db
+                   '{:find [item]
+                     :in [user viewed-at]
+                     :where [[usit :user-item/user user]
+                             [usit :user-item/viewed-at viewed-at]
+                             [usit :user-item/item item]]}
+                   user-id
+                   viewed-at))
+      :item/rec-type :item.rec-type/current}}))
 
 (defresolver source [{:keys [item.email/sub item.feed/feed]}]
   {::pco/input [{(? :item.email/sub) [:xt/id]}
