@@ -7,6 +7,7 @@
             [clojure.data.generators :as gen]
             [com.yakread.lib.error :as lib.error]
             [clojure.tools.logging :as log]
+            [taoensso.tufte :refer [p]]
             [xtdb.api :as xt]))
 
 ;; TODO try to do this without monkey patching
@@ -51,17 +52,20 @@
   (let [{:keys [biff/debug ::pco/op-name]} config]
     (when debug
       (println ":biff/debug set for" op-name))
-    (cond-> resolver
-      debug
-      (assoc :resolve (fn [ctx params]
-                        (if (or (not (fn? debug))
-                                (debug ctx params))
-                          (do
-                            (println op-name)
-                            (biff/pprint params)
-                            (println "=>")
-                            (let [ret (f (assoc ctx :biff/debug true) params)]
-                              (biff/pprint ret)
-                              (println)
-                              ret))
-                          (f ctx params)))))))
+    (let [f (if-not debug
+              f
+              (fn [ctx params]
+                (if (or (not (fn? debug))
+                        (debug ctx params))
+                  (do
+                    (println op-name)
+                    (biff/pprint params)
+                    (println "=>")
+                    (let [ret (f (assoc ctx :biff/debug true) params)]
+                      (biff/pprint ret)
+                      (println)
+                      ret))
+                  (f ctx params))))
+          f (fn [ctx params]
+              (p op-name (f ctx params)))]
+      (assoc resolver :resolve f))))

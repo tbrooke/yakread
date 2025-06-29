@@ -9,7 +9,8 @@
    [com.yakread.settings :as settings]
    [com.yakread.util :as util]
    [rum.core :as rum]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]
+   [taoensso.tufte :as tufte]))
 
 (defn wrap-signed-in [handler]
   (fn [{:keys [session] :as ctx}]
@@ -188,6 +189,12 @@
                  (update-in resp [:headers "location"] str/replace alias-for (:email params))
                  resp)]
       resp)))
+
+(defn wrap-profiled [handler]
+  (fn [ctx]
+    (let [[result pstats] (tufte/profiled {} (handler ctx))]
+      (println (tufte/format-pstats @pstats))
+      result)))
 
 (def default-site-middleware
   [biff/wrap-site-defaults
