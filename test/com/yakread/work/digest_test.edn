@@ -1,0 +1,54 @@
+{:require
+ [[com.yakread.work.digest :refer :all]
+  [com.yakread.lib.test :as t]
+  [clojure.data.generators :as gen]],
+ :tests
+ [{:eval
+   (t/with-db
+    [db
+     [{:xt/id "user1", :user/email "user1@example.com"}
+      {:xt/id "user2",
+       :user/email "user2@example.com",
+       :user/digest-last-sent #time/instant "2000-01-01T00:00:00Z"}]]
+    (queue-send-digest
+     {:biff/db db, :biff/now #time/instant "2000-01-01T12:00:00Z"}
+     :start)),
+   :result [{:user/email "user1@example.com", :xt/id "user1"}]}
+  _
+  {:eval
+   (in-send-time-window?
+    {:biff/now #time/instant "2025-07-13T11:44:57Z"}
+    {:user/digest-days #{:sunday},
+     :user/send-digest-at #time/time "04:00",
+     :user/timezone #time/zone "US/Mountain"}),
+   :result true}
+  _
+  {:eval
+   (in-send-time-window?
+    {:biff/now #time/instant "2025-07-13T11:44:57Z"}
+    {:user/digest-days #{:sunday},
+     :user/send-digest-at #time/time "03:00",
+     :user/timezone #time/zone "US/Mountain"}),
+   :result false}
+  _
+  {:eval
+   (in-send-time-window?
+    {:biff/now #time/instant "2025-07-13T11:44:57Z"}
+    {:user/digest-days #{:saturday :monday},
+     :user/send-digest-at #time/time "04:00",
+     :user/timezone #time/zone "US/Mountain"}),
+   :result false}
+  _
+  {:eval
+   (in-send-time-window?
+    {:biff/now #time/instant "2025-07-13T11:44:57Z"}
+    {:user/digest-days #{:sunday},
+     :user/send-digest-at #time/time "04:00",
+     :user/timezone #time/zone "US/Eastern"}),
+   :result false}
+  _
+  {:eval
+   (in-send-time-window?
+    {:biff/now #time/instant "2025-07-13T15:44:57Z"}
+    {}),
+   :result true}]}
