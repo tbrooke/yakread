@@ -1,0 +1,87 @@
+{:require
+ [[com.yakread.model.recommend :refer :all]
+  [com.yakread.lib.test :as t]
+  [clojure.data.generators :as gen]],
+ :tests
+ [{:eval (take-rand [1]), :result (1)}
+  _
+  {:eval (weight 0), :result 1.0}
+  _
+  {:eval (weight 1), :result 0.9355069850316178}
+  _
+  {:eval (weight 5), :result 0.7165313105737893}
+  _
+  {:eval (weight 10), :result 0.513417119032592}
+  _
+  {:eval (weight 50), :result 0.03567399334725241}
+  _
+  {:eval (weight 100), :result 0.0012726338013398079}
+  _
+  {:eval
+   (let
+    [weights (mapv weight (range 100)) total (apply + weights)]
+    [(/ (apply + (take 10 weights)) total)
+     (/ (apply + (take 50 weights)) total)]),
+   :result [0.4872029118611535 0.965554804333789]}
+  _
+  {:eval
+   (binding
+    [gen/*rnd* (java.util.Random. 3)]
+    (interleave-uniform [:a :b :c :d] [1 2 3 4 5])),
+   :result (1 :a 2 3 4 :b 5 :c :d)}
+  _
+  {:eval
+   (t/with-db
+    [db
+     [{:xt/id "skip1",
+       :skip/user "user1",
+       :skip/items ["item1" "item2"],
+       :skip/timeline-created-at #time/instant "2000-01-01T00:00:00Z"}
+      {:xt/id "usit1",
+       :user-item/item "item3",
+       :user-item/user "user1",
+       :user-item/favorited-at #time/instant "2001-01-01T00:00:00Z"}
+      {:xt/id "skip2",
+       :skip/user "user1",
+       :skip/items ["item4"],
+       :skip/timeline-created-at #time/instant "2002-01-01T00:00:00Z"}
+      {:xt/id "usit2",
+       :user-item/item "item5",
+       :user-item/user "user1",
+       :user-item/viewed-at #time/instant "2003-01-01T00:00:00Z"}]]
+    (sub-affinity
+     {:biff/db db}
+     [{:sub/id "sub1",
+       :sub/title "my sub",
+       :sub/user {:xt/id "user1"},
+       :sub/items [{:xt/id "item1"} {:xt/id "item2"} {:xt/id "item3"}]}
+      {:sub/id "sub2",
+       :sub/title "my other sub",
+       :sub/user {:xt/id "user1"},
+       :sub/items [{:xt/id "item4"} {:xt/id "item5"}]}])),
+   :result
+   [{:sub/n-interactions 3,
+     :sub/new false,
+     :sub/affinity-high 0.8861517686835451,
+     :sub/title "my sub",
+     :sub/id "sub1",
+     :sub/affinity-low 0.6287594284880811,
+     :sub/scores (10.0 -0.9355069850316178 -0.8751733190429475),
+     :sub/items [{:xt/id "item1"} {:xt/id "item2"} {:xt/id "item3"}],
+     :sub/user {:xt/id "user1"},
+     :sub/all-interactions
+     ({:action :skipped, :t #time/instant "2000-01-01T00:00:00Z"}
+      {:action :skipped, :t #time/instant "2000-01-01T00:00:00Z"}
+      {:action :favorited, :t #time/instant "2001-01-01T00:00:00Z"})}
+    {:sub/n-interactions 2,
+     :sub/new false,
+     :sub/affinity-high 0.872047711040352,
+     :sub/title "my other sub",
+     :sub/id "sub2",
+     :sub/affinity-low 0.27354641067767876,
+     :sub/scores (2.0 -0.9355069850316178),
+     :sub/items [{:xt/id "item4"} {:xt/id "item5"}],
+     :sub/user {:xt/id "user1"},
+     :sub/all-interactions
+     ({:action :skipped, :t #time/instant "2002-01-01T00:00:00Z"}
+      {:action :viewed, :t #time/instant "2003-01-01T00:00:00Z"})}]}]}
