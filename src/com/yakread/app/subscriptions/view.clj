@@ -23,7 +23,7 @@
    {:params/item [:xt/id]}]
   (fn [{:keys [biff/db]} {:keys [session/user params/item]}]
     {:status 204
-     :biff.pipe/next [#_:biff.pipe/tx]
+     :biff.pipe/next [:biff.pipe/tx]
      :biff.pipe.tx/input (when-not (biff/lookup-id
                                     db
                                     :user-item/user (:xt/id user)

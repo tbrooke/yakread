@@ -69,6 +69,7 @@
   (when-not (:clojure.tools.namespace.reload/error (biff/eval-files! sys))
     (generate-assets! sys)
     (test/run-all-tests #"com.yakread.*-test")
+    ((requiring-resolve 'com.yakread.lib.test/run-examples!))
     (log/info :done)))
 
 (def malli-opts

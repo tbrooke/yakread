@@ -1,13 +1,26 @@
 (ns com.yakread.model.recommend
   (:require
    [clojure.data.generators :as gen]
-   [clojure.tools.logging :as log]
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.pathom :as lib.pathom]
+   [taoensso.tufte :refer [profile profiled p]]
    [lambdaisland.uri :as uri]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]
+   [clojure.data.priority-map :as pm]))
+
+;; TODO for further optimization:
+;; - materialize :sub/affinity
+;; - figure out why com.yakread.util.biff-staging/entity-resolver gets called 3,000 times in dev
+;;   (pathom overhead is 50%)
+
+(defn interleave-uniform [& colls]
+  (lazy-seq
+   (when-some [colls (not-empty (filter not-empty colls))]
+     (let [[coll-a & coll-rest] (gen/shuffle colls)]
+       (cons (first coll-a)
+             (apply interleave-uniform (cons (rest coll-a) coll-rest)))))))
 
 (defn take-rand
   ([xs]
@@ -18,74 +31,119 @@
 (def n-sub-bookmark-recs 22)
 (def n-total-recs 30)
 
-(defresolver latest-sub-interactions
-  "Returns the 10 most recent interactions (e.g. viewed, liked, etc) for a given sub."
-  [{:keys [biff/db]} {:sub/keys [user items]}]
-  {::pco/input [:sub/title
-                {:sub/user [:xt/id]}
-                {:sub/items [:xt/id
-                             {(? :item/user-item) [(? :user-item/viewed-at)
-                                                   (? :user-item/favorited-at)
-                                                   (? :user-item/disliked-at)
-                                                   (? :user-item/reported-at)]}]}]
-   ::pco/output [{:sub/latest-interactions [:sub.interaction/type
-                                            :sub.interaction/occurred-at]}]}
-  (let [user-items (keep :item/user-item items)
-        ;; maybe move to a batch resolver
-        skips (mapv second
-                    (q db
-                       '{:find [skip t]
-                         :in [user [item ...]]
-                         :where [[skip :skip/user user]
-                                 [skip :skip/items item]
-                                 [skip :skip/timeline-created-at t]]}
-                       (:xt/id user)
-                       (mapv :xt/id items)))]
-    {:sub/latest-interactions
-     (->> (concat (mapv (fn [t]
-                          {:sub.interaction/type        :sub.interaction.type/skipped
-                           :sub.interaction/occurred-at t})
-                        skips)
-                  (keep (fn [usit]
-                          (some (fn [[attr type*]]
-                                  (when-some [t (attr usit)]
-                                    {:sub.interaction/type        type*
-                                     :sub.interaction/occurred-at t}))
-                                [[:user-item/favorited-at :sub.interaction.type/favorited]
-                                 [:user-item/reported-at  :sub.interaction.type/reported]
-                                 [:user-item/disliked-at  :sub.interaction.type/disliked]
-                                 [:user-item/viewed-at    :sub.interaction.type/viewed]]))
-                        user-items))
-          (sort-by :sub.interaction/occurred-at #(compare %2 %1))
-          (take 10)
-          vec)}))
+(defn- skip->interaction [skipped-at]
+  {:action :skipped
+   :t skipped-at})
 
-(defresolver sub-affinity
-  "Models the sub as a beta distribution (constructed from the user's positive and negative
-   interactions) and returns the expected value."
-  [{:sub/keys [latest-interactions]}]
-  #::pco{:input [{:sub/latest-interactions [:sub.interaction/type]}]
-         :output [:sub/affinity]}
-  (let [;; TODO can we learn the correct weights here? Or use an ML model to predict the probability of the
-        ;; next interaction being positive/negative.
-        interaction-type->score {:sub.interaction.type/skipped   -1
-                                 :sub.interaction.type/favorited  4
-                                 :sub.interaction.type/reported  -8
-                                 :sub.interaction.type/disliked  -5
-                                 :sub.interaction.type/viewed     2}
-        scores (->> latest-interactions
-                    (mapv (comp interaction-type->score :sub.interaction/type))
-                    ;; Give new subs a boost (same idea as upper confidence bound exploration).
-                    (cons 3))
-        {alpha true beta false
+(defn usit->interaction [usit]
+  (some (fn [[attr action]]
+          (when-some [t (attr usit)]
+            {:action action
+             :t t}))
+        [[:user-item/favorited-at :favorited]
+         [:user-item/reported-at  :reported]
+         [:user-item/disliked-at  :disliked]
+         [:user-item/viewed-at    :viewed]]))
+
+(def interaction->score
+  {:skipped   -1
+   :favorited  10
+   :reported  -20
+   :disliked  -10
+   :viewed     2})
+
+;; Forgetting curve
+(let [;; S is set so that the first 10 out of 100 interactions have about 50% of the weight.
+      S 15]
+  (defn weight [index]
+    (Math/exp (/ (- index) S))))
+
+(comment
+  ;; First 25 items (out of 400) have 23% of the weight; first 200 items have 88%
+  (let [weights (mapv weight (range 400))
+        total (apply + weights)]
+    [(/ (apply + (take 25 weights)) total) ; want around 25%
+     (/ (apply + (take 200 weights)) total) ; want around 80%
+     ])) ; [0.22532621043101672 0.8807970779778829]
+
+;; I didn't end up using this function, but seems like a shame to delete it.
+#_(defn max-n-by [n f xs]
+    (let [step (fn [pq x]
+                 (let [priority (f x)]
+                   (cond
+                     (< (count pq) n) (assoc pq x priority)
+                     (> priority (val (peek pq))) (-> pq
+                                                      (dissoc (key (peek pq)))
+                                                      (assoc x priority))
+                     :else pq)))]
+      (->> xs
+           (reduce step (pm/priority-map))
+           (sort-by val >)
+           (mapv key))))
+
+(defn affinity [scores]
+  (let [{alpha true beta false
          :or {alpha 0 beta 0}} (update-vals (group-by pos? scores)
                                             #(Math/abs (apply + %)))]
-    {:sub/affinity (/ alpha (+ alpha beta))}))
+    (/ alpha (+ alpha beta))))
 
-(defresolver new-sub [{:sub/keys [latest-interactions]}]
-  {::pco/input [:sub/title
-                {:sub/latest-interactions [:sub.interaction/type]}]}
-  {:sub/new (empty? latest-interactions)})
+(defresolver sub-affinity
+  "Returns the 10 most recent interactions (e.g. viewed, liked, etc) for a given sub."
+  [{:keys [biff/db]} subscriptions]
+  {::pco/input [:sub/id
+                :sub/title
+                {:sub/user [:xt/id]}
+                {:sub/items [:xt/id]}]
+   ::pco/output [:sub/new
+                 :sub/affinity-low
+                 :sub/affinity-high
+                 :sub/n-interactions]
+   ::pco/batch? true}
+  (let [q-inputs             (for [{:sub/keys [id user items]} subscriptions
+                                   item items]
+                               [(:xt/id user) id (:xt/id item)])
+        user+sub->skips      (->> (q db
+                                     '{:find [user sub t skip item]
+                                       :in [[[user sub item]]]
+                                       :where [[skip :skip/user user]
+                                               [skip :skip/items item]
+                                               [skip :skip/timeline-created-at t]]}
+                                     q-inputs)
+                                  (lib.core/group-by-to (juxt first second) #(nth % 2)))
+        user+sub->user-items (->> (xt/q db
+                                        '{:find [user sub (pull usit [*])]
+                                          :in [[[user sub item]]]
+                                          :where [[usit :user-item/item item]
+                                                  [usit :user-item/user user]]}
+                                        q-inputs)
+                                  (lib.core/group-by-to (juxt first second) #(nth % 2)))]
+    (mapv (fn [{:sub/keys [id user] :as sub}]
+            (let [user-items   (get user+sub->user-items [(:xt/id user) id])
+                  skips        (get user+sub->skips [(:xt/id user) id])
+                  interactions (concat (mapv skip->interaction skips)
+                                       (keep usit->interaction user-items))
+                  scores       (->> interactions
+                                    (sort-by :t #(compare %2 %1))
+                                    (map-indexed (fn [i {:keys [action]}]
+                                                   (* (interaction->score action)
+                                                      (weight i)))))
+                  seed-weight  (weight (count scores))
+
+                  {alpha true beta false :or {alpha 0 beta 0}}
+                  (update-vals (group-by pos? scores) #(Math/abs (apply + %)))
+
+                  affinity     (fn [seed-alpha seed-beta]
+                                 (let [alpha (+ alpha (* seed-alpha seed-weight))
+                                       beta (+ beta (* seed-beta seed-weight))]
+                                   (/ alpha (+ alpha beta))))]
+              (merge sub
+                     {:sub/all-interactions interactions ; for debugging/testing
+                      :sub/n-interactions (count interactions)
+                      :sub/scores scores
+                      :sub/new (empty? interactions)
+                      :sub/affinity-low (affinity 0 5)
+                      :sub/affinity-high (affinity 5 0)})))
+          subscriptions)))
 
 (defn rerank
   "Shuffles xs with a bias toward keeping elements close to their original places. When p=1, returns xs in
@@ -106,65 +164,79 @@
        (sort-by (juxt :item/n-skipped (comp - inst-ms :item/ingested-at)))
        (rerank 0.1)))
 
-(defresolver sub-recs [{:user/keys [subscriptions]}]
-  {::pco/input [{:user/subscriptions [:sub/new
-                                      :sub/title
-                                      :sub/affinity
-                                      (? :sub/pinned-at)
-                                      {:sub/unread-items [:xt/id
+(defresolver unread-subs [{:user/keys [subscriptions]}]
+  {::pco/input [{:user/subscriptions [:xt/id :sub/unread]}]
+   ::pco/output [{:user/unread-subscriptions [:xt/id]}]}
+  {:user/unread-subscriptions (filterv #(not= 0 (:sub/unread %)) subscriptions)})
+
+(defresolver selected-subs [{:user/keys [unread-subscriptions]}]
+  {::pco/input [{:user/unread-subscriptions [:xt/id
+                                             :sub/new
+                                             :sub/affinity-low
+                                             :sub/affinity-high
+                                             (? :sub/pinned-at)
+                                             (? :sub/published-at)]}]
+   ::pco/output [{:user/selected-subs [:xt/id
+                                       :item/rec-type]}]}
+  (let [{new-subs true old-subs false} (group-by :sub/new (gen/shuffle unread-subscriptions))
+        ;; We'll always show new subs first e.g. so the user will see any confirmation emails.
+        new-subs (->> new-subs
+                      (sort-by :sub/published-at #(compare %2 %1))
+                      (mapv #(assoc % :item/rec-type :item.rec-type/new-subscription)))
+        {pinned true unpinned false} (->> (interleave-uniform
+                                           ;; Do a mix of explore and exploit
+                                           (sort-by :sub/affinity-low > old-subs)
+                                           (sort-by :sub/affinity-high > old-subs))
+                                          distinct
+                                          (map-indexed (fn [i sub]
+                                                         (assoc sub ::rank i)))
+                                          (group-by (comp some? :sub/pinned-at)))
+        ;; Interleave pinned and unpinned back into one sequence. Basically we sort by affinity,
+        ;; but on each selection, the next pinned item has a 1/3 chance of being selected even if it has
+        ;; lower affinity.
+        ranked-subs (->> ((fn step [pinned unpinned]
+                            (lazy-seq
+                             (cond
+                               (empty? pinned)
+                               unpinned
+
+                               (empty? unpinned)
+                               pinned
+
+                               (or (< (gen/double) 1/3)
+                                   (<= (::rank (first pinned))
+                                       (::rank (first unpinned))))
+                               (cons (first pinned)
+                                     (step (rest pinned) unpinned))
+
+                               :else
+                               (cons (first unpinned)
+                                     (step pinned (rest unpinned))))))
+                          pinned
+                          unpinned)
+                         (rerank 0.1)
+                         (take (- n-sub-bookmark-recs (count new-subs)))
+                         (mapv #(assoc % :item/rec-type :item.rec-type/subscription)))
+        results (vec (concat (take n-sub-bookmark-recs new-subs) ranked-subs))]
+    {:user/selected-subs results}))
+
+(defresolver sub-recs [{:user/keys [selected-subs]}]
+  {::pco/input [{:user/selected-subs [:item/rec-type
+                                      {:sub/unread-items [:item/id
                                                           :item/ingested-at
                                                           :item/n-skipped]}]}]
-   ::pco/output [{:user/sub-recs [:xt/id
+   ::pco/output [{:user/sub-recs [:item/id
                                   :item/rec-type]}]}
+
   {:user/sub-recs
-   (let [subscriptions (filterv (comp not-empty :sub/unread-items) subscriptions)
-
-         {new-subs true old-subs false} (group-by :sub/new subscriptions)
-         ;; We'll always show new subs first e.g. so the user will see any confirmation emails.
-         new-subs (->> new-subs
-                       (sort-by (fn [{:keys [sub/unread-items]}]
-                                  (->> unread-items
-                                       (mapv (comp inst-ms :item/ingested-at))
-                                       (apply max)))
-                                >)
-                       (mapv #(assoc % :item/rec-type :item.rec-type/new-subscription)))
-         {pinned true unpinned false} (->> old-subs
-                                           (sort-by :sub/affinity >)
-                                           (group-by (comp some? :sub/pinned-at)))
-         ;; Interleave pinned and unpinned back into one sequence. Basically we sort by affinity,
-         ;; but on each selection, the next pinned item has a 1/3 chance of being selected even if it has
-         ;; lower affinity.
-         ranked-subs (->> ((fn step [pinned unpinned]
-                             (lazy-seq
-                              (cond
-                                (empty? pinned)
-                                unpinned
-
-                                (empty? unpinned)
-                                pinned
-
-                                (or (< (gen/double) 1/3)
-                                    (<= (:sub/affinity (first unpinned))
-                                        (:sub/affinity (first pinned))))
-                                (cons (first pinned)
-                                      (step (rest pinned) unpinned))
-
-                                :else
-                                (cons (first unpinned)
-                                      (step pinned (rest unpinned))))))
-                           pinned
-                           unpinned)
-                          (rerank 0.1)
-                          (mapv #(assoc % :item/rec-type :item.rec-type/subscription)))
-         items (for [{:keys [sub/unread-items item/rec-type]} (concat new-subs ranked-subs)
-                     :let [most-recent (apply max-key (comp inst-ms :item/ingested-at) unread-items)]]
-                 (assoc (if (= 0 (:item/n-skipped most-recent))
-                          most-recent
-                          (->> unread-items
-                               rank-by-freshness
-                               first))
-                        :item/rec-type rec-type))]
-     (vec (take n-sub-bookmark-recs items)))})
+   (for [{:keys [sub/unread-items item/rec-type]} selected-subs
+         :let [most-recent (apply max-key (comp inst-ms :item/ingested-at) unread-items)
+               item (if (= 0 (:item/n-skipped most-recent))
+                      most-recent
+                      (->> unread-items
+                           rank-by-freshness
+                           first))]]
+     (assoc item :item/rec-type rec-type))})
 
 (defresolver bookmark-recs [{:user/keys [unread-bookmarks]}]
   #::pco{:input [{:user/unread-bookmarks [:item/id
@@ -248,7 +320,7 @@
                         (when user-id
                           (xt/q db
                                 '{:find [url]
-                                  :in [user]
+                                  :in [user [url ...]]
                                   :where [[usit :user-item/user user]
                                           [usit :user-item/item item]
                                           [item :item/url url]
@@ -257,7 +329,8 @@
                                               [usit :user-item/favorited-at _]
                                               [usit :user-item/disliked-at _]
                                               [usit :user-item/reported-at _])]}
-                                user-id)))
+                                user-id
+                                (mapv :item/url candidates))))
         candidates (vec (remove (comp read-urls :item/url) candidates))
         url->host (into {} (map (juxt :item/url (comp :host uri/uri :item/url))) candidates)
 
@@ -370,24 +443,41 @@
     {:user/for-you-recs recs}))
 
 (def module
-  {:resolvers [latest-sub-interactions
-               sub-affinity
-               new-sub
+  {:resolvers [sub-affinity
                sub-recs
                bookmark-recs
                candidates
                ad-score
                discover-recs
                ad-rec
-               for-you-recs]})
+               for-you-recs
+               unread-subs
+               selected-subs]})
 
 (comment
 
   (let [ctx (biff/merge-context @com.yakread/system)
         user-id (biff/lookup-id (:biff/db ctx) :user/email "jacob@thesample.ai")]
 
-    (lib.pathom/process (assoc-in ctx [:session :uid] user-id)
-                         {:user/id user-id}
-                         [{:user/discover-recs [:item/url]}]))
+    #_(lib.pathom/process (assoc-in ctx [:session :uid] user-id)
+                        {:user/id user-id}
+                        [{:user/sub-recs [:item/title]}]
+                        #_[{:user/subscriptions [:sub/affinity-high :sub/title]}]
+                        #_[{:user/discover-recs [:item/url]}])
+
+    (->> (lib.pathom/process (assoc-in ctx [:session :uid] user-id)
+                             {:user/id user-id}
+                             #_[{:user/sub-recs [:item/title]}]
+                             [{:user/subscriptions [:sub/affinity-low
+                                                    :sub/affinity-high
+                                                    :sub/title :sub/n-interactions]}]
+                             #_[{:user/discover-recs [:item/url]}])
+         :user/subscriptions
+         (mapv :sub/n-interactions)
+         frequencies
+         sort
+         #_(sort-by :sub/affinity-high >)
+         #_(take 50)
+         ))
 
   )

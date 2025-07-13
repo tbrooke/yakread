@@ -27,8 +27,8 @@
   {:eval
    (binding
     [gen/*rnd* (java.util.Random. 3)]
-    (interleave-uniform [:a :b :c :d] [1 2 3 4 5])),
-   :result (1 :a 2 3 4 :b 5 :c :d)}
+    (doall (interleave-uniform [:a :b :c :d] [1 2 3 4 5]))),
+   :result (1 2 3 :a :b 4 :c :d 5)}
   _
   {:eval
    (t/with-db

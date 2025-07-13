@@ -1,9 +1,9 @@
-- make recommendations fast
 - email digests
 - settings
 - premium plans
   - upgrade page / settings page
   - hide ads
+- move/add advertise link to sidebar?
 - redo subs page layout (use tabs)
 - tos, privacy policy
 - deploy, migrate

@@ -21,8 +21,69 @@
             [malli.experimental.time.generator]
             [malli.generator :as malli.g]
             [time-literals.read-write :as time-literals]
-            [xtdb.api :as xt])
+            [xtdb.api :as xt]
+            [clojure.java.classpath :as cp])
   (:import [java.time Instant]))
+
+(defn- read-string* [s & [extra-readers]]
+  (edn/read-string {:readers (merge time-literals/tags extra-readers)} s))
+
+(defn find-resources [ext]
+  (->> (cp/classpath-directories)
+       (mapcat file-seq)
+       (filter #(and (.isFile %)
+                     (.endsWith (.getName %) ext)))
+       (map #(.getPath %))))
+
+(defn eval* [example]
+  (let [done (promise)
+        tapped (atom [])
+        tap-fn (fn [x]
+                 (if (= x ::done)
+                   (deliver done nil)
+                   (swap! tapped conj x)))
+        _ (add-tap tap-fn)
+        result (try
+                 {:result (eval (:eval example))}
+                 (catch Exception e
+                   {:ex (update (edn/read-string {:readers {'error identity}} (pr-str e))
+                                :trace
+                                (fn [trace]
+                                  (vec (take-while #(not (str/starts-with? (str (first %))
+                                                                           "com.yakread.lib.test$eval_STAR_"))
+                                                   trace))))}))]
+    (tap> ::done)
+    @done
+    (remove-tap tap-fn)
+    (merge {:eval (:eval example)}
+           result
+           (when (not-empty @tapped)
+             {:tapped @tapped}))))
+
+(defn run-examples! []
+  (doseq [f (find-resources "_test.edn")
+          :let [f-contents (read-string* (slurp f)
+                                         {'error (constantly nil)})
+                ns-sym (symbol (str "tmp" (rand-int 999999)))
+                tests (binding [*ns* (create-ns ns-sym)]
+                        (refer 'clojure.core)
+                        (run! require (:require f-contents))
+                        (mapv eval* (remove #{'_} (:tests f-contents))))]]
+    (remove-ns ns-sym)
+    (biff/pprint (assoc f-contents :tests (vec (biff/join '_ tests))) (io/writer f))))
+
+(defn mock-db [docs]
+  (with-open [node (xt/start-node {})]
+    (xt/await-tx node (xt/submit-tx node (for [doc docs]
+                                           [::xt/put doc])))
+    (xt/db node)))
+
+(defmacro with-db [[db-sym docs] & body]
+  `(with-open [node# (xt/start-node {})]
+     (xt/await-tx node# (xt/submit-tx node# (for [doc# ~docs]
+                                              [::xt/put doc#])))
+     (let [~db-sym (xt/db node#)]
+       ~@body)))
 
 (defrecord BiffSystem []
   java.io.Closeable
@@ -95,9 +156,6 @@
 
 (defn- fixtures-path [current-ns]
   (str (dirname current-ns) "fixtures.edn"))
-
-(defn- read-string* [s]
-  (edn/read-string {:readers time-literals/tags} s))
 
 (defn read-fixtures! [current-ns]
   (-> (fixtures-path current-ns)

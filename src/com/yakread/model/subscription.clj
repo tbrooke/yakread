@@ -198,11 +198,38 @@
                {(:xt/id doc) (when new-doc-read? true)
                 id           (when (not= n-read 0) n-read)}))))))})
 
-(defresolver unread-items [{:keys [sub/items]}]
-  #::pco{:input [{:sub/items [:xt/id
-                              :item/unread]}]
-         :output [{:sub/unread-items [:xt/id]}]}
-  {:sub/unread-items (filterv :item/unread items)})
+(defresolver unread-items [{:keys [biff/db]} subscriptions]
+  #::pco{:input [{:sub/user [:xt/id]}
+                 {:sub/items [:xt/id
+                              #_:item/unread]}]
+         :output [{:sub/unread-items [:xt/id]}]
+         :batch? true}
+  (let [inputs (for [{:sub/keys [user items]} subscriptions
+                     item items]
+                 [(:xt/id user) (:xt/id item)])
+        user->read-items (into {}
+                               (map (fn [[user results]]
+                                      [user (set (mapv second results))]))
+                               (group-by
+                                first
+                                (q db
+                                   '{:find [user item]
+                                     :in [[[user item]]]
+                                     :where [[usit :user-item/item item]
+                                             [usit :user-item/user user]
+                                             (or-join [usit]
+                                               [usit :user-item/viewed-at _]
+                                               [usit :user-item/skipped-at _]
+                                               [usit :user-item/favorited-at _]
+                                               [usit :user-item/disliked-at _]
+                                               [usit :user-item/reported-at _])]}
+                                   inputs)))]
+    (mapv (fn [{:sub/keys [user items] :as sub}]
+            (let [read-items (get user->read-items (:xt/id user) #{})
+                  unread-items (filterv (complement (comp read-items :xt/id)) items)]
+              (merge sub
+                     {:sub/unread-items unread-items})))
+          subscriptions)))
 
 (def module {:resolvers [user-subs
                          sub-info

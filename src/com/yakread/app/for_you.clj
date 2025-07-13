@@ -193,6 +193,7 @@
              record-item-click]
             record-ad-click
             page-route
-            page-content-route
+            ["" {:middleware [#_lib.mid/wrap-profiled]}
+             page-content-route]
             read-page-route
             click-ad-route]})
