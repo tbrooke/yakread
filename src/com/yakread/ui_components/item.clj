@@ -153,12 +153,13 @@
                 (? :ad/image-url)]
    ::pco/output [:ad/ui-preview-card]}
   {:ad/ui-preview-card
-   (read-more-card* {:highlight true
+   [:a {:href url-with-protocol :target "_blank"}
+    (read-more-card* {:highlight true
                      :details (detail-list [(some-> url-with-protocol uri/uri :host str/trim not-empty)
                                             [:span.underline "Ad"]])
                      :title title
                      :description description
-                     :image-url image-url})})
+                     :image-url image-url})]})
 
 (defresolver ad-read-more-card [{:keys [biff/href-safe session]}
                                 {:ad/keys [id url click-cost ui-preview-card]}]
@@ -168,22 +169,15 @@
                 :ad/ui-preview-card]}
   {:ad/ui-read-more-card
    (fn [{:keys [on-click-params]}]
-     [:div
-      [:a {:href (href-safe routes/click-ad (merge on-click-params
-                                                   {:action :action/click-ad
-                                                    :ad/id id
-                                                    :ad/url url
-                                                    :ad/click-cost click-cost
-                                                    :ad.click/source :web
-                                                    :user/id (:uid session)}))
-           :target "_blank"}
-       ui-preview-card]
-      [:.h-5.sm:h-4]
-      ;; TODO use routes.clj
-      [:.flex.justify-center.gap-2
-       (ui/muted-link {:href "/upgrade"} "Upgrade")
-       ui/interpunct
-       (ui/muted-link {:href "/advertise"} "Advertise")]])})
+     [:a {:href (href-safe routes/click-ad (merge on-click-params
+                                                  {:action :action/click-ad
+                                                   :ad/id id
+                                                   :ad/url url
+                                                   :ad/click-cost click-cost
+                                                   :ad.click/source :web
+                                                   :user/id (:uid session)}))
+          :target "_blank"}
+      ui-preview-card])})
 
 (defresolver rec-read-more-card [props]
   {::pco/input [(? :item/ui-read-more-card)

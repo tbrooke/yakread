@@ -128,10 +128,12 @@
    ;; Digest emails
    :digest [:map {:closed true}
             [:xt/id                             :uuid]
-            [:digest/user    (r :user)          :uuid]
+            [:digest/user     (r :user)         :uuid]
             [:digest/sent-at                    :time/instant]
-            [:digest/subject (r :item/any)      :uuid]
-            [:digest/items   (r :timeline/item) [:vector :uuid]]]
+            [:digest/subject  (r :item/any)     :uuid]
+            [:digest/ad       (?r :ad)          :uuid]
+            [:digest/icymi    (?r :item/any)    [:vector :uuid]]
+            [:digest/discover (?r :item/direct) [:vector :uuid]]]
 
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a
    ;; :skip document.

@@ -51,7 +51,7 @@
 
 ;;;; Misc
 
-(defn footer* [{:keys [dark-mode show-recaptcha-message]}]
+(defn footer [{:keys [dark-mode show-recaptcha-message]}]
   [:.text-sm.text-center.mt-10
    {:class (if dark-mode
              '[text-neut-100]
@@ -59,16 +59,11 @@
    [:div
     (biff/join
      interpunct
-     (for [[href label target] [["https://obryant.dev" "About"]
-                                ;; TODO use routes.clj
-                                ["/advertise" "Advertise" :same-tab]
-                                ["mailto:hello@obryant.dev?subject=Yakread" "Contact"]
-                                ["/tos/" "Terms of Service"]
-                                ["/privacy/" "Privacy Policy"]]]
-       [:a.underline {:href href
-                      :target (when-not (= target :same-tab)
-                                "_blank")}
-        label]))]
+     (for [[href label] [["https://obryant.dev" "About"]
+                         ["mailto:hello@obryant.dev?subject=Yakread" "Contact"]
+                         ["/tos/" "Terms of Service"]
+                         ["/privacy/" "Privacy Policy"]]]
+       [:a.underline {:href href :target "_blank"} label]))]
    (when show-recaptcha-message
      [:<>
       [:.h-3]
@@ -84,8 +79,6 @@
          :target "_blank"}
         "Terms of Service"]
        " apply."]])])
-
-(def footer (memoize footer*))
 
 (defn signup-error [params]
   (case (not-empty (:error params))

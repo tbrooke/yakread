@@ -1,16 +1,22 @@
 - email digests
+  - get input data
+    - update algo for n recommend items?
+  - render/send the email
+  - mailersend API key
+  - update algo to handle digest skips
 - settings
 - premium plans
   - upgrade page / settings page
   - hide ads
-- move/add advertise link to sidebar?
 - redo subs page layout (use tabs)
 - tos, privacy policy
 - deploy, migrate
   - import referral data
+  - grep for "TODO uncomment"
+  - do discover recs approvals
 - finish ads
-    charge
     admin page approvals
+    charge
 
 backlog
 - can we use lazy-map on malli-opts while still doing late binding?

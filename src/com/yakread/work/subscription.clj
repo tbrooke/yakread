@@ -25,6 +25,7 @@
                                 '[(< synced-at t0)]]}
                        (.minusSeconds now (* 60 60 4)))]
        (log/warn "sync-feed! is disabled; remember to re-enable it later.")
+       ;; TODO uncomment
        {:biff.pipe/next [] #_(for [id feed-ids]
                                {:biff.pipe/current :biff.pipe/queue
                                 :biff.pipe.queue/id :work.subscription/sync-feed
@@ -45,6 +46,7 @@
    (fn [{:keys [biff/db]
          {:keys [feed/id]} :biff/job}]
      (let [{:feed/keys [url etag last-modified]} (xt/entity db id)]
+       ;; TODO uncomment
        nil
        #_{:biff.pipe/next             [:com.yakread.pipe/remus :end]
         :biff.pipe/catch            :com.yakread.pipe/remus

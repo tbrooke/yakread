@@ -30,6 +30,7 @@
 
 (def n-sub-bookmark-recs 22)
 (def n-total-recs 30)
+(def  n-icymi-recs 5)
 
 (defn- skip->interaction [skipped-at]
   {:action :skipped
@@ -80,12 +81,6 @@
            (reduce step (pm/priority-map))
            (sort-by val >)
            (mapv key))))
-
-(defn affinity [scores]
-  (let [{alpha true beta false
-         :or {alpha 0 beta 0}} (update-vals (group-by pos? scores)
-                                            #(Math/abs (apply + %)))]
-    (/ alpha (+ alpha beta))))
 
 (defresolver sub-affinity
   "Returns the 10 most recent interactions (e.g. viewed, liked, etc) for a given sub."
@@ -222,14 +217,21 @@
 
 (defresolver sub-recs [{:user/keys [selected-subs]}]
   {::pco/input [{:user/selected-subs [:item/rec-type
+                                      :sub/title
                                       {:sub/unread-items [:item/id
                                                           :item/ingested-at
+                                                          ;; TODO have this include digest skips
+                                                          ;; when needed
                                                           :item/n-skipped]}]}]
    ::pco/output [{:user/sub-recs [:item/id
                                   :item/rec-type]}]}
 
   {:user/sub-recs
-   (for [{:keys [sub/unread-items item/rec-type]} selected-subs
+   (for [{:keys [sub/unread-items item/rec-type]}
+         ;; This shouldn't be necessary, but apparently there's a bug in the :sub/unread indexer or
+         ;; something.
+         (filterv #(< 0 (count (:sub/unread-items %))) selected-subs)
+
          :let [most-recent (apply max-key (comp inst-ms :item/ingested-at) unread-items)
                item (if (= 0 (:item/n-skipped most-recent))
                       most-recent
@@ -241,6 +243,7 @@
 (defresolver bookmark-recs [{:user/keys [unread-bookmarks]}]
   #::pco{:input [{:user/unread-bookmarks [:item/id
                                           :item/ingested-at
+                                          ;; TODO include digest skips when needed
                                           :item/n-skipped
                                           (? :item/url)]}]
          :output [{:user/bookmark-recs [:item/id
@@ -291,6 +294,7 @@
                        :candidate/n-skips]}))}
   (let [{:keys [item ad]} (get-candidates user-id)
         all-candidates (concat item ad)
+        ;; TODO include digest "skips" if we're sending a digest. maybe weight them less though.
         item-id->n-skips (into {}
                                (when user-id
                                  (q db
@@ -417,6 +421,7 @@
        (take n)))
 
 (defresolver for-you-recs [{:user/keys [ad-rec sub-recs bookmark-recs discover-recs]}]
+  ;; TODO n-skipped here needs to include digest skips too
   #::pco{:input [{(? :user/sub-recs) [:xt/id
                                       :item/n-skipped
                                       :item/rec-type]}
@@ -442,6 +447,19 @@
                   vec)]
     {:user/for-you-recs recs}))
 
+(defresolver icymi-recs [{:user/keys [sub-recs bookmark-recs]}]
+  ;; TODO n-skipped here needs to include digest skips too
+  #::pco{:input [{(? :user/sub-recs) [:xt/id
+                                      :item/n-skipped
+                                      :item/rec-type]}
+                 {(? :user/bookmark-recs) [:xt/id
+                                           :item/n-skipped
+                                           :item/rec-type]}]
+         :output [{:user/icymi-recs [:xt/id
+                                     :item/rec-type]}]}
+  (let [recs (vec (take n-icymi-recs (pick-by-skipped bookmark-recs sub-recs)))]
+    {:user/icymi-recs recs}))
+
 (def module
   {:resolvers [sub-affinity
                sub-recs
@@ -452,7 +470,8 @@
                ad-rec
                for-you-recs
                unread-subs
-               selected-subs]})
+               selected-subs
+               icymi-recs]})
 
 (comment
 

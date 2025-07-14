@@ -13,10 +13,7 @@
      {:user/id "user1",
       :user/subscriptions
       [{:sub/items [{:xt/id "item1"} {:xt/id "item2"}]}]})),
-   :result
-   {:user/digest-sub-items
-    [{:item/ingested-at #time/instant "2003-01-01T00:00:00Z",
-      :xt/id "item2"}]}}
+   :result {:user/digest-sub-items [{:xt/id "item2"}]}}
   _
   {:eval
    (t/with-db
@@ -29,8 +26,5 @@
       :user/digest-last-sent (t/instant 2003 1 5),
       :user/subscriptions
       [{:sub/items [{:xt/id "item1"} {:xt/id "item2"}]}]})),
-   :result
-   {:user/digest-sub-items
-    [{:item/ingested-at #time/instant "2003-01-06T00:00:00Z",
-      :xt/id "item2"}]}}
+   :result {:user/digest-sub-items [{:xt/id "item2"}]}}
   _]}

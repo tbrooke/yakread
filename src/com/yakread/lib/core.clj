@@ -104,3 +104,9 @@
 
 (defn filter-vals [m f]
   (into {} (filter (comp f val)) m))
+
+(defn increasing? [& xs]
+  (every? (fn [[a b]] (<= (compare a b) 0))
+          (partition 2 1 xs)))
+
+(def epoch (java.time.Instant/ofEpochMilli 0))

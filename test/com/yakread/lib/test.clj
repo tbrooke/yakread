@@ -25,6 +25,15 @@
             [clojure.java.classpath :as cp])
   (:import [java.time Instant]))
 
+(defn instant [& [year & [month & [day & [hour & [minute & [second*]]]]]]]
+  (Instant/parse (format "%04d-%02d-%02dT%02d:%02d:%02dZ"
+                         (or year 2000)
+                         (or month 1)
+                         (or day 1)
+                         (or hour 0)
+                         (or minute 0)
+                         (or second* 0))))
+
 (defn- read-string* [s & [extra-readers]]
   (edn/read-string {:readers (merge time-literals/tags extra-readers)} s))
 
@@ -70,7 +79,7 @@
                         (run! require (:require f-contents))
                         (mapv eval* (remove #{'_} (:tests f-contents))))]]
     (remove-ns ns-sym)
-    (biff/pprint (assoc f-contents :tests (vec (biff/join '_ tests))) (io/writer f))))
+    (biff/pprint (assoc f-contents :tests (vec (interleave tests (repeat '_)))) (io/writer f))))
 
 (defn mock-db [docs]
   (with-open [node (xt/start-node {})]

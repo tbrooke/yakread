@@ -50,6 +50,7 @@
             urls (vec (remove direct-urls urls))]
         (when (not-empty urls)
           (log/info "Found" (count urls) "candidate URLs"))
+        ;; TODO uncomment
         {:biff.pipe/next [] #_(for [url urls]
                            (lib.pipe/queue :work.train/add-candidate {:item/url url}))}))))
 

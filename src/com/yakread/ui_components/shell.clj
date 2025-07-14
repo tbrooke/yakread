@@ -40,7 +40,10 @@
                                     :icon "star"}
                    #:app.shell.page{:route-sym 'com.yakread.app.settings/page
                                     :title "Settings"
-                                    :icon "gear"}]
+                                    :icon "gear"}
+                   #:app.shell.page{:route-sym 'com.yakread.app.advertise/page-route
+                                    :title "Advertise"
+                                    :icon "dollar-sign"}]
             (contains? roles :admin) (conj #:app.shell.page{:route-sym 'com.yakread.app.admin/page-route
                                                             :title "Admin"
                                                             :icon "lock"}))
@@ -135,7 +138,7 @@
                               items-center
                               rounded
                               font-semibold])}
-         (lib.icons/base (str icon "-regular")
+         (lib.icons/base (str icon (if active "-solid" "-regular"))
                          {:class "w-[18px] h-[18px] relative top-[1px]"})
          [:.w-2]
          [:span.leading-none title]])]

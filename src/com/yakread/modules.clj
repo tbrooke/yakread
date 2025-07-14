@@ -16,6 +16,7 @@
   [com.yakread.app.subscriptions.add]
   [com.yakread.app.subscriptions.view]
   [com.yakread.model.ad]
+  [com.yakread.model.digest]
   [com.yakread.model.feed]
   [com.yakread.model.item]
   [com.yakread.model.moderation]
@@ -28,6 +29,7 @@
   [com.yakread.ui-components.item]
   [com.yakread.ui-components.item.read]
   [com.yakread.ui-components.shell]
+  [com.yakread.work.digest]
   [com.yakread.work.subscription]
   [com.yakread.work.train]))
 
@@ -47,6 +49,7 @@
   com.yakread.app.subscriptions.add/module
   com.yakread.app.subscriptions.view/module
   com.yakread.model.ad/module
+  com.yakread.model.digest/module
   com.yakread.model.feed/module
   com.yakread.model.item/module
   com.yakread.model.moderation/module
@@ -59,5 +62,6 @@
   com.yakread.ui-components.item/module
   com.yakread.ui-components.item.read/module
   com.yakread.ui-components.shell/module
+  com.yakread.work.digest/module
   com.yakread.work.subscription/module
   com.yakread.work.train/module])

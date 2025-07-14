@@ -200,8 +200,7 @@
 
 (defresolver unread-items [{:keys [biff/db]} subscriptions]
   #::pco{:input [{:sub/user [:xt/id]}
-                 {:sub/items [:xt/id
-                              #_:item/unread]}]
+                 {:sub/items [:xt/id]}]
          :output [{:sub/unread-items [:xt/id]}]
          :batch? true}
   (let [inputs (for [{:sub/keys [user items]} subscriptions
