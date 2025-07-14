@@ -1,0 +1,36 @@
+{:require
+ [[com.yakread.lib.test :as t]
+  [clojure.data.generators :as gen]
+  [com.yakread.model.digest :refer :all]],
+ :tests
+ [{:eval
+   (t/with-db
+    [db
+     [{:xt/id "item1", :item/ingested-at (t/instant 2001)}
+      {:xt/id "item2", :item/ingested-at (t/instant 2003)}]]
+    (digest-sub-items
+     {:biff/db db, :biff/now (t/instant 2003 1 10)}
+     {:user/id "user1",
+      :user/subscriptions
+      [{:sub/items [{:xt/id "item1"} {:xt/id "item2"}]}]})),
+   :result
+   {:user/digest-sub-items
+    [{:item/ingested-at #time/instant "2003-01-01T00:00:00Z",
+      :xt/id "item2"}]}}
+  _
+  {:eval
+   (t/with-db
+    [db
+     [{:xt/id "item1", :item/ingested-at (t/instant 2003 1 4)}
+      {:xt/id "item2", :item/ingested-at (t/instant 2003 1 6)}]]
+    (digest-sub-items
+     {:biff/db db, :biff/now (t/instant 2003 1 10)}
+     {:user/id "user1",
+      :user/digest-last-sent (t/instant 2003 1 5),
+      :user/subscriptions
+      [{:sub/items [{:xt/id "item1"} {:xt/id "item2"}]}]})),
+   :result
+   {:user/digest-sub-items
+    [{:item/ingested-at #time/instant "2003-01-06T00:00:00Z",
+      :xt/id "item2"}]}}
+  _]}

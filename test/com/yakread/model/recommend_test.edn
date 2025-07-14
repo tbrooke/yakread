@@ -84,4 +84,5 @@
      :sub/user {:xt/id "user1"},
      :sub/all-interactions
      ({:action :skipped, :t #time/instant "2002-01-01T00:00:00Z"}
-      {:action :viewed, :t #time/instant "2003-01-01T00:00:00Z"})}]}]}
+      {:action :viewed, :t #time/instant "2003-01-01T00:00:00Z"})}]}
+  _]}

@@ -11,12 +11,21 @@
        :user/email "user2@example.com",
        :user/digest-last-sent #time/instant "2000-01-01T00:00:00Z"}]]
     (queue-send-digest
-     {:biff/db db, :biff/now #time/instant "2000-01-01T12:00:00Z"}
+     {:biff/db db,
+      :biff/now #time/instant "2000-01-01T16:00:01Z",
+      :biff/queues
+      {:work.digest/send-digest
+       (java.util.concurrent.PriorityBlockingQueue. 11 (fn [a b] 0))}}
      :start)),
-   :result [{:user/email "user1@example.com", :xt/id "user1"}]}
+   :result
+   {:biff.pipe/next
+    ({:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:user/email "user1@example.com", :xt/id "user1"}})}}
   _
   {:eval
-   (in-send-time-window?
+   (send-digest?
     {:biff/now #time/instant "2025-07-13T11:44:57Z"}
     {:user/digest-days #{:sunday},
      :user/send-digest-at #time/time "04:00",
@@ -24,7 +33,7 @@
    :result true}
   _
   {:eval
-   (in-send-time-window?
+   (send-digest?
     {:biff/now #time/instant "2025-07-13T11:44:57Z"}
     {:user/digest-days #{:sunday},
      :user/send-digest-at #time/time "03:00",
@@ -32,7 +41,7 @@
    :result false}
   _
   {:eval
-   (in-send-time-window?
+   (send-digest?
     {:biff/now #time/instant "2025-07-13T11:44:57Z"}
     {:user/digest-days #{:saturday :monday},
      :user/send-digest-at #time/time "04:00",
@@ -40,7 +49,7 @@
    :result false}
   _
   {:eval
-   (in-send-time-window?
+   (send-digest?
     {:biff/now #time/instant "2025-07-13T11:44:57Z"}
     {:user/digest-days #{:sunday},
      :user/send-digest-at #time/time "04:00",
@@ -48,7 +57,18 @@
    :result false}
   _
   {:eval
-   (in-send-time-window?
+   (send-digest? {:biff/now #time/instant "2025-07-13T15:44:57Z"} {}),
+   :result true}
+  _
+  {:eval
+   (send-digest?
     {:biff/now #time/instant "2025-07-13T15:44:57Z"}
-    {}),
-   :result true}]}
+    {:user/suppressed-at #time/instant "2000-01-01T00:00:00Z"}),
+   :result false}
+  _
+  {:eval
+   (send-digest?
+    {:biff/now #time/instant "2025-07-13T15:44:57Z"}
+    {:user/digest-last-sent #time/instant "2025-07-13T03:44:57Z"}),
+   :result false}
+  _]}
