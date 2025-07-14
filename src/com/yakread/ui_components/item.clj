@@ -138,7 +138,7 @@
                         :clamp  true
                         :image-url image-url})])})
 
-(defresolver ad-preview-card
+(defresolver ad-base-card
   [{:ad/keys [url-with-protocol title description image-url]
     :or {title "Lorem ipsum dolor sit amet"
          description (str "Consectetur adipiscing elit, sed do eiusmod "
@@ -161,23 +161,66 @@
                      :description description
                      :image-url image-url})]})
 
+(defn ad-card-base [{:keys [href]
+                     :ad/keys [url-with-protocol
+                               title
+                               description
+                               image-url]}]
+  [:a {:href href :target "_blank"}
+   (read-more-card* {:highlight true
+                     :details (detail-list [(some-> url-with-protocol uri/uri :host str/trim not-empty)
+                                            [:span.underline "Ad"]])
+                     :title title
+                     :description description
+                     :image-url image-url})])
+
+(defresolver ad-preview-card
+  [{:ad/keys [url-with-protocol title description image-url]
+    :or {title "Lorem ipsum dolor sit amet"
+         description (str "Consectetur adipiscing elit, sed do eiusmod "
+                          "tempor incididunt ut labore et dolore magna aliqua. "
+                          "Ut enim ad minim veniam, quis nostrud exercitation "
+                          "ullamco laboris nisi ut aliquip ex ea commodo consequat.")
+         url-with-protocol "https://example.com"
+         image-url "https://yakread.com/android-chrome-512x512.png"}}]
+  {::pco/input [(? :ad/url-with-protocol)
+                (? :ad/title)
+                (? :ad/description)
+                (? :ad/image-url)]
+   ::pco/output [:ad/ui-preview-card]}
+  {:ad/ui-preview-card
+   (ad-card-base {:href url-with-protocol
+                  :ad/url-with-protocol url-with-protocol
+                  :ad/title title
+                  :ad/description description
+                  :ad/image-url image-url})})
+
 (defresolver ad-read-more-card [{:keys [biff/href-safe session]}
-                                {:ad/keys [id url click-cost ui-preview-card]}]
+                                {:ad/keys [id
+                                           url-with-protocol
+                                           click-cost
+                                           title
+                                           description
+                                           image-url]}]
   {::pco/input [:ad/id
-                :ad/url
+                :ad/url-with-protocol
                 :ad/click-cost
-                :ad/ui-preview-card]}
+                :ad/title
+                :ad/description
+                :ad/image-url]}
   {:ad/ui-read-more-card
    (fn [{:keys [on-click-params]}]
-     [:a {:href (href-safe routes/click-ad (merge on-click-params
-                                                  {:action :action/click-ad
-                                                   :ad/id id
-                                                   :ad/url url
-                                                   :ad/click-cost click-cost
-                                                   :ad.click/source :web
-                                                   :user/id (:uid session)}))
-          :target "_blank"}
-      ui-preview-card])})
+     (ad-card-base {:href (href-safe routes/click-ad (merge on-click-params
+                                                            {:action :action/click-ad
+                                                             :ad/id id
+                                                             :ad/url url-with-protocol
+                                                             :ad/click-cost click-cost
+                                                             :ad.click/source :web
+                                                             :user/id (:uid session)}))
+                    :ad/url-with-protocol url-with-protocol
+                    :ad/title title
+                    :ad/description description
+                    :ad/image-url image-url}))})
 
 (defresolver rec-read-more-card [props]
   {::pco/input [(? :item/ui-read-more-card)
