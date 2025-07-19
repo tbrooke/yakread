@@ -25,49 +25,60 @@
             [clojure.java.classpath :as cp])
   (:import [java.time Instant]))
 
-(defn instant [& [year & [month & [day & [hour & [minute & [second*]]]]]]]
-  (Instant/parse (format "%04d-%02d-%02dT%02d:%02d:%02dZ"
-                         (or year 2000)
-                         (or month 1)
-                         (or day 1)
-                         (or hour 0)
-                         (or minute 0)
-                         (or second* 0))))
-
 (defn- read-string* [s & [extra-readers]]
   (edn/read-string {:readers (merge time-literals/tags extra-readers)} s))
 
-(defn find-resources [ext]
+(defn- find-resources [ext]
   (->> (cp/classpath-directories)
        (mapcat file-seq)
        (filter #(and (.isFile %)
                      (.endsWith (.getName %) ext)))
        (map #(.getPath %))))
 
-(defn eval* [example]
+(defn- truncate-ex [ex filter-str]
+  (let [;; There might be a better way to get the exception as stack trace as a vector.
+        ex (edn/read-string {:readers {'error identity}} (pr-str ex))
+        new-trace (->> (:trace ex)
+                       (take-while #(not (str/includes? (str (first %)) filter-str)))
+                       vec)]
+    (assoc ex :trace new-trace)))
+
+(defn tapped*
+  "Calls (f) and returns a tuple of f's return value along with a vector of everything that was
+   tap>'d while f was running."
+  [f]
   (let [done (promise)
-        tapped (atom [])
+        tap-results (atom [])
         tap-fn (fn [x]
                  (if (= x ::done)
                    (deliver done nil)
-                   (swap! tapped conj x)))
+                   (swap! tap-results conj x)))
         _ (add-tap tap-fn)
-        result (try
-                 {:result (eval (:eval example))}
-                 (catch Exception e
-                   {:ex (update (edn/read-string {:readers {'error identity}} (pr-str e))
-                                :trace
-                                (fn [trace]
-                                  (vec (take-while #(not (str/starts-with? (str (first %))
-                                                                           "com.yakread.lib.test$eval_STAR_"))
-                                                   trace))))}))]
+        result (f)]
     (tap> ::done)
     @done
     (remove-tap tap-fn)
-    (merge {:eval (:eval example)}
-           result
-           (when (not-empty @tapped)
-             {:tapped @tapped}))))
+    [result @tap-results]))
+
+(defmacro tapped [& body]
+  `(tapped* (fn [] ~@body)))
+
+(defn- sorted-map* [m]
+  (apply sorted-map (apply concat m)))
+
+(defn eval* [example]
+  (let [[result tap-results]
+        (tapped
+         (try
+           {:result (eval (:eval example))}
+           (catch Exception e
+             ;; Only show the part of the stack trace that come from the eval'd code.
+             {:ex (truncate-ex e "com.yakread.lib.test$eval_STAR_")})))]
+    (sorted-map*
+     (merge result
+            {:eval (:eval example)}
+            (when (not-empty tap-results)
+              {:tapped tap-results})))))
 
 (defn run-examples! []
   (doseq [f (find-resources "_test.edn")
@@ -77,15 +88,20 @@
                 tests (binding [*ns* (create-ns ns-sym)]
                         (refer 'clojure.core)
                         (run! require (:require f-contents))
-                        (mapv eval* (remove #{'_} (:tests f-contents))))]]
-    (remove-ns ns-sym)
-    (biff/pprint (assoc f-contents :tests (vec (interleave tests (repeat '_)))) (io/writer f))))
+                        (mapv eval* (remove #{'_} (:tests f-contents))))
+                _ (remove-ns ns-sym)
+                ;; Add some underscores for visual separation.
+                tests (vec (interleave tests (repeat '_)))]]
+    (biff/pprint (assoc f-contents :tests tests) (io/writer f))))
 
-(defn mock-db [docs]
-  (with-open [node (xt/start-node {})]
-    (xt/await-tx node (xt/submit-tx node (for [doc docs]
-                                           [::xt/put doc])))
-    (xt/db node)))
+(defn instant [& [year & [month & [day & [hour & [minute & [second*]]]]]]]
+  (Instant/parse (format "%04d-%02d-%02dT%02d:%02d:%02dZ"
+                         (or year 2000)
+                         (or month 1)
+                         (or day 1)
+                         (or hour 0)
+                         (or minute 0)
+                         (or second* 0))))
 
 (defmacro with-db [[db-sym docs] & body]
   `(with-open [node# (xt/start-node {})]
