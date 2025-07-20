@@ -26,7 +26,8 @@
   (:import [java.time Instant]))
 
 (defn- read-string* [s & [extra-readers]]
-  (edn/read-string {:readers (merge time-literals/tags extra-readers)} s))
+  (edn/read-string {:readers (merge time-literals/tags extra-readers)
+                    :default (fn [tag value] value)} s))
 
 (defn- find-resources [ext]
   (->> (cp/classpath-directories)
@@ -78,7 +79,8 @@
      (merge result
             {:eval (:eval example)}
             (when (not-empty tap-results)
-              {:tapped tap-results})))))
+              {:tapped tap-results})
+            (select-keys example [:doc])))))
 
 (defn run-examples! []
   (doseq [f (find-resources "_test.edn")

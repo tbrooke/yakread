@@ -85,4 +85,96 @@
      :sub/all-interactions
      ({:action :skipped, :t #time/instant "2002-01-01T00:00:00Z"}
       {:action :viewed, :t #time/instant "2003-01-01T00:00:00Z"})}]}
+  _
+  {:eval
+   (binding
+    [gen/*rnd* (java.util.Random. 0)]
+    (sub-recs
+     {:user/selected-subs
+      [{:item/rec-type :item.rec-type/subscription,
+        :sub/title "sub1",
+        :sub/unread-items
+        [{:item/id "item1",
+          :item/ingested-at (t/instant 2000),
+          :item/n-skipped 10}
+         {:item/id "item2",
+          :item/ingested-at (t/instant 2001),
+          :item/n-skipped 1}]}
+       {:item/rec-type :item.rec-type/subscription,
+        :sub/title "sub2",
+        :sub/unread-items []}]})),
+   :result
+   {:user/sub-recs
+    [{:item/id "item1",
+      :item/ingested-at #time/instant "2000-01-01T00:00:00Z",
+      :item/n-skipped 10,
+      :item/rec-type :item.rec-type/subscription}]}}
+  _
+  {:eval
+   (binding
+    [gen/*rnd* (java.util.Random. 0)]
+    (icymi-sub-recs
+     {:user/selected-subs
+      [{:item/rec-type :item.rec-type/subscription,
+        :sub/title "sub1",
+        :sub/unread-items
+        [{:item/id "item1",
+          :item/ingested-at (t/instant 2000),
+          :item/n-skipped 10}
+         {:item/id "item2",
+          :item/ingested-at (t/instant 2001),
+          :item/n-skipped 1}]}
+       {:item/rec-type :item.rec-type/subscription,
+        :sub/title "sub2",
+        :sub/unread-items []}],
+      :user/digest-sub-items [{:xt/id "item1"}]})),
+   :result
+   {:user/icymi-sub-recs
+    [{:item/id "item2",
+      :item/ingested-at #time/instant "2001-01-01T00:00:00Z",
+      :item/n-skipped 1,
+      :item/rec-type :item.rec-type/subscription}]}}
+  _
+  {:eval
+   (binding
+    [gen/*rnd* (java.util.Random. 0)]
+    (icymi-bookmark-recs
+     {:user/digest-bookmarks [{:xt/id "item1"} {:xt/id "item2"}],
+      :user/bookmark-recs*
+      (list
+       {:item/id "item1"}
+       {:item/id "item2"}
+       {:item/id "item3"})})),
+   :result {:user/icymi-bookmark-recs [{:item/id "item3"}]}}
+  _
+  {:eval
+   (let
+    [item
+     (fn
+      [i]
+      {:item/id (str "item" i),
+       :item/ingested-at (t/instant (+ 2000 i)),
+       :item/n-skipped i})]
+    (binding
+     [gen/*rnd* (java.util.Random. 0)]
+     (icymi-recs
+      {:user/icymi-sub-recs (mapv item (range 1 4)),
+       :user/icymi-bookmark-recs (mapv item (range 4 7))}))),
+   :result
+   {:user/icymi-recs
+    [{:item/id "item4",
+      :item/ingested-at #time/instant "2004-01-01T00:00:00Z",
+      :item/n-skipped 4}
+     {:item/id "item2",
+      :item/ingested-at #time/instant "2002-01-01T00:00:00Z",
+      :item/n-skipped 2}
+     {:item/id "item3",
+      :item/ingested-at #time/instant "2003-01-01T00:00:00Z",
+      :item/n-skipped 3}
+     {:item/id "item5",
+      :item/ingested-at #time/instant "2005-01-01T00:00:00Z",
+      :item/n-skipped 5}
+     {:item/id "item1",
+      :item/ingested-at #time/instant "2001-01-01T00:00:00Z",
+      :item/n-skipped 1}]}}
   _]}

@@ -1,10 +1,10 @@
 - email digests
-  - get input data
-    - update algo for n recommend items?
   - render/send the email
+  - link endpoints
   - mailersend API key
   - update algo to handle digest skips
 - settings
+  - where to open links in email vs. in the app
 - premium plans
   - upgrade page / settings page
   - hide ads

@@ -8,7 +8,9 @@
    [taoensso.tufte :refer [profile profiled p]]
    [lambdaisland.uri :as uri]
    [xtdb.api :as xt]
-   [clojure.data.priority-map :as pm]))
+   [clojure.data.priority-map :as pm]
+   [edn-query-language.core :as eql]
+   [com.rpl.specter :as sp]))
 
 ;; TODO for further optimization:
 ;; - materialize :sub/affinity
@@ -29,8 +31,9 @@
    (take (max minimum (* (gen/double) (count xs))) xs)))
 
 (def n-sub-bookmark-recs 22)
-(def n-total-recs 30)
-(def  n-icymi-recs 5)
+(def n-for-you-recs 30)
+(def n-icymi-recs 5)
+(def n-digest-discover-recs 5)
 
 (defn- skip->interaction [skipped-at]
   {:action :skipped
@@ -175,8 +178,10 @@
                                        :item/rec-type]}]}
   (let [{new-subs true old-subs false} (group-by :sub/new (gen/shuffle unread-subscriptions))
         ;; We'll always show new subs first e.g. so the user will see any confirmation emails.
+        new-subs (sort-by :sub/published-at #(compare %2 %1) new-subs)
+        old-subs (concat (drop 5 new-subs) old-subs)
         new-subs (->> new-subs
-                      (sort-by :sub/published-at #(compare %2 %1))
+                      (take 5)
                       (mapv #(assoc % :item/rec-type :item.rec-type/new-subscription)))
         {pinned true unpinned false} (->> (interleave-uniform
                                            ;; Do a mix of explore and exploit
@@ -186,6 +191,11 @@
                                           (map-indexed (fn [i sub]
                                                          (assoc sub ::rank i)))
                                           (group-by (comp some? :sub/pinned-at)))
+        ;; For icymi recs, we can't in this resolver filter out subs whose only unread items are
+        ;; already being included in :user/digest-sub-items because :sub/new is based an
+        ;; materialized data. So we return at least twice the number of subs the digest will
+        ;; actually need, and in the next resolver we'll filter out subs if necessary.
+        n-recs (max n-sub-bookmark-recs (* n-icymi-recs 2))
         ;; Interleave pinned and unpinned back into one sequence. Basically we sort by affinity,
         ;; but on each selection, the next pinned item has a 1/3 chance of being selected even if it has
         ;; lower affinity.
@@ -210,49 +220,93 @@
                           pinned
                           unpinned)
                          (rerank 0.1)
-                         (take (- n-sub-bookmark-recs (count new-subs)))
+                         (take (- n-recs (count new-subs)))
                          (mapv #(assoc % :item/rec-type :item.rec-type/subscription)))
-        results (vec (concat (take n-sub-bookmark-recs new-subs) ranked-subs))]
+        results (vec (concat (take n-recs new-subs) ranked-subs))]
     {:user/selected-subs results}))
 
-(defresolver sub-recs [{:user/keys [selected-subs]}]
-  {::pco/input [{:user/selected-subs [:item/rec-type
-                                      :sub/title
-                                      {:sub/unread-items [:item/id
-                                                          :item/ingested-at
-                                                          ;; TODO have this include digest skips
-                                                          ;; when needed
-                                                          :item/n-skipped]}]}]
-   ::pco/output [{:user/sub-recs [:item/id
-                                  :item/rec-type]}]}
+(defn sub-recs-resolver [{:keys [op-name output-key extra-input wrap-input]
+                          :or {wrap-input identity}}]
+  (pco/resolver
+   op-name
+   {::pco/input (eql/merge-queries
+                 [{:user/selected-subs
+                   [:item/rec-type
+                    :sub/title
+                    {:sub/unread-items
+                     [:item/id
+                      :item/ingested-at
+                      ;; TODO have this include digest skips when needed
+                      :item/n-skipped]}]}]
+                 extra-input)
+    ::pco/output [{output-key [:item/id
+                               :item/rec-type]}]}
+   (fn [_env input]
+     (let [{:user/keys [selected-subs]} (wrap-input input)]
+       {output-key
+        (vec
+         (for [{:keys [sub/unread-items item/rec-type]} selected-subs
+               ;; This shouldn't be necessary, but apparently there's a bug in the :sub/unread indexer or
+               ;; something.
+               :when (< 0 (count unread-items))
+               :let [most-recent (apply max-key (comp inst-ms :item/ingested-at) unread-items)
+                     item (if (= 0 (:item/n-skipped most-recent))
+                            most-recent
+                            (->> unread-items
+                                 rank-by-freshness
+                                 first))]]
+           (assoc item :item/rec-type rec-type)))}))))
 
-  {:user/sub-recs
-   (for [{:keys [sub/unread-items item/rec-type]}
-         ;; This shouldn't be necessary, but apparently there's a bug in the :sub/unread indexer or
-         ;; something.
-         (filterv #(< 0 (count (:sub/unread-items %))) selected-subs)
+(def for-you-sub-recs
+  (sub-recs-resolver
+   {:op-name `for-you-sub-recs
+    :output-key :user/for-you-sub-recs}))
 
-         :let [most-recent (apply max-key (comp inst-ms :item/ingested-at) unread-items)
-               item (if (= 0 (:item/n-skipped most-recent))
-                      most-recent
-                      (->> unread-items
-                           rank-by-freshness
-                           first))]]
-     (assoc item :item/rec-type rec-type))})
+(def icymi-sub-recs
+  (sub-recs-resolver
+   {:op-name `icymi-sub-recs
+    :output-key :user/icymi-sub-recs
+    :extra-input [{:user/digest-sub-items [:xt/id]}]
+    :wrap-input (fn [input]
+                  (let [exclude (into #{} (map :xt/id) (:user/digest-sub-items input))]
+                    (->> input
+                         (sp/setval [:user/selected-subs
+                                     sp/ALL
+                                     :sub/unread-items
+                                     sp/ALL
+                                     (comp exclude :item/id)]
+                                    sp/NONE)
+                         (sp/setval [:user/selected-subs sp/ALL (comp empty? :sub/unread-items)]
+                                    sp/NONE))))}))
 
-(defresolver bookmark-recs [{:user/keys [unread-bookmarks]}]
+(defresolver bookmark-recs* [{:user/keys [unread-bookmarks]}]
   #::pco{:input [{:user/unread-bookmarks [:item/id
                                           :item/ingested-at
                                           ;; TODO include digest skips when needed
                                           :item/n-skipped
                                           (? :item/url)]}]
-         :output [{:user/bookmark-recs [:item/id
-                                        :item/rec-type]}]}
-  {:user/bookmark-recs (->> unread-bookmarks
-                            rank-by-freshness
-                            (lib.core/distinct-by (some-fn (comp :host uri/uri :item/url) :item/id))
-                            (take n-sub-bookmark-recs)
-                            (mapv #(assoc % :item/rec-type :item.rec-type/bookmark)))})
+         :output [:user/bookmark-recs*]}
+  {:user/bookmark-recs* (pco/final-value
+                         (->> unread-bookmarks
+                              rank-by-freshness
+                              (lib.core/distinct-by (some-fn (comp :host uri/uri :item/url) :item/id))
+                              (map #(assoc % :item/rec-type :item.rec-type/bookmark))))})
+
+(defresolver for-you-bookmark-recs [{:user/keys [bookmark-recs*]}]
+  #::pco{:input [:user/bookmark-recs*]
+         :output [{:user/for-you-bookmark-recs [:item/id
+                                                :item/rec-type]}]}
+  {:user/for-you-bookmark-recs (vec (take n-sub-bookmark-recs bookmark-recs*))})
+
+(defresolver icymi-bookmark-recs [{:user/keys [bookmark-recs* digest-bookmarks]}]
+  {::pco/input [:user/bookmark-recs*
+                {:user/digest-bookmarks [:xt/id]}]
+   ::pco/output [{:user/icymi-bookmark-recs [:item/id :item/rec-type]}]}
+  (let [exclude (into #{} (map :xt/id) digest-bookmarks)]
+    {:user/icymi-bookmark-recs (into []
+                                     (comp (remove (comp exclude :item/id))
+                                           (take n-icymi-recs))
+                                     bookmark-recs*)}))
 
 (defn- pick-by-skipped [a-items b-items]
   ((fn step [a-items b-items]
@@ -360,7 +414,7 @@
                                                candidates)]
                        [(conj selected selection) candidates])))
                  [[] candidates]
-                 (range n-total-recs)))]
+                 (range (max n-for-you-recs n-digest-discover-recs))))]
     {:user/discover-recs (mapv #(assoc % :item/rec-type :item.rec-type/discover) recommendations)}))
 
 (defresolver ad-score [{:keys [candidate/score ad/effective-bid]}]
@@ -420,14 +474,14 @@
        (lib.core/distinct-by :xt/id)
        (take n)))
 
-(defresolver for-you-recs [{:user/keys [ad-rec sub-recs bookmark-recs discover-recs]}]
+(defresolver for-you-recs [{:user/keys [ad-rec for-you-sub-recs for-you-bookmark-recs discover-recs]}]
   ;; TODO n-skipped here needs to include digest skips too
-  #::pco{:input [{(? :user/sub-recs) [:xt/id
+  #::pco{:input [{(? :user/for-you-sub-recs) [:xt/id
                                       :item/n-skipped
                                       :item/rec-type]}
-                 {(? :user/bookmark-recs) [:xt/id
-                                           :item/n-skipped
-                                           :item/rec-type]}
+                 {(? :user/for-you-bookmark-recs) [:xt/id
+                                                   :item/n-skipped
+                                                   :item/rec-type]}
                  {:user/discover-recs [:xt/id
                                        :item/rec-type]}
                  {(? :user/ad-rec) [:xt/id
@@ -438,32 +492,36 @@
                                        :ad/click-cost]}]}
   (let [{new-sub-recs true
          other-sub-recs false} (group-by #(= :item.rec-type/new-subscription (:item/rec-type %))
-                                         sub-recs)
-        bookmark-sub-recs (->> (pick-by-skipped bookmark-recs other-sub-recs)
+                                         for-you-sub-recs)
+        bookmark-sub-recs (->> (pick-by-skipped for-you-bookmark-recs other-sub-recs)
                                (concat new-sub-recs)
                                (take-items n-sub-bookmark-recs))
         recs (->> (concat (when ad-rec [ad-rec]) bookmark-sub-recs discover-recs)
-                  (take-items n-total-recs)
+                  (take-items n-for-you-recs)
                   vec)]
     {:user/for-you-recs recs}))
 
-(defresolver icymi-recs [{:user/keys [sub-recs bookmark-recs]}]
+(defresolver icymi-recs [{:user/keys [icymi-sub-recs icymi-bookmark-recs]}]
   ;; TODO n-skipped here needs to include digest skips too
-  #::pco{:input [{(? :user/sub-recs) [:xt/id
-                                      :item/n-skipped
-                                      :item/rec-type]}
-                 {(? :user/bookmark-recs) [:xt/id
-                                           :item/n-skipped
-                                           :item/rec-type]}]
+  #::pco{:input [{(? :user/icymi-sub-recs) [:xt/id
+                                            :item/n-skipped
+                                            :item/rec-type]}
+                 {(? :user/icymi-bookmark-recs) [:xt/id
+                                                 :item/n-skipped
+                                                 :item/rec-type]}]
          :output [{:user/icymi-recs [:xt/id
                                      :item/rec-type]}]}
-  (let [recs (vec (take n-icymi-recs (pick-by-skipped bookmark-recs sub-recs)))]
-    {:user/icymi-recs recs}))
+  {:user/icymi-recs (into []
+                          (take n-icymi-recs)
+                          (pick-by-skipped icymi-bookmark-recs icymi-sub-recs))})
 
 (def module
   {:resolvers [sub-affinity
-               sub-recs
-               bookmark-recs
+               for-you-sub-recs
+               icymi-sub-recs
+               bookmark-recs*
+               for-you-bookmark-recs
+               icymi-bookmark-recs
                candidates
                ad-score
                discover-recs

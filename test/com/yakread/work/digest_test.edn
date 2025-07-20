@@ -15,7 +15,7 @@
       :biff/now #time/instant "2000-01-01T16:00:01Z",
       :biff/queues
       {:work.digest/send-digest
-       (java.util.concurrent.PriorityBlockingQueue. 11 (fn [a b] 0))}}
+       (java.util.concurrent.PriorityBlockingQueue. 11 (fn [a b]))}}
      :start)),
    :result
    {:biff.pipe/next
