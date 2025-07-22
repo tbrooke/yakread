@@ -3,7 +3,8 @@
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]])
   (:import
-   [java.time Period]))
+   [java.time Period]
+   [java.time.format DateTimeFormatter]))
 
 (defn recent-items [{:biff/keys [db now]
                      :user/keys [digest-last-sent]
@@ -20,7 +21,6 @@
            (cond->> (.minus now (Period/ofWeeks 52)) ; TODO
              digest-last-sent (max-key inst-ms digest-last-sent))
            all-item-ids)))
-
 
 (defresolver digest-sub-items [{:biff/keys [db now]} {:user/keys [digest-last-sent subscriptions]}]
   {::pco/input [(? :user/digest-last-sent)
@@ -45,6 +45,24 @@
      :user/digest-last-sent nil #_digest-last-sent ; TODO
      :all-item-ids (mapv :xt/id bookmarks)})})
 
+(defresolver settings-info [{:user/keys [digest-days send-digest-at]}]
+  {:digest.settings/freq-text (case (count digest-days)
+                                7 "daily"
+                                1 "weekly"
+                                (str (count digest-days) "x/week"))
+   :digest.settings/time-text (.format send-digest-at (DateTimeFormatter/ofPattern "h:mm a"))})
+
+(defresolver subject-item [{:keys [user/digest-discover-recs]}]
+  {::pco/input [{:user/digest-discover-recs [:item/id
+                                             (? :item/title)]}]
+   ::pco/output [{:digest/subject-item [:item/id]}]}
+  (when-some [item (->> digest-discover-recs
+                        (filter :item/title)
+                        first)]
+    {:digest/subject-item item}))
+
 (def module
   {:resolvers [digest-sub-items
-               digest-bookmarks]})
+               digest-bookmarks
+               settings-info
+               subject-item]})

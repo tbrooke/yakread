@@ -4,8 +4,7 @@
             [cheshire.core :as cheshire]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
-            [com.yakread.lib.ui-email :as uie]
-            [rum.core :as rum]))
+            [com.yakread.lib.ui-email :as uie]))
 
 (defn- button [{:keys [href]} label]
   (uie/button
@@ -18,7 +17,7 @@
   (if user-exists
     {:to to
      :subject "Sign in to Yakread"
-     :html-body (uie/email
+     :html-body (uie/html
                  :title "Sign in to Yakread"
                  :hide-unsubscribe true
                  :content
@@ -42,7 +41,7 @@
      :stream "outbound"}
     {:to to
      :subject "Sign up for Yakread"
-     :html-body (uie/email
+     :html-body (uie/html
                  :title "Sign up for Yakread"
                  :hide-unsubscribe true
                  :content
@@ -65,7 +64,7 @@
 (defn- signin-code [{:keys [to code]}]
   {:to to
    :subject "Sign in to Yakread"
-   :html-body (uie/email
+   :html-body (uie/html
                :title "Sign in to Yakread"
                :hide-unsubscribe true
                :content

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [com.biffweb :as biff]
-   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
    [com.yakread.lib.route :refer [href]]
    [com.yakread.lib.ui :as ui]
    [com.yakread.lib.ui-email :as uie]
@@ -94,70 +94,43 @@
                 :excerpt description
                 :details host})]}))
 
-(defresolver subscriptions [{:user/keys [digest-sub-items] user-id :user/id}]
-  {::pco/input [:user/id
-                {:user/digest-sub-items [:item/id
-                                         :item/digest-url
-                                         :item/ui-details*
-                                         (? :item/title)
-                                         (? :item/url)]}]
-   ::pco/output [::subscriptions]}
-  (when (not-empty digest-sub-items)
-    {::subscriptions
-     [:<>
-      (section-title "Subscriptions")
-      (for [{:item/keys [digest-url
-                         title
-                         ui-details*]} digest-sub-items]
-        (ui-item {:url (digest-url {:user/id user-id})
-                  :title title
-                  :details (str/join ui/interpunct (ui-details* {:show-author true
-                                                                 :show-label false}))}))]}))
+(defn compact-section [title op-name input-key output-key]
+  (pco/resolver
+   op-name
+   {::pco/input [:user/id
+                 {input-key [:item/id
+                             :item/digest-url
+                             :item/ui-details*
+                             (? :item/clean-title)
+                             (? :item/url)]}]
+    ::pco/output [output-key]}
+   (fn [_env input]
+     (when-some [items (not-empty (get input input-key))]
+       {output-key
+        [:<>
+         (section-title title)
+         (for [{:item/keys [digest-url
+                            clean-title
+                            ui-details*]} items]
+           (ui-item {:url (digest-url {:user/id (:user/id input)})
+                     :title clean-title
+                     :details (str/join ui/interpunct (ui-details* {:show-author true
+                                                                    :show-label false}))}))]}))))
 
-(defresolver bookmarks [{:user/keys [digest-bookmarks] user-id :user/id}]
-  {::pco/input [:user/id
-                {:user/digest-bookmarks [:item/id
-                                         :item/digest-url
-                                         :item/ui-details*
-                                         (? :item/title)
-                                         (? :item/url)]}]
-   ::pco/output [::bookmarks]}
-  (when (not-empty digest-bookmarks)
-    {::bookmarks
-     [:<>
-      (section-title "Bookmarks")
-      (for [{:item/keys [digest-url
-                         title
-                         ui-details*]} digest-bookmarks]
-        (ui-item {:url (digest-url {:user/id user-id})
-                  :title title
-                  :details (str/join ui/interpunct (ui-details* {:show-author true
-                                                                 :show-label false}))}))]}))
+(def subscriptions
+  (compact-section "Subscriptions" `subscriptions :user/digest-sub-items ::subscriptions))
 
-(defresolver icymi [{:user/keys [icymi-recs] user-id :user/id}]
-  {::pco/input [:user/id
-                {:user/icymi-recs [:item/id
-                                   :item/digest-url
-                                   :item/ui-details*
-                                   (? :item/title)
-                                   (? :item/url)]}]
-   ::pco/output [::icymi]}
-  (when (not-empty icymi-recs)
-    {::icymi
-     [:<>
-      (section-title "In case you missed it")
-      (for [{:item/keys [digest-url
-                         title
-                         ui-details*]} icymi-recs]
-        (ui-item {:url (digest-url {:user/id user-id})
-                  :title title
-                  :details (str/join ui/interpunct (ui-details* {:show-author true
-                                                                 :show-label false}))}))]}))
+
+(def bookmarks
+  (compact-section "Bookmarks" `bookmarks :user/digest-bookmarks ::bookmarks))
+
+(def icymi
+  (compact-section "In case you missed it" `icymi :user/icymi-recs ::icymi))
 
 (defresolver discover [{:user/keys [digest-discover-recs] user-id :user/id}]
   {::pco/input [:user/id
                 {:user/digest-discover-recs [:item/digest-url
-                                             (? :item/title)
+                                             (? :item/clean-title)
                                              (? :item/image-url)
                                              (? :item/excerpt)
                                              (? :item/url)]}]
@@ -167,12 +140,12 @@
      [:<>
       (section-title "Discover")
       (for [{:item/keys [digest-url
-                         title
+                         clean-title
                          image-url
                          excerpt
                          url]} digest-discover-recs]
         (ui-item {:url (digest-url {:user/id user-id})
-                  :title title
+                  :title clean-title
                   :image image-url
                   :excerpt excerpt
                   :details (some-> url uri/uri :host str/trim not-empty)}))]}))
@@ -183,24 +156,20 @@
                             :bg-color "#17b897"
                             :text-color "white"}))
 
-(defresolver html [{:keys [::settings
-                           ::sponsored
-                           ::subscriptions
-                           ::bookmarks
-                           ::icymi
-                           ::discover]}]
-  {::pco/input [(? ::sponsored)
+(defresolver html [{:keys [digest/subject-item]
+                    ::keys [settings
+                            sponsored
+                            subscriptions
+                            bookmarks
+                            icymi
+                            discover]}]
+  {::pco/input [{(? :digest/subject-item) [:item/clean-title]}
+                ::settings
+                (? ::sponsored)
                 (? ::subscriptions)
                 (? ::bookmarks)
                 (? ::icymi)
-                (? ::discover)
-                #_{:user/icymi-recs [:xt/id
-                                   (? :item/title)
-                                   :item/rec-type]}
-                #_{:user/digest-sub-items [:xt/id
-                                         (? :item/title)]}
-                #_{:user/digest-bookmarks [:xt/id
-                                         (? :item/title)]}]
+                (? ::discover)]
    ::pco/output [:digest/html]}
   (when-some [sections (->> [sponsored
                              subscriptions
@@ -211,7 +180,7 @@
                             not-empty)]
     {:digest/html
      (uie/html
-      {:title "hello there"
+      {:title (get subject-item :item/clean-title "Your reading digest")
        :content [:<>
                  settings
                  (uie/h-space "24px")

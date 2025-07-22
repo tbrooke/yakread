@@ -9,7 +9,8 @@
    [com.yakread.routes :as routes]
    [rum.core :as rum])
   (:import
-   (org.jsoup Jsoup)))
+   (org.jsoup Jsoup)
+   (com.vdurmont.emoji EmojiParser)))
 
 (defresolver user-favorites [{:keys [biff/db]} {:keys [user/id]}]
   #::pco{:output [{:user/favorites [:item/id]}]}
@@ -248,6 +249,9 @@
                          {:redirect true
                           :item/url url}))))})
 
+(defresolver clean-title [{:keys [item/title]}]
+  {:item/clean-title (str/trim (EmojiParser/removeAllEmojis title))})
+
 (def module
   {:resolvers [user-favorites
                user-bookmarks
@@ -267,4 +271,5 @@
                history-items
                current-item
                source
-               digest-url]})
+               digest-url
+               clean-title]})

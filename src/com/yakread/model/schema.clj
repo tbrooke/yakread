@@ -130,7 +130,7 @@
             [:xt/id                             :uuid]
             [:digest/user     (r :user)         :uuid]
             [:digest/sent-at                    :time/instant]
-            [:digest/subject  (r :item/any)     :uuid]
+            [:digest/subject  (?r :item/any)    :uuid]
             [:digest/ad       (?r :ad)          :uuid]
             [:digest/icymi    (?r :item/any)    [:vector :uuid]]
             [:digest/discover (?r :item/direct) [:vector :uuid]]]

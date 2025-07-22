@@ -1,14 +1,15 @@
 - email digests
-  - refactor html digest sections
   - render text digest
   - send digest
   - mailersend API key
   - update algo to handle digest skips
 - settings
   - where to open links in email vs. in the app
+  - auto-set timezone
 - premium plans
   - upgrade page / settings page
   - hide ads
+- redirect-on-signin
 - redo subs page layout (use tabs)
 - tos, privacy policy
 - deploy, migrate
