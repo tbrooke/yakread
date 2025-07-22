@@ -26,19 +26,20 @@
 (defresolver url-with-protocol [{:keys [ad/url]}]
   {:ad/url-with-protocol (lib.content/add-protocol url)})
 
-(defresolver recording-url [{:keys [biff/href-safe]}
+(defresolver recording-url [{:biff/keys [base-url href-safe]}
                             {:ad/keys [id url-with-protocol click-cost]}]
   {:ad/recording-url
    (fn [{:keys [params :ad.click/source]
          user-id :user/id}]
-     (href-safe routes/click-ad
-                (merge params
-                       {:action :action/click-ad
-                        :ad/id id
-                        :ad/url url-with-protocol
-                        :ad/click-cost click-cost
-                        :ad.click/source source
-                        :user/id user-id})))})
+     (str base-url
+          (href-safe routes/click-ad
+                     (merge params
+                            {:action :action/click-ad
+                             :ad/id id
+                             :ad/url url-with-protocol
+                             :ad/click-cost click-cost
+                             :ad.click/source source
+                             :user/id user-id}))))})
 
 (def ^:private required-fields
   [:ad/payment-method

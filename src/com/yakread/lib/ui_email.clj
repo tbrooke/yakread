@@ -97,11 +97,11 @@
                  "Unsubscribe"]
            ". " address "."]]))]])))
 
-(defn text [content]
+(defn text [& content]
   (str "Yakread — https://yakread.com/\n"
-       "\n"
-       content
-       "\n"
+       "\n\n"
+       (apply str content)
+       "\n\n"
        "138 E 12300 S, Unit #654, Draper, UT 84020.\n"
        "Unsubscribe: {{{ pm:unsubscribe }}}\n"))
 

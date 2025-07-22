@@ -1,5 +1,4 @@
 - email digests
-  - render text digest
   - send digest
   - mailersend API key
   - update algo to handle digest skips

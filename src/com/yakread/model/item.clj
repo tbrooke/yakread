@@ -236,18 +236,19 @@
     feed {:item/doc-type :item/feed}
     sub {:item/doc-type :item/email}))
 
-(defresolver digest-url [{:keys [biff/href-safe]} {:item/keys [id url]}]
+(defresolver digest-url [{:biff/keys [base-url href-safe]} {:item/keys [id url]}]
   {::pco/input [:item/id
                 (? :item/url)]}
   {:item/digest-url
    (fn [{user-id :user/id}]
-     (href-safe routes/click-item
-                (merge {:action   :action/click-item
-                        :user/id  user-id
-                        :item/id  id}
-                       (when url
-                         {:redirect true
-                          :item/url url}))))})
+     (str base-url
+          (href-safe routes/click-item
+                     (merge {:action   :action/click-item
+                             :user/id  user-id
+                             :item/id  id}
+                            (when url
+                              {:redirect true
+                               :item/url url})))))})
 
 (defresolver clean-title [{:keys [item/title]}]
   {:item/clean-title (str/trim (EmojiParser/removeAllEmojis title))})

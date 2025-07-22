@@ -41,9 +41,9 @@
                 (? :item/rec-type)
                 {(? :item/source) [:source/title]}]}
   {:item/ui-details*
-   (fn [{:keys [show-author show-reading-time show-label]
+   (fn [{:keys [show-author show-reading-time label-type]
          :or {show-reading-time true
-              show-label true}}]
+              label-type :html}}]
      (->> [(when show-author
              (some-> (or (:source/title source) author-name byline) str/trim not-empty))
            (when (= doc-type :item/direct)
@@ -58,15 +58,16 @@
              (.format odt formatter))
            (when (and show-reading-time length)
              (ui/pluralize (reading-minutes length) "minute"))
-           (when-let [label (and show-label
-                                 (case rec-type
-                                   :item.rec-type/bookmark "Bookmarked"
-                                   :item.rec-type/subscription "Subscribed"
-                                   :item.rec-type/new-subscription "New subscription"
-                                   :item.rec-type/discover "Discover"
-                                   :item.rec-type/current "Continue reading"
-                                   nil))]
-             [:span.underline label])]
+           (when-some [label (case rec-type
+                               :item.rec-type/bookmark "Bookmarked"
+                               :item.rec-type/subscription "Subscribed"
+                               :item.rec-type/new-subscription "New subscription"
+                               :item.rec-type/discover "Discover"
+                               :item.rec-type/current "Continue reading"
+                               nil)]
+             (case label-type
+               :html [:span {:style {:text-decoration "underline"}} label]
+               :text label))]
           (filter some?)))})
 
 (defresolver details [{:item/keys [ui-details*]}]

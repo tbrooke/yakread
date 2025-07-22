@@ -114,12 +114,10 @@
                             ui-details*]} items]
            (ui-item {:url (digest-url {:user/id (:user/id input)})
                      :title clean-title
-                     :details (str/join ui/interpunct (ui-details* {:show-author true
-                                                                    :show-label false}))}))]}))))
+                     :details (biff/join ui/interpunct (ui-details* {:show-author true}))}))]}))))
 
 (def subscriptions
   (compact-section "Subscriptions" `subscriptions :user/digest-sub-items ::subscriptions))
-
 
 (def bookmarks
   (compact-section "Bookmarks" `bookmarks :user/digest-bookmarks ::bookmarks))
