@@ -8,6 +8,7 @@
 
 (defn in-send-time-window? [{:keys [biff/now]}
                             {:user/keys [digest-days send-digest-at timezone]
+                             ;; TODO rely on pathom for defaults
                              :or {digest-days #{:sunday :monday :tuesday :wednesday :thursday :friday :saturday}
                                   send-digest-at (java.time.LocalTime/of 8 0)
                                   timezone (java.time.ZoneId/of "US/Pacific")}}]

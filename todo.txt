@@ -1,6 +1,7 @@
 - email digests
-  - render/send the email
-  - link endpoints
+  - refactor html digest sections
+  - render text digest
+  - send digest
   - mailersend API key
   - update algo to handle digest skips
 - settings

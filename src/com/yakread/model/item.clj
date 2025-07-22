@@ -6,6 +6,7 @@
    [com.yakread.lib.s3 :as lib.s3]
    [com.yakread.lib.serialize :as lib.serialize]
    [com.yakread.lib.user-item :as lib.user-item]
+   [com.yakread.routes :as routes]
    [rum.core :as rum])
   (:import
    (org.jsoup Jsoup)))
@@ -234,6 +235,19 @@
     feed {:item/doc-type :item/feed}
     sub {:item/doc-type :item/email}))
 
+(defresolver digest-url [{:keys [biff/href-safe]} {:item/keys [id url]}]
+  {::pco/input [:item/id
+                (? :item/url)]}
+  {:item/digest-url
+   (fn [{user-id :user/id}]
+     (href-safe routes/click-item
+                (merge {:action   :action/click-item
+                        :user/id  user-id
+                        :item/id  id}
+                       (when url
+                         {:redirect true
+                          :item/url url}))))})
+
 (def module
   {:resolvers [user-favorites
                user-bookmarks
@@ -252,4 +266,5 @@
                unread-bookmarks
                history-items
                current-item
-               source]})
+               source
+               digest-url]})

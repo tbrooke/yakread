@@ -23,27 +23,29 @@
                         (set/difference new-clicked))
         :skip/clicked new-clicked}])))
 
-(defpost-pathom record-item-click
-  [{:session/user [:xt/id]}
-   {:params/item [:xt/id]}]
-  (fn [{:keys [biff/db params]} {:keys [session/user params/item]}]
-    {:status 204
-     :biff.pipe/next [:biff.pipe/tx]
-     :biff.pipe.tx/input (concat
-                          (when (:t params)
-                            (skip-tx {:biff/db db
-                                      :user/id (:xt/id user)
-                                      :rec/id (:xt/id item)
-                                      :skip (:skip params)
-                                      :t (:t params)}))
-                          (when-not (biff/lookup-id
-                                     db
-                                     :user-item/user (:xt/id user)
-                                     :user-item/item (:xt/id item))
-                            [{:db/doc-type :user-item
-                              :db.op/upsert {:user-item/user (:xt/id user)
-                                             :user-item/item (:xt/id item)}
-                              :user-item/viewed-at :db/now}]))}))
+(defpost record-item-click
+  :start
+  (fn [{:keys [biff/db biff/safe-params]}]
+    (let [{:keys [action t skip] item-id :item/id user-id :user/id} safe-params]
+      (if (not= action :action/click-item)
+        (ui/on-error {:status 400})
+        {:status 204
+         :biff.pipe/next [:biff.pipe/tx]
+         :biff.pipe.tx/input (concat
+                              (when t
+                                (skip-tx {:biff/db db
+                                          :user/id user-id
+                                          :rec/id item-id
+                                          :skip skip
+                                          :t t}))
+                              (when-not (biff/lookup-id
+                                         db
+                                         :user-item/user user-id
+                                         :user-item/item item-id)
+                                [{:db/doc-type :user-item
+                                  :db.op/upsert {:user-item/user user-id
+                                                 :user-item/item item-id}
+                                  :user-item/viewed-at :db/now}]))}))))
 
 (defpost record-ad-click
   :start
@@ -122,10 +124,17 @@
   ["/dev/item/:item-id"
    {:name ::read-page-route
     :get
-    (let [record-click-url (fn [params item]
-                             (href record-item-click {:item/id (:item/id item)
-                                                      :skip (:skip params)
-                                                      :t (:t params)}))]
+    (let [record-click-url
+          (fn [{:keys [biff/href-safe
+                       params
+                       session
+                       biff.pipe.pathom/output]}]
+            (href-safe record-item-click
+                       {:action  :action/click-item
+                        :user/id (:uid session)
+                        :item/id (get-in output [:params/item :item/id])
+                        :skip    (:skip params)
+                        :t       (:t params)}))]
       (lib.route/wrap-nippy-params
        (lib.pipe/make
         :start
@@ -135,7 +144,7 @@
                                :start*)
 
         :start*
-        (fn [{:keys [params biff.pipe.pathom/output]}]
+        (fn [{:keys [params biff.pipe.pathom/output] :as ctx}]
           (let [{:keys [params/item session/user]} output
                 {:item/keys [id url]} item
                 {:user/keys [use-original-links]} user]
@@ -150,7 +159,8 @@
 
               (and use-original-links url)
               (ui/redirect-on-load {:redirect-url url
-                                    :beacon-url (when-not user (record-click-url params item))})
+                                    :beacon-url (when-not (:skip-record params)
+                                                  (record-click-url ctx))})
 
               :else
               {:biff.pipe/next [:biff.pipe/pathom :render]
@@ -161,32 +171,49 @@
                                                        :item/title]}]})))
 
         :render
-        (fn [{:keys [params biff.pipe.pathom/output]}]
+        (fn [{:keys [params biff.pipe.pathom/output] :as ctx}]
           (let [{:keys [app.shell/app-shell params/item]} output
                 {:item/keys [ui-read-content title]} item]
             (app-shell
              {:title title}
-             [:div {:hx-post (record-click-url params item)
-                    :hx-trigger "load"
-                    :hx-swap "outerHTML"}]
+             (when-not (:skip-record params)
+               [:div {:hx-post (record-click-url ctx)
+                      :hx-trigger "load"
+                      :hx-swap "outerHTML"}])
              (ui-read-content {:leave-item-redirect (href page-route)
                                :unsubscribe-redirect (href page-route)})
              [:div.h-10]
              ;; todo make sure mark-read finishes before this queries
+             ;; make ui/lazy-load include a delay of a few seconds
              [:div#content (ui/lazy-load-spaced (href page-content-route))]))))))}])
 
 (def click-ad-route
   ["/dev/c/:ewt"
    {:name ::click-ad-route
     :get (lib.route/wrap-nippy-params
-          (fn [{:biff/keys [safe-params href-safe]
-                :keys [params]}]
+          (fn [{:biff/keys [safe-params href-safe]}]
             (let [{:keys [action ad/url]} safe-params]
               (if (not= action :action/click-ad)
                 (ui/on-error {:status 400})
                 (ui/redirect-on-load
                  {:redirect-url url
                   :beacon-url (href-safe record-ad-click safe-params)})))))}])
+
+(def click-item-route
+  ["/dev/r/:ewt"
+   {:name ::click-item-route
+    :get (lib.route/wrap-nippy-params
+          (fn [{:biff/keys [safe-params href-safe]}]
+            (let [{:keys [action item/url item/id redirect]} safe-params]
+              (if (not= action :action/click-item)
+                (ui/on-error {:status 400})
+                (ui/redirect-on-load
+                 {:redirect-url (if redirect
+                                  url
+                                  (href read-page-route
+                                        (:item/id safe-params)
+                                        {:skip-record true}))
+                  :beacon-url (href-safe record-item-click safe-params)})))))}])
 
 (def module
   {:routes [["" {:middleware [lib.mid/wrap-signed-in]}
@@ -196,4 +223,5 @@
             ["" {:middleware [#_lib.mid/wrap-profiled]}
              page-content-route]
             read-page-route
-            click-ad-route]})
+            click-ad-route
+            click-item-route]})

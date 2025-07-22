@@ -417,6 +417,11 @@
                  (range (max n-for-you-recs n-digest-discover-recs))))]
     {:user/discover-recs (mapv #(assoc % :item/rec-type :item.rec-type/discover) recommendations)}))
 
+(defresolver digest-discover-recs [{:keys [user/discover-recs]}]
+  {::pco/input [{:user/discover-recs [:xt/id]}]
+   ::pco/output [{:user/digest-discover-recs [:xt/id]}]}
+  {:user/digest-discover-recs (into [] (take n-digest-discover-recs discover-recs))})
+
 (defresolver ad-score [{:keys [candidate/score ad/effective-bid]}]
   {:candidate/ad-score (* (max 0.0001 score) effective-bid)})
 
@@ -525,6 +530,7 @@
                candidates
                ad-score
                discover-recs
+               digest-discover-recs
                ad-rec
                for-you-recs
                unread-subs

@@ -19,15 +19,15 @@
         (mapv #(vector :span.inline-block %))
         (biff/join ui/interpunct))])
 
-(defresolver details [{:item/keys [doc-type
-                                   byline
-                                   author-name
-                                   url
-                                   published-at
-                                   ingested-at
-                                   length
-                                   rec-type
-                                   source]}]
+(defresolver details* [{:item/keys [doc-type
+                                    byline
+                                    author-name
+                                    url
+                                    published-at
+                                    ingested-at
+                                    length
+                                    rec-type
+                                    source]}]
   {::pco/input [:item/id
                 :item/title
                 :item/ingested-at
@@ -40,9 +40,10 @@
                 (? :item/length)
                 (? :item/rec-type)
                 {(? :item/source) [:source/title]}]}
-  {:item/ui-details
-   (fn [{:keys [show-author show-reading-time]
-         :or {show-reading-time true}}]
+  {:item/ui-details*
+   (fn [{:keys [show-author show-reading-time show-label]
+         :or {show-reading-time true
+              show-label true}}]
      (->> [(when show-author
              (some-> (or (:source/title source) author-name byline) str/trim not-empty))
            (when (= doc-type :item/direct)
@@ -57,19 +58,23 @@
              (.format odt formatter))
            (when (and show-reading-time length)
              (ui/pluralize (reading-minutes length) "minute"))
-           (when-some [label (case rec-type
-                               :item.rec-type/bookmark "Bookmarked"
-                               :item.rec-type/subscription "Subscribed"
-                               :item.rec-type/new-subscription "New subscription"
-                               :item.rec-type/discover "Discover"
-                               :item.rec-type/current "Continue reading"
-                               nil)]
+           (when-let [label (and show-label
+                                 (case rec-type
+                                   :item.rec-type/bookmark "Bookmarked"
+                                   :item.rec-type/subscription "Subscribed"
+                                   :item.rec-type/new-subscription "New subscription"
+                                   :item.rec-type/discover "Discover"
+                                   :item.rec-type/current "Continue reading"
+                                   nil))]
              [:span.underline label])]
-          (filter some?)
-          detail-list))})
+          (filter some?)))})
 
-(defn- read-more-card* [{:keys [href new-tab highlight details title description image-url
-                                clamp]}]
+(defresolver details [{:item/keys [ui-details*]}]
+  {:item/ui-details
+   (fn [params]
+     (detail-list (ui-details* params)))})
+
+(defn- read-more-card* [{:keys [highlight details title description image-url clamp]}]
   [:div {:class (concat '[bg-white hover:bg-neut-50
                           p-4
                           sm:shadow]
@@ -127,8 +132,8 @@
   {:item/ui-read-more-card
    (fn [{:keys [highlight-unread on-click-route show-author on-click-params new-tab]}]
      [:a {:href (if on-click-route
-                               (href on-click-route id on-click-params)
-                               url)
+                  (href on-click-route id on-click-params)
+                  url)
           :target (when new-tab "_blank")}
       (read-more-card* {:highlight (and highlight-unread unread)
                         :details (ui-details {:show-author show-author})
@@ -139,15 +144,17 @@
                         :image-url image-url})])})
 
 (defresolver ad-base-card
-  [{:ad/keys [url-with-protocol title description image-url]
+  [{:ad/keys [url-with-protocol title description image-url host]
     :or {title "Lorem ipsum dolor sit amet"
          description (str "Consectetur adipiscing elit, sed do eiusmod "
                           "tempor incididunt ut labore et dolore magna aliqua. "
                           "Ut enim ad minim veniam, quis nostrud exercitation "
                           "ullamco laboris nisi ut aliquip ex ea commodo consequat.")
          url-with-protocol "https://example.com"
+         host "example.com"
          image-url "https://yakread.com/android-chrome-512x512.png"}}]
   {::pco/input [(? :ad/url-with-protocol)
+                (? :ad/host)
                 (? :ad/title)
                 (? :ad/description)
                 (? :ad/image-url)]
@@ -155,8 +162,7 @@
   {:ad/ui-preview-card
    [:a {:href url-with-protocol :target "_blank"}
     (read-more-card* {:highlight true
-                     :details (detail-list [(some-> url-with-protocol uri/uri :host str/trim not-empty)
-                                            [:span.underline "Ad"]])
+                     :details (detail-list [host [:span.underline "Ad"]])
                      :title title
                      :description description
                      :image-url image-url})]})
@@ -195,28 +201,25 @@
                   :ad/description description
                   :ad/image-url image-url})})
 
-(defresolver ad-read-more-card [{:keys [biff/href-safe session]}
-                                {:ad/keys [id
-                                           url-with-protocol
-                                           click-cost
+(defresolver ad-read-more-card [{:keys [session]}
+                                {:ad/keys [url-with-protocol
+                                           recording-url
                                            title
                                            description
                                            image-url]}]
   {::pco/input [:ad/id
                 :ad/url-with-protocol
+                :ad/recording-url
                 :ad/click-cost
                 :ad/title
                 :ad/description
                 :ad/image-url]}
   {:ad/ui-read-more-card
    (fn [{:keys [on-click-params]}]
-     (ad-card-base {:href (href-safe routes/click-ad (merge on-click-params
-                                                            {:action :action/click-ad
-                                                             :ad/id id
-                                                             :ad/url url-with-protocol
-                                                             :ad/click-cost click-cost
-                                                             :ad.click/source :web
-                                                             :user/id (:uid session)}))
+     (ad-card-base {:href (recording-url
+                           {:params on-click-params
+                            :user/id (:uid session)
+                            :ad.click/source :web})
                     :ad/url-with-protocol url-with-protocol
                     :ad/title title
                     :ad/description description
@@ -244,7 +247,8 @@
     [:.text-neut-800.mr-6.line-clamp-2 (ui-details {:show-author true :show-reading-time false})]]})
 
 (def module
-  {:resolvers [details
+  {:resolvers [details*
+               details
                ad-preview-card
                ad-read-more-card
                item-read-more-card

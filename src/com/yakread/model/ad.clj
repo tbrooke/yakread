@@ -1,9 +1,12 @@
 (ns com.yakread.model.ad
   (:require
+   [clojure.string :as str]
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.content :as lib.content]
-   [com.yakread.lib.core :as lib.core]))
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.routes :as routes]
+   [lambdaisland.uri :as uri]))
 
 ;; TODO keep recent-cost updated (or calculate it on the fly if it's fast enough)
 (defresolver effective-bid [{:ad/keys [bid budget recent-cost]}]
@@ -22,6 +25,20 @@
 
 (defresolver url-with-protocol [{:keys [ad/url]}]
   {:ad/url-with-protocol (lib.content/add-protocol url)})
+
+(defresolver recording-url [{:keys [biff/href-safe]}
+                            {:ad/keys [id url-with-protocol click-cost]}]
+  {:ad/recording-url
+   (fn [{:keys [params :ad.click/source]
+         user-id :user/id}]
+     (href-safe routes/click-ad
+                (merge params
+                       {:action :action/click-ad
+                        :ad/id id
+                        :ad/url url-with-protocol
+                        :ad/click-cost click-cost
+                        :ad.click/source source
+                        :user/id user-id})))})
 
 (def ^:private required-fields
   [:ad/payment-method
@@ -63,10 +80,15 @@
            id))
        0)})
 
+(defresolver host [{:keys [ad/url-with-protocol]}]
+  {:ad/host (some-> url-with-protocol uri/uri :host str/trim not-empty)})
+
 (def module {:resolvers [ad-id
                          xt-id
                          effective-bid
                          user-ad
                          url-with-protocol
+                         recording-url
                          state
-                         n-clicks]})
+                         n-clicks
+                         host]})

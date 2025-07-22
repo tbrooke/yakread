@@ -15,5 +15,8 @@
 (def for-you           'com.yakread.app.for-you/page-route)
 (def history           'com.yakread.app.for-you.history/page)
 (def click-ad          'com.yakread.app.for-you/click-ad-route)
+(def click-item        'com.yakread.app.for-you/click-item-route)
+
+(def settings-page     'com.yakread.app.settings/page)
 
 (def signin            'com.yakread.app.home/signin-page-route)

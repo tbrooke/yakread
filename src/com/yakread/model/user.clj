@@ -43,10 +43,25 @@
 (defresolver xt-id [{:keys [user/id]}]
   {:xt/id id})
 
+(defresolver default-digest-days [_]
+  {::pco/input [:user/email]}
+  {:user/digest-days #{:sunday :monday :tuesday :wednesday :thursday :friday :saturday}})
+
+(defresolver default-send-digest-at [_]
+  {::pco/input [:user/email]}
+  {:user/send-digest-at (java.time.LocalTime/of 8 0)})
+
+(defresolver default-timezone [_]
+  {::pco/input [:user/email]}
+  {:user/timezone (java.time.ZoneId/of "US/Pacific")})
+
 (def module {:resolvers [session-user
                          session-anon
                          signed-in
                          current-user
                          suggested-email-username
                          user-id
-                         xt-id]})
+                         xt-id
+                         default-digest-days
+                         default-send-digest-at
+                         default-timezone]})

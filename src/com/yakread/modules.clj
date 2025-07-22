@@ -26,6 +26,9 @@
   [com.yakread.model.source]
   [com.yakread.model.subscription]
   [com.yakread.model.user]
+  [com.yakread.ui-components.digest]
+  [com.yakread.ui-components.digest.html]
+  [com.yakread.ui-components.digest.text]
   [com.yakread.ui-components.item]
   [com.yakread.ui-components.item.read]
   [com.yakread.ui-components.shell]
@@ -59,6 +62,9 @@
   com.yakread.model.source/module
   com.yakread.model.subscription/module
   com.yakread.model.user/module
+  com.yakread.ui-components.digest/module
+  com.yakread.ui-components.digest.html/module
+  com.yakread.ui-components.digest.text/module
   com.yakread.ui-components.item/module
   com.yakread.ui-components.item.read/module
   com.yakread.ui-components.shell/module

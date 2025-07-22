@@ -1,7 +1,10 @@
 (ns com.yakread.app.admin
   (:require
-   [com.yakread.lib.route :refer [href defget defpost hx-redirect]]
+   [clojure.string :as str]
+   [com.yakread.lib.middleware :as lib.mid]
+   [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.pipeline :as pipe]
+   [com.yakread.lib.route :refer [defget defpost href hx-redirect]]
    [com.yakread.lib.ui :as ui]
    [xtdb.api :as xt]))
 
@@ -54,6 +57,30 @@
                                   {:latest-item (:item/id (last next-batch))})}
          "Save")]])))
 
+(defonce resolver-cache (atom nil))
+(comment (reset! resolver-cache nil))
+
+(def digest-template-route
+  ["/dev/admin/digest"
+   {:middleware [lib.mid/wrap-profiled]
+    :get
+    (fn [{:keys [params] :as ctx}]
+      (swap! resolver-cache
+             (fn [cache]
+               (into {}
+                     (remove (fn [[[op-name _ _] _]]
+                               (str/starts-with? (str op-name) "com.yakread.ui-components")))
+                     cache)))
+      (let [[output-key content-type] (if (= (:content-type params) "text")
+                                        [:digest/text "text/plain"]
+                                        [:digest/html "text/html"])
+            ctx    (assoc ctx ::lib.pathom/resolver-cache resolver-cache)
+            result (lib.pathom/process ctx {} [{:session/user [output-key]}])
+            content   (get-in result [:session/user output-key])]
+        {:status 200
+         :headers {"content-type" content-type}
+         :body content}))}])
+
 (defn wrap-admin [handler]
   (fn [{:keys [biff/db session] :as ctx}]
     (if (contains? (:user/roles (xt/entity db (:uid session))) :admin)
@@ -65,4 +92,5 @@
 (def module
   {:routes ["" {:middleware [wrap-admin]}
             page-route
-            save-moderation]})
+            save-moderation
+            digest-template-route]})

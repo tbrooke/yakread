@@ -57,7 +57,7 @@
         :href href}
        [:span {:style {:vertical-align "middle"}} label]]]]]])
 
-(defn email [& {:keys [title content hide-unsubscribe]}]
+(defn html [& {:keys [title content hide-unsubscribe]}]
   (str
    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
    (rum/render-static-markup
@@ -96,6 +96,14 @@
                              :color "#3b3b3b"}}
                  "Unsubscribe"]
            ". " address "."]]))]])))
+
+(defn text [content]
+  (str "Yakread — https://yakread.com/\n"
+       "\n"
+       content
+       "\n"
+       "138 E 12300 S, Unit #654, Draper, UT 84020.\n"
+       "Unsubscribe: {{{ pm:unsubscribe }}}\n"))
 
 (defn h-space [height]
   [:div {:style {:height height}}])

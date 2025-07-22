@@ -89,7 +89,7 @@
   {:eval
    (binding
     [gen/*rnd* (java.util.Random. 0)]
-    (sub-recs
+    (for-you-sub-recs
      {:user/selected-subs
       [{:item/rec-type :item.rec-type/subscription,
         :sub/title "sub1",
@@ -104,7 +104,7 @@
         :sub/title "sub2",
         :sub/unread-items []}]})),
    :result
-   {:user/sub-recs
+   {:user/for-you-sub-recs
     [{:item/id "item1",
       :item/ingested-at #time/instant "2000-01-01T00:00:00Z",
       :item/n-skipped 10,

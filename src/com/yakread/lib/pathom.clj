@@ -16,7 +16,7 @@
 
 (def ? pco/?)
 
-(defn process [ctx & args]
+(defn process [{:keys [::resolver-cache] :or {resolver-cache (atom {})} :as ctx} & args]
   (try
     (with-open [db (if (:biff.index/indexes ctx)
                      (biff/open-db-with-index ctx)
@@ -24,7 +24,7 @@
       (apply eql/process
              (-> ctx
                  (assoc :biff/db db :biff.db/basis (xt/db-basis db))
-                 (runner/with-resolver-cache (atom {})))
+                 (runner/with-resolver-cache resolver-cache))
              args))
     (catch Exception e
       (if-some [unreachable (get-in (ex-data e)
