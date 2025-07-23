@@ -236,9 +236,10 @@
     feed {:item/doc-type :item/feed}
     sub {:item/doc-type :item/email}))
 
-(defresolver digest-url [{:biff/keys [base-url href-safe]} {:item/keys [id url]}]
+(defresolver digest-url [{:biff/keys [base-url href-safe]} {:item/keys [id url rec-type]}]
   {::pco/input [:item/id
-                (? :item/url)]}
+                (? :item/url)
+                (? :item/rec-type)]}
   {:item/digest-url
    (fn [{user-id :user/id}]
      (str base-url
@@ -246,7 +247,7 @@
                      (merge {:action   :action/click-item
                              :user/id  user-id
                              :item/id  id}
-                            (when url
+                            (when (and url (= rec-type :item.rec-type/discover))
                               {:redirect true
                                :item/url url})))))})
 

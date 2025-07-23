@@ -210,9 +210,7 @@
                 (ui/redirect-on-load
                  {:redirect-url (if redirect
                                   url
-                                  (href read-page-route
-                                        (:item/id safe-params)
-                                        {:skip-record true}))
+                                  (href read-page-route id {:skip-record true}))
                   :beacon-url (href-safe record-item-click safe-params)})))))}])
 
 (def module

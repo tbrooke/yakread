@@ -1,6 +1,4 @@
 - email digests
-  - why does opening a sub item crash
-  - only open items in original website for discover, not subs/bookmarks/icymi
   - send digest
     - unsubscribe handling
     - bounce/complaint handling
