@@ -12,7 +12,6 @@
  :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.spark "error"
  :biff.system-properties/org.slf4j.simpleLogger.log.org.sparkproject "error"
  :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.http.client "error"
-
  :biff.tasks/css-output "target/resources/public/css/main.css"
  :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]
  :biff.tasks/deploy-untracked-files [#ref [:biff.tasks/css-output] "config.env"]
@@ -39,6 +38,9 @@
  ;; - yakread-content: parsed/processed html content
  ;; - yakread-emails: raw emails
  ;; - yakread-dev: advertising image uploads. TODO use for everything with prefixes.
+ :mailersend/api-key #biff/secret MAILERSEND_API_KEY
+ :mailersend/from #biff/env MAILERSEND_FROM
+ :mailersend/reply-to #biff/env MAILERSEND_REPLY_TO
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
  :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY
  :stripe/api-key #profile {:dev #biff/secret STRIPE_TEST_SECRET_KEY}

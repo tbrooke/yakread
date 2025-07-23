@@ -135,6 +135,13 @@
             [:digest/icymi    (?r :item/any)    [:vector :uuid]]
             [:digest/discover (?r :item/direct) [:vector :uuid]]]
 
+   :bulk-send [:map {:closed true}
+               [:xt/id :uuid]
+               [:bulk-send/sent-at                   :time/instant]
+               [:bulk-send/payload-size              :int]
+               [:bulk-send/mailersend-id             :string]
+               [:bulk-send/digests       (r :digest) [:vector :uuid]]]
+
    ;; When the user clicks on item in For You, any previous items they scrolled past get added to a
    ;; :skip document.
    :skip [:map {:closed true}

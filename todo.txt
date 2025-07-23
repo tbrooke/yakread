@@ -1,6 +1,10 @@
 - email digests
+  - why does opening a sub item crash
+  - only open items in original website for discover, not subs/bookmarks/icymi
   - send digest
-  - mailersend API key
+    - unsubscribe handling
+    - bounce/complaint handling
+    - list cleaning (inactive users)
   - update algo to handle digest skips
 - settings
   - where to open links in email vs. in the app

@@ -94,7 +94,9 @@
                 _ (remove-ns ns-sym)
                 ;; Add some underscores for visual separation.
                 tests (vec (interleave tests (repeat '_)))]]
-    (biff/pprint (assoc f-contents :tests tests) (io/writer f))))
+    (when (not= tests (:tests f-contents))
+      (println "Updating tests in" f)
+      (spit f (with-out-str (biff/pprint (assoc f-contents :tests tests)))))))
 
 (defn instant [& [year & [month & [day & [hour & [minute & [second*]]]]]]]
   (Instant/parse (format "%04d-%02d-%02dT%02d:%02d:%02dZ"
@@ -111,6 +113,11 @@
                                               [::xt/put doc#])))
      (let [~db-sym (xt/db node#)]
        ~@body)))
+
+(defn queue [& jobs]
+  (let [queue (java.util.concurrent.PriorityBlockingQueue. 11 (fn [a b] 0))]
+    (run! #(.add queue %) jobs)
+    queue))
 
 (defrecord BiffSystem []
   java.io.Closeable

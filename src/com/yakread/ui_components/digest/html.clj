@@ -148,13 +148,15 @@
                   :excerpt excerpt
                   :details (some-> url uri/uri :host str/trim not-empty)}))]}))
 
-(def open-yakread-button (uie/button
-                           {:href (href routes/for-you)
-                            :label "Open Yakread"
-                            :bg-color "#17b897"
-                            :text-color "white"}))
+(defn open-yakread-button [base-url]
+  (uie/button
+    {:href (str base-url (href routes/for-you))
+     :label "Open Yakread"
+     :bg-color "#17b897"
+     :text-color "white"}))
 
-(defresolver html [{:keys [digest/subject-item]
+(defresolver html [{:biff/keys [base-url]}
+                   {:keys [digest/subject-item]
                     ::keys [settings
                             sponsored
                             subscriptions
@@ -182,7 +184,7 @@
        :content [:<>
                  settings
                  (uie/h-space "24px")
-                 open-yakread-button
+                 (open-yakread-button base-url)
                  (uie/h-space "24px")
                  (biff/join (uie/h-space "40px") sections)]})}))
 

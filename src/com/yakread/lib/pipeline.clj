@@ -83,6 +83,9 @@
                                                            (dissoc :http-client))))
    :biff.pipe/email (fn [ctx]
                       ;; TODO
+                      ;; This can be used in cases where we want a generic email interface not tied
+                      ;; to a particular provider. For sending digests we need mailersend-specific
+                      ;; features, so we use :biff.pipe/http there instead.
                       ctx)
    :biff.pipe/tx (fn [{:biff.pipe.tx/keys [input retry] :as ctx}]
                    (assoc ctx :biff.pipe.tx/output
@@ -124,7 +127,11 @@
                    (assoc ctx :biff.pipe.s3/output (biff/s3-request #_lib.s3/mock-request ctx input)))
    :biff.pipe/sleep (fn [{:keys [biff.pipe.sleep/ms] :as ctx}]
                       (Thread/sleep ms)
-                      ctx)})
+                      ctx)
+   :biff.pipe/drain-queue (fn [{:biff/keys [job queue] :as ctx}]
+                            (let [ll (java.util.LinkedList.)]
+                              (.drainTo queue ll)
+                              (assoc ctx :biff/jobs (into [job] ll))))})
 
 (defn s3 [k & [body content-type]]
   {:biff.pipe/current  :biff.pipe/s3

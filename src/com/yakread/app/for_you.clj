@@ -11,17 +11,18 @@
 (defn- skip-tx [{:keys [biff/db skip t]
                  user-id :user/id
                  rec-id :rec/id}]
-  (let [existing-skip (biff/lookup db :skip/user user-id :skip/timeline-created-at t)
-        old-clicked (:skip/clicked existing-skip #{})
-        new-clicked (conj old-clicked rec-id)]
-    (when (not= old-clicked new-clicked)
-      [{:db/doc-type :skip
-        :db.op/upsert {:skip/user user-id
-                       :skip/timeline-created-at t}
-        :skip/items (-> (:skip/items existing-skip #{})
-                        (set/union skip)
-                        (set/difference new-clicked))
-        :skip/clicked new-clicked}])))
+  (when (and skip t)
+    (let [existing-skip (biff/lookup db :skip/user user-id :skip/timeline-created-at t)
+          old-clicked (:skip/clicked existing-skip #{})
+          new-clicked (conj old-clicked rec-id)]
+      (when (not= old-clicked new-clicked)
+        [{:db/doc-type :skip
+          :db.op/upsert {:skip/user user-id
+                         :skip/timeline-created-at t}
+          :skip/items (-> (:skip/items existing-skip #{})
+                          (set/union skip)
+                          (set/difference new-clicked))
+          :skip/clicked new-clicked}]))))
 
 (defpost record-item-click
   :start
@@ -32,12 +33,11 @@
         {:status 204
          :biff.pipe/next [:biff.pipe/tx]
          :biff.pipe.tx/input (concat
-                              (when t
-                                (skip-tx {:biff/db db
-                                          :user/id user-id
-                                          :rec/id item-id
-                                          :skip skip
-                                          :t t}))
+                              (skip-tx {:biff/db db
+                                        :user/id user-id
+                                        :rec/id item-id
+                                        :skip skip
+                                        :t t})
                               (when-not (biff/lookup-id
                                          db
                                          :user-item/user user-id

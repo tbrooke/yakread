@@ -10,17 +10,15 @@
       {:xt/id "user2",
        :user/email "user2@example.com",
        :user/digest-last-sent #time/instant "2000-01-01T00:00:00Z"}]]
-    (queue-send-digest
+    (queue-prepare-digest
      {:biff/db db,
       :biff/now #time/instant "2000-01-01T16:00:01Z",
-      :biff/queues
-      {:work.digest/send-digest
-       (java.util.concurrent.PriorityBlockingQueue. 11 (fn [a b]))}}
+      :biff/queues {:work.digest/prepare-digest (t/queue)}}
      :start)),
    :result
    {:biff.pipe/next
     ({:biff.pipe/current :biff.pipe/queue,
-      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/id :work.digest/prepare-digest,
       :biff.pipe.queue/job
       {:user/email "user1@example.com", :xt/id "user1"}})}}
   _
@@ -71,4 +69,189 @@
     {:biff/now #time/instant "2025-07-13T15:44:57Z"}
     {:user/digest-last-sent #time/instant "2025-07-13T03:44:57Z"}),
    :result false}
+  _
+  {:eval (prepare-digest {:biff/job {:xt/id "user1"}} :start),
+   :result
+   {:biff.pipe/next
+    [{:biff.pipe/current :biff.pipe/pathom,
+      :biff.pipe.pathom/entity {:user/id "user1"},
+      :biff.pipe.pathom/query
+      [(:digest/payload
+        {:com.wsscode.pathom3.connect.operation/optional? true})
+       {(:digest/subject-item
+         {:com.wsscode.pathom3.connect.operation/optional? true})
+        [:item/id :item/title]}
+       {(:user/ad-rec
+         {:com.wsscode.pathom3.connect.operation/optional? true})
+        [:ad/id]}
+       {(:user/icymi-recs
+         {:com.wsscode.pathom3.connect.operation/optional? true})
+        [:item/id]}
+       {(:user/digest-discover-recs
+         {:com.wsscode.pathom3.connect.operation/optional? true})
+        [:item/id]}]}
+     :end]}}
+  _
+  {:eval
+   (binding
+    [gen/*rnd* (java.util.Random. 0)]
+    (prepare-digest
+     {:biff/job {:xt/id "user1", :user/email "user1@example.com"},
+      :biff.pipe.pathom/output
+      {:digest/payload {:foo "bar"},
+       :digest/subject-item
+       {:item/id "item1", :item/title "some item"},
+       :user/ad-rec {:ad/id "ad1"},
+       :user/icymi-recs [{:item/id "item2"} {:item/id "item3"}],
+       :user/digest-discover-recs
+       [{:item/id "item4"} {:item/id "item5"}]}}
+     :end)),
+   :result
+   {:biff.pipe/next
+    [{:biff.pipe/current :biff.pipe/tx,
+      :biff.pipe.tx/input
+      [{:db/doc-type :digest,
+        :xt/id #uuid "bb20b45f-d4d9-5138-3d93-cb799b3970be",
+        :digest/user "user1",
+        :digest/sent-at :db/now,
+        :digest/subject "item1",
+        :digest/ad "ad1",
+        :digest/icymi ["item2" "item3"],
+        :digest/discover ["item4" "item5"]}]}
+     {:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:user/email "user1@example.com",
+       :digest/id #uuid "bb20b45f-d4d9-5138-3d93-cb799b3970be",
+       :digest/payload {:foo "bar"}}}]}}
+  _
+  {:eval
+   (send-digest
+    {:biff/queues
+     {:work.digest/prepare-digest (t/queue),
+      :work.digest/send-digest (t/queue)}}
+    :start),
+   :result
+   {:biff.pipe/next
+    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 10000}
+     :biff.pipe/drain-queue
+     :start*]}}
+  _
+  {:eval
+   (send-digest
+    {:biff/queues
+     {:work.digest/prepare-digest (t/queue),
+      :work.digest/send-digest (t/queue 1 2 3)}}
+    :start),
+   :result
+   {:biff.pipe/next
+    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 10000}
+     :biff.pipe/drain-queue
+     :start*]}}
+  _
+  {:eval
+   (send-digest
+    {:biff/queues
+     {:work.digest/prepare-digest (t/queue 1 2 3),
+      :work.digest/send-digest (t/queue 1 2 3)}}
+    :start),
+   :result
+   {:biff.pipe/next
+    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 5000}
+     :start]}}
+  _
+  {:eval
+   (send-digest
+    {:biff/queues
+     {:work.digest/prepare-digest (t/queue 1 2 3),
+      :work.digest/send-digest (t/queue 1 2 3)},
+     :com.yakread.work.digest/n-emails-limit 2}
+    :start),
+   :result {:biff.pipe/next [:biff.pipe/drain-queue :start*]}}
+  _
+  {:eval
+   (send-digest
+    {:biff/secret {:mailersend/api-key "12345"},
+     :com.yakread.work.digest/payload-size-limit 25,
+     :biff/jobs
+     [{:digest/id "digest1", :digest/payload {:a 1}}
+      {:digest/id "digest2", :digest/payload {:b 2}}
+      {:digest/id "digest3", :digest/payload {:c 3}}
+      {:digest/id "digest4", :digest/payload {:d 4}}
+      {:digest/id "digest5", :digest/payload {:e 5}}]}
+    :start*),
+   :result
+   {:biff.pipe/next
+    ({:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:digest/id "digest4", :digest/payload {:d 4}}}
+     {:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:digest/id "digest5", :digest/payload {:e 5}}}
+     {:biff.pipe/current :biff.pipe/http,
+      :biff.pipe.http/input
+      {:method :post,
+       :url "https://api.mailersend.com/v1/bulk-email",
+       :oauth-token "12345",
+       :content-type :json,
+       :as :json,
+       :body "[{\"a\":1},{\"b\":2},{\"c\":3}]"}}
+     :record-bulk-send),
+    :com.yakread.work.digest/digest-ids
+    ["digest1" "digest2" "digest3"]}}
+  _
+  {:eval
+   (send-digest
+    {:biff/secret {:mailersend/api-key "12345"},
+     :com.yakread.work.digest/n-emails-limit 2,
+     :biff/jobs
+     [{:digest/id "digest1", :digest/payload {:a 1}}
+      {:digest/id "digest2", :digest/payload {:b 2}}
+      {:digest/id "digest3", :digest/payload {:c 3}}
+      {:digest/id "digest4", :digest/payload {:d 4}}
+      {:digest/id "digest5", :digest/payload {:e 5}}]}
+    :start*),
+   :result
+   {:biff.pipe/next
+    ({:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:digest/id "digest3", :digest/payload {:c 3}}}
+     {:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:digest/id "digest4", :digest/payload {:d 4}}}
+     {:biff.pipe/current :biff.pipe/queue,
+      :biff.pipe.queue/id :work.digest/send-digest,
+      :biff.pipe.queue/job
+      {:digest/id "digest5", :digest/payload {:e 5}}}
+     {:biff.pipe/current :biff.pipe/http,
+      :biff.pipe.http/input
+      {:method :post,
+       :url "https://api.mailersend.com/v1/bulk-email",
+       :oauth-token "12345",
+       :content-type :json,
+       :as :json,
+       :body "[{\"a\":1},{\"b\":2}]"}}
+     :record-bulk-send),
+    :com.yakread.work.digest/digest-ids ["digest1" "digest2"]}}
+  _
+  {:eval
+   (send-digest
+    {:biff.pipe.http/input {:body "hello there"},
+     :biff.pipe.http/output {:body {:bulk_email_id "abc123"}},
+     :com.yakread.work.digest/digest-ids ["digest1" "digest2"]}
+    :record-bulk-send),
+   :result
+   {:biff.pipe/next
+    [{:biff.pipe/current :biff.pipe/tx,
+      :biff.pipe.tx/input
+      [{:db/doc-type :bulk-send,
+        :bulk-send/sent-at :db/now,
+        :bulk-send/payload-size 11,
+        :bulk-send/mailersend-id "abc123",
+        :bulk-send/digests ["digest1" "digest2"]}]}
+     {:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 5000}]}}
   _]}
