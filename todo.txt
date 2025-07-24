@@ -1,6 +1,5 @@
 - email digests
   - send digest
-    - unsubscribe handling
     - bounce/complaint handling
     - list cleaning (inactive users)
   - update algo to handle digest skips
@@ -20,6 +19,7 @@
 - finish ads
     admin page approvals
     charge
+- migrate the sample
 
 backlog
 - can we use lazy-map on malli-opts while still doing late binding?

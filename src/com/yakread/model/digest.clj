@@ -1,7 +1,8 @@
 (ns com.yakread.model.digest
   (:require
    [com.biffweb :as biff :refer [q]]
-   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]])
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.routes :as routes])
   (:import
    [java.time Period]
    [java.time.format DateTimeFormatter]))
@@ -80,9 +81,16 @@
                       :html html
                       :text text}}))
 
+(defresolver unsubscribe-link [{:biff/keys [base-url href-safe]}
+                               {:keys [user/id]}]
+  {:digest/unsubscribe-link
+   (str base-url (href-safe routes/unsubscribe {:action :action/unsubscribe
+                                                :user/id id}))})
+
 (def module
   {:resolvers [digest-sub-items
                digest-bookmarks
                settings-info
                subject-item
-               mailersend-payload]})
+               mailersend-payload
+               unsubscribe-link]})

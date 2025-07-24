@@ -18,5 +18,6 @@
 (def click-item        'com.yakread.app.for-you/click-item-route)
 
 (def settings-page     'com.yakread.app.settings/page)
+(def unsubscribe       'com.yakread.app.settings/click-unsubscribe-route)
 
 (def signin            'com.yakread.app.home/signin-page-route)

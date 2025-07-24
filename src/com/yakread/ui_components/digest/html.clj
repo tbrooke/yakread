@@ -156,7 +156,8 @@
      :text-color "white"}))
 
 (defresolver html [{:biff/keys [base-url]}
-                   {:keys [digest/subject-item]
+                   {:digest/keys [subject-item
+                                  unsubscribe-link]
                     ::keys [settings
                             sponsored
                             subscriptions
@@ -169,7 +170,8 @@
                 (? ::subscriptions)
                 (? ::bookmarks)
                 (? ::icymi)
-                (? ::discover)]
+                (? ::discover)
+                :digest/unsubscribe-link]
    ::pco/output [:digest/html]}
   (when-some [sections (->> [sponsored
                              subscriptions
@@ -181,6 +183,7 @@
     {:digest/html
      (uie/html
       {:title (get subject-item :item/clean-title "Your reading digest")
+       :unsubscribe-link unsubscribe-link
        :content [:<>
                  settings
                  (uie/h-space "24px")

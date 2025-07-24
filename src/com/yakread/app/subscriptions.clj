@@ -141,7 +141,7 @@
                         :btn-label "Add subscriptions"
                         :btn-href (href routes/add-sub-page)}))
 
-(defget unsubs-page "/dev/unsubscribed"
+(defget unsubs-page "/dev/subscriptions/unsubscribed"
   [:app.shell/app-shell
    {:session/user
     [{:user/unsubscribed
