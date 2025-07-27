@@ -43,5 +43,14 @@
  :mailersend/reply-to #biff/env MAILERSEND_REPLY_TO
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
  :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY
- :stripe/api-key #profile {:dev #biff/secret STRIPE_TEST_SECRET_KEY}
+ :stripe/api-key #profile {;:prod #biff/secret STRIPE_SECRET_KEY
+                           :dev #biff/secret STRIPE_TEST_SECRET_KEY}
+ :stripe/annual-price-id #profile {:prod "price_1Mh1vyBJUtt9Py7hcM1gQJzV" :dev "price_1MgwIoBJUtt9Py7hXs1OmEp2"}
+ :stripe/quarter-price-id #profile {:prod "price_1Mh1vyBJUtt9Py7hZce550Me" :dev "price_1MgxWfBJUtt9Py7hWw1yTzgI"}
+ :stripe/public-api-key
+ #profile
+  {:prod "pk_live_51MHGP6BJUtt9Py7htxA1DHIdULLEEOVj3Fv4P3wDjqG6CLachguy5Z0MwmhwNbhmo19G4ohNpYThoKhUle7zR5aJ003tII8UAy"
+   :dev  "pk_test_51MHGP6BJUtt9Py7hMcKVUNW5xDVNXZJgrLzhjnQR9g8yDyprlWLz4pDB9ayazGBUqzSrcoXX7TVJcrPViLQJdVvz006LPmR1b5"}
+ :stripe/webhook-secret #profile {:prod #biff/secret STRIPE_WEBHOOK_SECRET
+                                  :dev  #biff/secret STRIPE_TEST_WEBHOOK_SECRET}
  :yakread/domain #biff/env DOMAIN}

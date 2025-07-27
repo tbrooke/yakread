@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.user :as lib.user]))
 
 (defresolver session-user [{:keys [session]} _]
@@ -59,6 +60,14 @@
   {:user/timezone* timezone
    :user/timezone (or timezone (java.time.ZoneId/of "US/Pacific"))})
 
+(defresolver premium [{:keys [biff/now]} {:user/keys [plan cancel-at]}]
+  {::pco/input [(? :user/plan)
+                (? :user/cancel-at)]}
+  {:user/premium (boolean
+                  (and plan
+                       (or (not cancel-at)
+                           (lib.core/increasing? now cancel-at))))})
+
 (def module {:resolvers [session-user
                          session-anon
                          signed-in
@@ -68,4 +77,5 @@
                          xt-id
                          default-digest-days
                          default-send-digest-at
-                         default-timezone]})
+                         default-timezone
+                         premium]})

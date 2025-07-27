@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [com.biffweb :as biff]
-   [com.wsscode.pathom3.connect.operation :as pco :refer [?]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
    [com.yakread.lib.form :as lib.form]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pipeline :as lib.pipe]
@@ -50,12 +50,139 @@
      :status 303
      :headers {"location" (href page)}}))
 
-(def page
-  ["/dev/settings"
-   {:name :app.settings/page}])
+(defpost manage-premium
+  :start
+  (fn [_]
+    {:biff.pipe/next [(lib.pipe/pathom {} [{:session/user [:user/customer-id]}])
+                      :create-session]})
+
+  :create-session
+  (fn [{:keys [biff/base-url biff/secret biff.pipe.pathom/output]}]
+    (let [{:user/keys [customer-id]} (:session/user output)]
+      {:biff.pipe/next [(lib.pipe/http :post
+                                       "https://api.stripe.com/v1/billing_portal/sessions"
+                                       {:basic-auth [(secret :stripe/api-key)]
+                                        :form-params {:customer customer-id
+                                                      :return_url (str base-url (href page))}
+                                        :as :json})]}))
+
+  :redirect
+  (fn [{:keys [biff.pipe.http/output]}]
+    {:status 303
+     :headers {"location" (get-in output [:body :url])}}))
+
+(defpost upgrade-premium
+  :start
+  (fn [_]
+    {:biff.pipe/next [(lib.pipe/pathom {} [{:session/user [:user/premium
+                                                           :user/email
+                                                           (? :user/customer-id)]}])
+                      :check-customer-id]})
+
+  :check-customer-id
+  (fn [{:keys [biff/secret biff.pipe.pathom/output]}]
+    (let [{:user/keys [premium customer-id email]} (:session/user output)]
+      (cond
+        premium
+        {:status 303 :headers {"location" (href page)}}
+
+        (not customer-id)
+        {:biff.pipe/next [(lib.pipe/http :post
+                                         "https://api.stripe.com/v1/customers"
+                                         {:basic-auth [(secret :stripe/api-key)]
+                                          :form-params {:email email}
+                                          :as :json})
+                          :create-session]}
+
+        :else
+        {:biff.pipe/next [:create-session]
+         :user/customer-id customer-id})))
+
+  :create-session
+  (fn [{:biff/keys [base-url secret]
+        :keys [session params
+               biff.pipe.http/output user/customer-id
+               stripe/quarter-price-id stripe/annual-price-id]}]
+    (let [customer-id (or customer-id (get-in output [:body :id]))
+          price-id (if (= (:plan params) "quarter")
+                     quarter-price-id
+                     annual-price-id)]
+      {:biff.pipe/next
+       (concat
+        (when output
+          [(lib.pipe/tx
+            [{:db/doc-type :user
+              :db/op :update
+              :xt/id (:uid session)
+              :user/customer-id customer-id}])])
+        [(lib.pipe/http
+          :post
+          "https://api.stripe.com/v1/checkout/sessions"
+          {:basic-auth [(secret :stripe/api-key)]
+           :multi-param-style :array
+           :form-params {:mode "subscription"
+                         :allow_promotion_codes true
+                         :customer customer-id
+                         "line_items[0][quantity]" 1
+                         "line_items[0][price]" price-id
+                         :success_url (str base-url (href page {:upgraded (:plan params)}))
+                         :cancel_url (str base-url (href page))}
+           :as :json})
+         :redirect])}))
+
+  :redirect
+  (fn [{:keys [biff.pipe.http/output]}]
+    {:status 303
+     :headers {"location" (get-in output [:body :url])}}))
 
 (defn time-text [local-time]
   (.format local-time (DateTimeFormatter/ofPattern "h:mm a")))
+
+(defresolver premium [{:user/keys [premium plan cancel-at timezone]}]
+  {::pco/input [(? :user/plan)
+                (? :user/cancel-at)]
+   ::pco/output [::premium]}
+  {::premium
+   (pco/final-value
+    (ui/section
+     {:title "Premium"}
+     [:div
+      (if premium
+        [:<>
+         [:div
+          (if cancel-at
+            [:<> "You're on the premium plan until "
+             (.format (.atZone cancel-at timezone)
+                      (DateTimeFormatter/ofPattern "d MMMM yyyy"))
+             ". After that, you'll be downgraded to the free plan. "]
+            [:<>
+             "You're on the "
+             (case plan
+               :quarter "$30 / 3 months"
+               :annual "$60 / 12 months"
+               "premium")
+             " plan. "])
+          (biff/form
+            {:action (href manage-premium)
+             :hx-boost "false"
+             :class "inline"}
+            [:button.link {:type "submit"} "Manage your subscription"])
+          "."]]
+        [:<>
+         [:div "Support Yakread by upgrading to a premium plan without ads:"]
+         [:.h-6]
+         [:div {:class '[flex flex-col sm:flex-row justify-center gap-4 sm:gap-12 items-center]}
+          (biff/form
+            {:action (href upgrade-premium)
+             :hx-boost "false"
+             :hidden {:plan "quarter"}}
+            (ui/button {:type "submit" :class "!min-w-[150px]"} "$30 / 3 months"))
+          (biff/form
+            {:action (href upgrade-premium)
+             :hx-boost "false"
+             :hidden {:plan "annual"}}
+            (ui/button {:type "submit" :class "!min-w-[150px]"} "$60 / 12 months"))]
+         [:.h-6]])]))})
 
 (defget page "/dev/settings"
   [:app.shell/app-shell
@@ -64,12 +191,14 @@
                        :user/digest-days
                        :user/send-digest-at
                        :user/timezone
-                       (? :user/use-original-links)]}]
+                       (? :user/use-original-links)
+                       ::premium]}]
   (fn [ctx
        {:keys [app.shell/app-shell
                session/user]}]
     (let [{:user/keys [digest-days send-digest-at timezone
-                       use-original-links]} user]
+                       use-original-links]
+           ::keys [premium]} user]
       (app-shell
        {:title "Settings"}
        (ui/page-header {:title "Settings"})
@@ -104,7 +233,8 @@
                            :checked (when use-original-links
                                       "checked")})]
 
-            [:div (ui/button {:type "submit"} "Save")])))]))))
+            [:div (ui/button {:type "submit"} "Save")]))
+         premium)]))))
 
 (def unsubscribe-success
   ["/dev/unsubscribed"
@@ -149,4 +279,7 @@
                               [lib.form/wrap-parse-form
                                {:overrides parser-overrides}]]}
              save-settings
-             set-timezone]]})
+             set-timezone
+             manage-premium
+             upgrade-premium]]
+   :resolvers [premium]})

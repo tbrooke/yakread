@@ -23,6 +23,10 @@
   (Thread/sleep 1)
   (recur))
 
+(defn test-stripe []
+  (println "Run `stripe login` if this fails")
+  (process/shell {} "stripe" "listen" "--forward-to" "localhost:8080/stripe/webhook"))
+
 (defn dev []
   ;; TODO run this in prod
   ;; also this won't be on the classpath on the first run
@@ -37,7 +41,8 @@
 ;; Tasks should be vars (#'hello instead of hello) so that `clj -Mdev help` can
 ;; print their docstrings.
 (def custom-tasks
-  {"prod-repl" #'prod-repl
-   "dev"       #'dev})
+  {"prod-repl"   #'prod-repl
+   "test-stripe" #'test-stripe
+   "dev"         #'dev})
 
 (def tasks (merge tasks/tasks custom-tasks))

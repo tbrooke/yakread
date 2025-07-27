@@ -462,9 +462,11 @@
   {:candidate/ad-score (* (max 0.0001 score) effective-bid)})
 
 (defresolver ad-rec [{:keys [biff/db]}
-                     {user-id :user/id
+                     {:keys [user/premium]
+                      user-id :user/id
                       candidates :user/ad-candidates}]
   {::pco/input [(? :user/id)
+                (? :user/premium)
                 {:user/ad-candidates [:xt/id
                                       :candidate/n-skips
                                       :candidate/ad-score
@@ -475,22 +477,22 @@
    ::pco/output [{:user/ad-rec [:xt/id
                                 :ad/click-cost
                                 :item/rec-type]}]}
-  ;; TODO return nil if the user has a premium subscription
-  (let [clicked-ads (into #{}
-                          (map first)
-                          (when user-id
-                            (q db
-                               '{:find [ad]
-                                 :in [user [ad ...]]
-                                 :where [[click :ad.click/user user]
-                                         [click :ad.click/ad ad]]}
-                               user-id
-                               (mapv :xt/id candidates))))
-        [first-ad second-ad] (->> candidates
-                                  (remove (fn [{:keys [xt/id] :ad/keys [user paused approve-state]}]
-                                            (or (clicked-ads id)
-                                                ;; TODO
-                                                ;(not= approve-state :approved)
+  (when-not premium
+    (let [clicked-ads (into #{}
+                            (map first)
+                            (when user-id
+                              (q db
+                                 '{:find [ad]
+                                   :in [user [ad ...]]
+                                   :where [[click :ad.click/user user]
+                                           [click :ad.click/ad ad]]}
+                                 user-id
+                                 (mapv :xt/id candidates))))
+          [first-ad second-ad] (->> candidates
+                                    (remove (fn [{:keys [xt/id] :ad/keys [user paused approve-state]}]
+                                              (or (clicked-ads id)
+                                                  ;; TODO
+                                                  ;(not= approve-state :approved)
                                                 (= user-id (:xt/id user))
                                                 paused
                                                 ;; Apparently when people requested to have their
@@ -511,7 +513,7 @@
     (when second-ad
       {:user/ad-rec (assoc first-ad
                            :ad/click-cost click-cost
-                           :item/rec-type :item.rec-type/ad)})))
+                           :item/rec-type :item.rec-type/ad)}))))
 
 (defn- take-items [n xs]
   (->> xs
