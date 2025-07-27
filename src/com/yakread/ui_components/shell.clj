@@ -1,14 +1,16 @@
 (ns com.yakread.ui-components.shell
-  (:require [cheshire.core :as cheshire]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [com.biffweb :as biff]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.yakread.lib.icons :as lib.icons]
-            [com.yakread.lib.route :as lib.route :refer [href]]
-            [com.yakread.lib.ui :as ui]
-            [ring.middleware.anti-forgery :as csrf]
-            [ring.util.response :as ring-response]))
+  (:require
+   [cheshire.core :as cheshire]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.icons :as lib.icons]
+   [com.yakread.lib.route :as lib.route :refer [href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]
+   [ring.middleware.anti-forgery :as csrf]
+   [ring.util.response :as ring-response]))
 
 (def schema
   {:app.shell/include-plausible :boolean
@@ -53,8 +55,9 @@
 
 (defresolver app-head [{:keys [app.shell/include-plausible
                                app.shell/include-recaptcha]}
-                       {user :user/current}]
-  #::pco{:input [(? :user/current)]}
+                       {user :session/user}]
+  #::pco{:input [{(? :session/user) [:xt/id
+                                     (? :user/timezone*)]}]}
   {:app.shell/app-head
    [[:link {:rel "stylesheet" :href (css-path)}]
     [:script {:src "/vendor/cdn.jsdelivr.net/npm/htmx.org@2.0.5/dist/htmx.min.js"}]
@@ -83,7 +86,11 @@
     [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
     [:link {:rel "mask-icon", :href "/safari-pinned-tab.svg", :color "#5bbad5"}]
     [:meta {:name "msapplication-TileColor", :content "#da532c"}]
-    [:meta {:name "theme-color", :content "#222222"}]]})
+    [:meta {:name "theme-color", :content "#222222"}]
+    (when (and user (not (:user/timezone* user)))
+      [:script
+       (biff/unsafe
+        (str "set_timezone('" (href routes/set-timezone) "', '" csrf/*anti-forgery-token* "');"))])]})
 
 (def default-metadata
   #:base{:title "Yakread"

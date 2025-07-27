@@ -51,9 +51,13 @@
   {::pco/input [:user/email]}
   {:user/send-digest-at (java.time.LocalTime/of 8 0)})
 
-(defresolver default-timezone [_]
-  {::pco/input [:user/email]}
-  {:user/timezone (java.time.ZoneId/of "US/Pacific")})
+(defresolver default-timezone [{:user/keys [timezone]}]
+  {::pco/input [:user/email
+                (? :user/timezone)]
+   ::pco/output [:user/timezone
+                 :user/timezone*]}
+  {:user/timezone* timezone
+   :user/timezone (or timezone (java.time.ZoneId/of "US/Pacific"))})
 
 (def module {:resolvers [session-user
                          session-anon

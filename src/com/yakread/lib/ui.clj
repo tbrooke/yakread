@@ -415,6 +415,22 @@
                        '[size-6]))]
    [:span label]])
 
+(defn select
+  [{:ui/keys [options default] :as opts}]
+  [:select (dom-opts opts
+                     '[appearance-none
+                       ring-1 ring-inset ring-neut-100 focus:ring-inset focus:ring-tealv-600
+                       cursor-pointer
+                       border border-0 rounded border-gray-300
+                       py-1 pl-2 pr-10
+                       bg-gray-50 text-black
+                       inter text-sm leading-tight])
+   (for [{:keys [label value]} options]
+     [:option.cursor-pointer
+      {:value value
+       :selected (when (= value default) "selected")}
+      label])])
+
 ;;;; Layout
 
 (defn page-header [& {:keys [title subtitle add-href back-href actions no-margin]}]

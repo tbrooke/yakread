@@ -489,7 +489,8 @@
         [first-ad second-ad] (->> candidates
                                   (remove (fn [{:keys [xt/id] :ad/keys [user paused approve-state]}]
                                             (or (clicked-ads id)
-                                                (= approve-state :approved)
+                                                ;; TODO
+                                                ;(not= approve-state :approved)
                                                 (= user-id (:xt/id user))
                                                 paused
                                                 ;; Apparently when people requested to have their
@@ -503,12 +504,14 @@
                                   (sort-by :candidate/ad-score >))
         ;; `click-cost` is the minimum amount that (:ad/bid first-ad) could've been while still
         ;; being first. The ad owner will be charged this amount if the user clicks the ad.
-        click-cost (max 1 (inc (int (* (:ad/effective-bid first-ad)
-                                       (/ (:candidate/ad-score second-ad)
-                                          (:candidate/ad-score first-ad))))))]
-    {:user/ad-rec (assoc first-ad
-                         :ad/click-cost click-cost
-                         :item/rec-type :item.rec-type/ad)}))
+        click-cost (when second-ad
+                     (max 1 (inc (int (* (:ad/effective-bid first-ad)
+                                         (/ (:candidate/ad-score second-ad)
+                                            (:candidate/ad-score first-ad)))))))]
+    (when second-ad
+      {:user/ad-rec (assoc first-ad
+                           :ad/click-cost click-cost
+                           :item/rec-type :item.rec-type/ad)})))
 
 (defn- take-items [n xs]
   (->> xs
@@ -558,7 +561,6 @@
   {:resolvers [sub-affinity
                for-you-sub-recs
                icymi-sub-recs
-               bookmark-recs*
                for-you-bookmark-recs
                icymi-bookmark-recs
                candidates

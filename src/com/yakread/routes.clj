@@ -19,5 +19,6 @@
 
 (def settings-page     'com.yakread.app.settings/page)
 (def unsubscribe       'com.yakread.app.settings/click-unsubscribe-route)
+(def set-timezone      'com.yakread.app.settings/set-timezone)
 
 (def signin            'com.yakread.app.home/signin-page-route)

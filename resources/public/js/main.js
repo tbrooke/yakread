@@ -94,3 +94,16 @@ window.onload = () => {
       window.open(evt.detail.value, "_blank");
   })
 };
+
+function set_timezone(url, csrf_token) {
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      '__anti-forgery-token': csrf_token,
+      ":user/timezone": Intl.DateTimeFormat().resolvedOptions().timeZone
+    }).toString()
+  })
+}

@@ -46,16 +46,18 @@
                                    (cond-> s
                                      (< max-value (count s)) (subs 0 max-value)))
                                  identity)
+                       :time/local-time #(java.time.LocalTime/parse %)
+                       :time/zone-id #(java.time.ZoneId/of %)
                        identity))])))
 
 (def ^:private memo-parsers (memoize-latest parsers))
 
-(defn wrap-parse-form [handler]
+(defn wrap-parse-form [handler & {:keys [overrides]}]
   (fn [{:keys [biff/malli-opts biff.form/parser-overrides form-params query-params] :as ctx}]
      (let [params (merge form-params query-params)
            new-params (lib.core/->DerefMap
                        (delay (-> (memo-parsers @malli-opts)
-                                  (merge parser-overrides)
+                                  (merge parser-overrides overrides)
                                   (parse-form params))))]
        (handler (cond-> ctx
                   (not-empty params)
