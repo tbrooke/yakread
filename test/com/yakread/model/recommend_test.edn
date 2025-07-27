@@ -140,12 +140,28 @@
     [gen/*rnd* (java.util.Random. 0)]
     (icymi-bookmark-recs
      {:user/digest-bookmarks [{:xt/id "item1"} {:xt/id "item2"}],
-      :user/bookmark-recs*
-      (list
-       {:item/id "item1"}
-       {:item/id "item2"}
-       {:item/id "item3"})})),
-   :result {:user/icymi-bookmark-recs [{:item/id "item3"}]}}
+      :user/unread-bookmarks
+      [{:item/id "item1",
+        :item/ingested-at (t/instant 2000),
+        :item/n-skipped-with-digests 0}
+       {:item/id "item2",
+        :item/ingested-at (t/instant 2000),
+        :item/n-skipped-with-digests 0}
+       {:item/id "item3",
+        :item/ingested-at (t/instant 2000),
+        :item/n-skipped-with-digests 0,
+        :item/url "https://example.com/article1"}
+       {:item/id "item4",
+        :item/ingested-at (t/instant 2000),
+        :item/n-skipped-with-digests 0,
+        :item/url "https://example.com/article2"}]})),
+   :result
+   {:user/icymi-bookmark-recs
+    [{:item/id "item4",
+      :item/ingested-at #time/instant "2000-01-01T00:00:00Z",
+      :item/n-skipped-with-digests 0,
+      :item/url "https://example.com/article2",
+      :item/rec-type :item.rec-type/bookmark}]}}
   _
   {:eval
    (let

@@ -90,7 +90,8 @@
        {(:user/digest-discover-recs
          {:com.wsscode.pathom3.connect.operation/optional? true})
         [:item/id]}]}
-     :end]}}
+     :end],
+    :session {:uid "user1"}}}
   _
   {:eval
    (binding

@@ -98,7 +98,7 @@
       (println "Updating tests in" f)
       (spit f (with-out-str (biff/pprint (assoc f-contents :tests tests)))))))
 
-(defn instant [& [year & [month & [day & [hour & [minute & [second*]]]]]]]
+(defn instant [year & [month & [day & [hour & [minute & [second*]]]]]]
   (Instant/parse (format "%04d-%02d-%02dT%02d:%02d:%02dZ"
                          (or year 2000)
                          (or month 1)

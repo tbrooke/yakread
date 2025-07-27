@@ -12,6 +12,8 @@
    [edn-query-language.core :as eql]
    [com.rpl.specter :as sp]))
 
+(def n-skipped (some-fn :item/n-skipped :item/n-skipped-with-digests))
+
 ;; TODO for further optimization:
 ;; - materialize :sub/affinity
 ;; - figure out why com.yakread.util.biff-staging/entity-resolver gets called 3,000 times in dev
@@ -159,7 +161,7 @@
 
 (defn rank-by-freshness [items]
   (->> items
-       (sort-by (juxt :item/n-skipped (comp - inst-ms :item/ingested-at)))
+       (sort-by (juxt n-skipped (comp - inst-ms :item/ingested-at)))
        (rerank 0.1)))
 
 (defresolver unread-subs [{:user/keys [subscriptions]}]
@@ -225,7 +227,7 @@
         results (vec (concat (take n-recs new-subs) ranked-subs))]
     {:user/selected-subs results}))
 
-(defn sub-recs-resolver [{:keys [op-name output-key extra-input wrap-input]
+(defn sub-recs-resolver [{:keys [op-name output-key extra-input wrap-input n-skipped-key]
                           :or {wrap-input identity}}]
   (pco/resolver
    op-name
@@ -236,8 +238,7 @@
                     {:sub/unread-items
                      [:item/id
                       :item/ingested-at
-                      ;; TODO have this include digest skips when needed
-                      :item/n-skipped]}]}]
+                      n-skipped-key]}]}]
                  extra-input)
     ::pco/output [{output-key [:item/id
                                :item/rec-type]}]}
@@ -250,7 +251,7 @@
                ;; something.
                :when (< 0 (count unread-items))
                :let [most-recent (apply max-key (comp inst-ms :item/ingested-at) unread-items)
-                     item (if (= 0 (:item/n-skipped most-recent))
+                     item (if (= 0 (get most-recent n-skipped-key))
                             most-recent
                             (->> unread-items
                                  rank-by-freshness
@@ -260,13 +261,15 @@
 (def for-you-sub-recs
   (sub-recs-resolver
    {:op-name `for-you-sub-recs
-    :output-key :user/for-you-sub-recs}))
+    :output-key :user/for-you-sub-recs
+    :n-skipped-key :item/n-skipped}))
 
 (def icymi-sub-recs
   (sub-recs-resolver
    {:op-name `icymi-sub-recs
     :output-key :user/icymi-sub-recs
     :extra-input [{:user/digest-sub-items [:xt/id]}]
+    :n-skipped-key :item/n-skipped-with-digests
     :wrap-input (fn [input]
                   (let [exclude (into #{} (map :xt/id) (:user/digest-sub-items input))]
                     (->> input
@@ -279,34 +282,50 @@
                          (sp/setval [:user/selected-subs sp/ALL (comp empty? :sub/unread-items)]
                                     sp/NONE))))}))
 
-(defresolver bookmark-recs* [{:user/keys [unread-bookmarks]}]
-  #::pco{:input [{:user/unread-bookmarks [:item/id
-                                          :item/ingested-at
-                                          ;; TODO include digest skips when needed
-                                          :item/n-skipped
-                                          (? :item/url)]}]
-         :output [:user/bookmark-recs*]}
-  {:user/bookmark-recs* (pco/final-value
-                         (->> unread-bookmarks
-                              rank-by-freshness
-                              (lib.core/distinct-by (some-fn (comp :host uri/uri :item/url) :item/id))
-                              (map #(assoc % :item/rec-type :item.rec-type/bookmark))))})
+(defn bookmark-recs-resolver [{:keys [op-name
+                                      output-key
+                                      n-skipped-key
+                                      extra-input
+                                      wrap-input
+                                      n-recs]
+                               :or {wrap-input identity}}]
+  (pco/resolver
+   op-name
+   {::pco/input (eql/merge-queries
+                 [{:user/unread-bookmarks [:item/id
+                                           :item/ingested-at
+                                           n-skipped-key
+                                           (? :item/url)]}]
+                 extra-input)
+    ::pco/output [{output-key [:item/id :item/rec-type]}]}
+   (fn [_env input]
+     (let [{:user/keys [unread-bookmarks]} (wrap-input input)]
+       {output-key
+        (into []
+              (comp (lib.core/distinct-by (some-fn (comp :host uri/uri :item/url) :item/id))
+                    (map #(assoc % :item/rec-type :item.rec-type/bookmark))
+                    (take n-recs))
+              (rank-by-freshness unread-bookmarks))}))))
 
-(defresolver for-you-bookmark-recs [{:user/keys [bookmark-recs*]}]
-  #::pco{:input [:user/bookmark-recs*]
-         :output [{:user/for-you-bookmark-recs [:item/id
-                                                :item/rec-type]}]}
-  {:user/for-you-bookmark-recs (vec (take n-sub-bookmark-recs bookmark-recs*))})
+(def for-you-bookmark-recs
+  (bookmark-recs-resolver
+   {:op-name `for-you-bookmark-recs
+    :output-key :user/for-you-bookmark-recs
+    :n-skipped-key :item/n-skipped
+    :n-recs n-sub-bookmark-recs}))
 
-(defresolver icymi-bookmark-recs [{:user/keys [bookmark-recs* digest-bookmarks]}]
-  {::pco/input [:user/bookmark-recs*
-                {:user/digest-bookmarks [:xt/id]}]
-   ::pco/output [{:user/icymi-bookmark-recs [:item/id :item/rec-type]}]}
-  (let [exclude (into #{} (map :xt/id) digest-bookmarks)]
-    {:user/icymi-bookmark-recs (into []
-                                     (comp (remove (comp exclude :item/id))
-                                           (take n-icymi-recs))
-                                     bookmark-recs*)}))
+(def icymi-bookmark-recs
+  (bookmark-recs-resolver
+   {:op-name `icymi-bookmark-recs
+    :output-key :user/icymi-bookmark-recs
+    :n-skipped-key :item/n-skipped-with-digests
+    :n-recs n-icymi-recs
+    :extra-input {:user/digest-bookmarks [:xt/id]}
+    :wrap-input (fn [{:user/keys [unread-bookmarks digest-bookmarks] :as input}]
+                  (let [exclude (into #{} (map :xt/id) digest-bookmarks)]
+                    (assoc input :user/unread-bookmarks (into []
+                                                              (remove (comp exclude :item/id))
+                                                              unread-bookmarks))))}))
 
 (defn- pick-by-skipped [a-items b-items]
   ((fn step [a-items b-items]
@@ -319,8 +338,8 @@
         a-items
 
         :else
-        (let [a-skipped (:item/n-skipped (first a-items))
-              b-skipped (:item/n-skipped (first b-items))
+        (let [a-skipped (n-skipped (first a-items))
+              b-skipped (n-skipped (first b-items))
               choice (if (< (gen/double) 0.25)
                        (gen/rand-nth [:a :b])
                        (gen/weighted {:a (inc b-skipped)
@@ -348,7 +367,7 @@
                        :candidate/n-skips]}))}
   (let [{:keys [item ad]} (get-candidates user-id)
         all-candidates (concat item ad)
-        ;; TODO include digest "skips" if we're sending a digest. maybe weight them less though.
+        ;; TODO can we just use :item/n-skipped for this?
         item-id->n-skips (into {}
                                (when user-id
                                  (q db
@@ -362,65 +381,82 @@
     {:user/item-candidates (mapv assoc-n-skips item)
      :user/ad-candidates (mapv assoc-n-skips ad)}))
 
-(defresolver discover-recs [{:keys [biff/db]}
-                            {user-id :user/id
-                             candidates :user/item-candidates}]
-  {::pco/input [(? :user/id)
-                {:user/item-candidates [:xt/id
-                                        :item/url
-                                        :candidate/score
-                                        :candidate/last-liked
-                                        :candidate/n-skips]}]
-   ::pco/output [{:user/discover-recs [:xt/id
-                                       :item/rec-type]}]}
-  (let [read-urls (into #{}
-                        (map first)
-                        (when user-id
-                          (xt/q db
-                                '{:find [url]
-                                  :in [user [url ...]]
-                                  :where [[usit :user-item/user user]
-                                          [usit :user-item/item item]
-                                          [item :item/url url]
-                                          (or [usit :user-item/viewed-at _]
-                                              [usit :user-item/skipped-at _]
-                                              [usit :user-item/favorited-at _]
-                                              [usit :user-item/disliked-at _]
-                                              [usit :user-item/reported-at _])]}
-                                user-id
-                                (mapv :item/url candidates))))
-        candidates (vec (remove (comp read-urls :item/url) candidates))
-        url->host (into {} (map (juxt :item/url (comp :host uri/uri :item/url))) candidates)
+(defresolver candidate-digest-skips [{:keys [item/n-digest-sends candidate/n-skips]}]
+  {:candidate/n-skips-with-digests (+ n-digest-sends n-skips)})
 
-        recommendations
-        (first
-         (reduce (fn [[selected candidates] _]
-                   (if (empty? candidates)
-                     (reduced [selected candidates])
-                     (let [selection (if (< (gen/double) 0.1)
-                                       (gen/rand-nth candidates)
-                                       (->> candidates
-                                            take-rand
-                                            (sort-by (comp - inst-ms :candidate/last-liked))
-                                            take-rand
-                                            gen/shuffle
-                                            (sort-by (fn [{:candidate/keys [score n-skips]}]
-                                                       [n-skips (- score)]))
-                                            (rerank 0.25)
-                                            first))
-                           candidates (filterv (fn [{:keys [item/url]}]
-                                                 (not= (url->host url)
-                                                       (url->host (:item/url selection))))
-                                               candidates)]
-                       [(conj selected selection) candidates])))
-                 [[] candidates]
-                 (range (max n-for-you-recs n-digest-discover-recs))))]
-    {:user/discover-recs (mapv #(assoc % :item/rec-type :item.rec-type/discover) recommendations)}))
+(defresolver item-digest-skips [{:keys [item/n-digest-sends item/n-skipped]}]
+  {:item/n-skipped-with-digests (+ n-digest-sends n-skipped)})
 
-(defresolver digest-discover-recs [{:keys [user/discover-recs]}]
-  {::pco/input [{:user/discover-recs [:xt/id :item/rec-type]}]
-   ::pco/output [{:user/digest-discover-recs [:xt/id :item/rec-type]}]}
-  {:user/digest-discover-recs (into [] (take n-digest-discover-recs discover-recs))})
+(defn discover-recs-resolver [{:keys [op-name output-key n-skips-key n-recs]}]
+  (pco/resolver
+   op-name
+   {::pco/input [(? :user/id)
+                 {:user/item-candidates [:xt/id
+                                         :item/url
+                                         :candidate/score
+                                         :candidate/last-liked
+                                         n-skips-key]}]
+    ::pco/output [{output-key [:xt/id
+                               :item/rec-type]}]}
+   (fn [{:keys [biff/db]}
+        {user-id :user/id
+         candidates :user/item-candidates}]
+     (let [read-urls (into #{}
+                           (map first)
+                           (when user-id
+                             (xt/q db
+                                   '{:find [url]
+                                     :in [user [url ...]]
+                                     :where [[usit :user-item/user user]
+                                             [usit :user-item/item item]
+                                             [item :item/url url]
+                                             (or [usit :user-item/viewed-at _]
+                                                 [usit :user-item/skipped-at _]
+                                                 [usit :user-item/favorited-at _]
+                                                 [usit :user-item/disliked-at _]
+                                                 [usit :user-item/reported-at _])]}
+                                   user-id
+                                   (mapv :item/url candidates))))
+           candidates (vec (remove (comp read-urls :item/url) candidates))
+           url->host (into {} (map (juxt :item/url (comp :host uri/uri :item/url))) candidates)
+
+           recommendations
+           (first
+            (reduce (fn [[selected candidates] _]
+                      (if (empty? candidates)
+                        (reduced [selected candidates])
+                        (let [selection (if (< (gen/double) 0.1)
+                                          (gen/rand-nth candidates)
+                                          (->> candidates
+                                               take-rand
+                                               (sort-by (comp - inst-ms :candidate/last-liked))
+                                               take-rand
+                                               gen/shuffle
+                                               (sort-by (fn [{n-skips n-skips-key
+                                                              :candidate/keys [score]}]
+                                                          [n-skips (- score)]))
+                                               (rerank 0.25)
+                                               first))
+                              candidates (filterv (fn [{:keys [item/url]}]
+                                                    (not= (url->host url)
+                                                          (url->host (:item/url selection))))
+                                                  candidates)]
+                          [(conj selected selection) candidates])))
+                    [[] candidates]
+                    (range n-recs)))]
+    {output-key (mapv #(assoc % :item/rec-type :item.rec-type/discover) recommendations)}))))
+
+(def discover-recs
+  (discover-recs-resolver {:op-name `discover-recs
+                           :output-key :user/discover-recs
+                           :n-skips-key :candidate/n-skips
+                           :n-recs n-for-you-recs}))
+
+(def digest-discover-recs
+  (discover-recs-resolver {:op-name `digest-discover-recs
+                           :output-key :user/digest-discover-recs
+                           :n-skips-key :candidate/n-skips-with-digests
+                           :n-recs n-digest-discover-recs}))
 
 (defresolver ad-score [{:keys [candidate/score ad/effective-bid]}]
   {:candidate/ad-score (* (max 0.0001 score) effective-bid)})
@@ -480,7 +516,6 @@
        (take n)))
 
 (defresolver for-you-recs [{:user/keys [ad-rec for-you-sub-recs for-you-bookmark-recs discover-recs]}]
-  ;; TODO n-skipped here needs to include digest skips too
   #::pco{:input [{(? :user/for-you-sub-recs) [:xt/id
                                       :item/n-skipped
                                       :item/rec-type]}
@@ -507,12 +542,11 @@
     {:user/for-you-recs recs}))
 
 (defresolver icymi-recs [{:user/keys [icymi-sub-recs icymi-bookmark-recs]}]
-  ;; TODO n-skipped here needs to include digest skips too
   #::pco{:input [{(? :user/icymi-sub-recs) [:xt/id
-                                            :item/n-skipped
+                                            :item/n-skipped-with-digests
                                             :item/rec-type]}
                  {(? :user/icymi-bookmark-recs) [:xt/id
-                                                 :item/n-skipped
+                                                 :item/n-skipped-with-digests
                                                  :item/rec-type]}]
          :output [{:user/icymi-recs [:xt/id
                                      :item/rec-type]}]}
@@ -535,7 +569,9 @@
                for-you-recs
                unread-subs
                selected-subs
-               icymi-recs]})
+               icymi-recs
+               candidate-digest-skips
+               item-digest-skips]})
 
 (comment
 

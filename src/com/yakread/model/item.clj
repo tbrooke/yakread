@@ -254,6 +254,23 @@
 (defresolver clean-title [{:keys [item/title]}]
   {:item/clean-title (str/trim (EmojiParser/removeAllEmojis title))})
 
+(defresolver digest-sends [{:keys [biff/db session]} items]
+  {::pco/input [:xt/id]
+   ::pco/output [:item/n-digest-sends]
+   ::pco/batch? true}
+  (let [user-id (:uid session)
+        item-ids (mapv :xt/id items)
+        item->n-digests (into {}
+                              (q db
+                                 '{:find [item (count digest)]
+                                   :in [user [item ...]]
+                                   :where [[digest :digest/user user]
+                                           (or-join [digest item]
+                                             [digest :digest/ad item]
+                                             [digest :digest/icymi item]
+                                             [digest :digest/discover item])]}))]
+    (mapv #(assoc % :item/n-digest-sends (get item->n-digests (:xt/id %) 0)) items)))
+
 (def module
   {:resolvers [user-favorites
                user-bookmarks
@@ -274,4 +291,5 @@
                current-item
                source
                digest-url
-               clean-title]})
+               clean-title
+               digest-sends]})

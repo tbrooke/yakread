@@ -71,7 +71,9 @@
                                         {(? :user/ad-rec)               [:ad/id]}
                                         {(? :user/icymi-recs)           [:item/id]}
                                         {(? :user/digest-discover-recs) [:item/id]}])
-                      :end]})
+                      :end]
+     ;; hack until model code is refactored to not use session.
+     :session {:uid (:xt/id user)}})
 
   :end
   (fn [{:keys [biff.pipe.pathom/output] user :biff/job}]

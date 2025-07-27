@@ -1,8 +1,3 @@
-- email digests
-  - send digest
-    - bounce/complaint handling
-    - list cleaning (inactive users)
-  - update algo to handle digest skips
 - settings
   - where to open links in email vs. in the app
   - auto-set timezone
@@ -19,9 +14,14 @@
 - finish ads
     admin page approvals
     charge
+- spam filtering
 - migrate the sample
 
 backlog
+- refactor model code to not treat user as a global
+- bounce/complaint handling (mailersend already blocks sending; just need to update our end so we
+  don't do DB transactions for them unnecessarily)
+- list cleaning
 - can we use lazy-map on malli-opts while still doing late binding?
 - compare pipeline stuff to core.async flow
 - make auth module store signed humanity token in session after requesting a sign-in code

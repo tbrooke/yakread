@@ -7,6 +7,8 @@
    [java.time Period]
    [java.time.format DateTimeFormatter]))
 
+;; TODO rethink what things should be in here vs model.recommend
+
 (defn recent-items [{:biff/keys [db now]
                      :user/keys [digest-last-sent]
                      :keys [all-item-ids]}]
