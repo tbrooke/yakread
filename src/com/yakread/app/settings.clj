@@ -1,15 +1,16 @@
 (ns com.yakread.app.settings
   (:require
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [com.biffweb :as biff]
-   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.form :as lib.form]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pipeline :as lib.pipe]
    [com.yakread.lib.route :as lib.route :refer [defget defpost href]]
    [com.yakread.lib.ui :as ui])
   (:import
-   [java.time Period LocalTime ZoneId]
+   [java.time LocalTime ZoneId]
    [java.time.format DateTimeFormatter]))
 
 (defn days-checkboxes [selected-days]
@@ -50,6 +51,52 @@
      :status 303
      :headers {"location" (href page)}}))
 
+(def stripe-webhook
+  ["/stripe/webhook"
+   {:post
+    (lib.route/wrap-nippy-params
+     (lib.pipe/make
+      :start
+      (fn [{:keys [body-params] :as ctx}]
+        (log/info "received stripe event" (:type body-params))
+        (if-some [next-state (case (:type body-params)
+                               "customer.subscription.created" :update
+                               "customer.subscription.updated" :update
+                               "customer.subscription.deleted" :delete
+                               nil)]
+          {:biff.pipe/next [next-state]}
+          {:status 204}))
+
+      :update
+      (fn [{:keys [biff/db stripe/quarter-price-id body-params]}]
+        (let [{:keys [customer items cancel_at]} (get-in body-params [:data :object])
+              price-id (get-in items [:data 0 :price :id])
+              plan (if (= quarter-price-id price-id)
+                     :quarter
+                     :annual)
+              user-id (biff/lookup-id db :user/customer-id customer)]
+          {:biff.pipe/next [(lib.pipe/tx
+                             [{:db/doc-type :user
+                               :db/op :update
+                               :xt/id user-id
+                               :user/plan plan
+                               :user/cancel-at (if cancel_at
+                                                 (java.time.Instant/ofEpochMilli (* cancel_at 1000))
+                                                 :db/dissoc)}])]
+           :status 204}))
+
+      :delete
+      (fn [{:keys [biff/db body-params]}]
+        (let [{:keys [customer]} (get-in body-params [:data :object])
+              user-id (biff/lookup-id db :user/customer-id customer)]
+          {:biff.pipe/next [(lib.pipe/tx
+                             [{:db/doc-type :user
+                               :db/op :update
+                               :xt/id user-id
+                               :user/plan :db/dissoc
+                               :user/cancel-at :db/dissoc}])]
+           :status 204}))))}])
+
 (defpost manage-premium
   :start
   (fn [_]
@@ -64,7 +111,10 @@
                                        {:basic-auth [(secret :stripe/api-key)]
                                         :form-params {:customer customer-id
                                                       :return_url (str base-url (href page))}
-                                        :as :json})]}))
+                                        :as :json
+                                        :socket-timeout 10000
+                                        :connection-timeout 10000})
+                        :redirect]}))
 
   :redirect
   (fn [{:keys [biff.pipe.http/output]}]
@@ -127,7 +177,9 @@
                          "line_items[0][price]" price-id
                          :success_url (str base-url (href page {:upgraded (:plan params)}))
                          :cancel_url (str base-url (href page))}
-           :as :json})
+           :as :json
+           :socket-timeout 10000
+           :connection-timeout 10000})
          :redirect])}))
 
   :redirect
@@ -282,4 +334,5 @@
              set-timezone
              manage-premium
              upgrade-premium]]
+   :api-routes [stripe-webhook]
    :resolvers [premium]})

@@ -2,15 +2,21 @@
   (:require
    [clojure.edn :as edn]
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.error :as p.error]
    [com.yakread.lib.datastar :as lib.d*]
    [com.yakread.lib.form :as lib.form]
+   [com.yakread.lib.route :refer [href]]
+   [com.yakread.routes :as routes]
    [com.yakread.settings :as settings]
    [com.yakread.util :as util]
+   [ring.util.request :as ring-req]
    [rum.core :as rum]
-   [xtdb.api :as xt]
-   [taoensso.tufte :as tufte]))
+   [taoensso.tufte :as tufte]
+   [xtdb.api :as xt]) 
+  (:import
+   [com.stripe.net Webhook]))
 
 (defn wrap-signed-in [handler]
   (fn [{:keys [session] :as ctx}]
@@ -195,6 +201,24 @@
     (let [[result pstats] (tufte/profiled {} (handler ctx))]
       (println (tufte/format-pstats @pstats))
       result)))
+
+(defn wrap-stripe-event [handler]
+  (fn [{:keys [biff/secret headers] :as req}]
+    (if (and (= (href routes/stripe-webhook) (:uri req))
+             (secret :stripe/webhook-secret))
+      (try
+       (let [body-str (ring-req/body-string req)]
+         (Webhook/constructEvent body-str
+                                 (headers "stripe-signature")
+                                 (secret :stripe/webhook-secret))
+         (handler (assoc req
+                         :body (-> body-str
+                                   (.getBytes "UTF-8")
+                                   (java.io.ByteArrayInputStream.)))))
+       (catch Exception e
+         (log/error e "Error while handling stripe webhook event")
+         {:status 400 :body ""}))
+      (handler req))))
 
 (def default-site-middleware
   [biff/wrap-site-defaults

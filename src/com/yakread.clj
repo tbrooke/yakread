@@ -2,7 +2,6 @@
   (:require
    [cld.core :as cld]
    [clojure.data.generators :as gen]
-   [clojure.test :as test]
    [clojure.tools.logging :as log]
    [clojure.tools.namespace.repl :as tn-repl]
    [com.biffweb :as biff]
@@ -12,7 +11,7 @@
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.email :as lib.email]
    [com.yakread.lib.jetty :as lib.jetty]
-   [com.yakread.lib.middleware :as lib.middleware]
+   [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.pipeline :as lib.pipeline]
    [com.yakread.lib.route :as lib.route :refer [href]]
@@ -42,14 +41,14 @@
                                              (href routes/for-you)}})]))
 
 (def router (reitit-ring/router
-             [["" {:middleware lib.middleware/default-site-middleware}
+             [["" {:middleware lib.mid/default-site-middleware}
                (keep :routes modules)]
               ["" {:middleware [biff/wrap-api-defaults]}
                (keep :api-routes modules)]]))
 
 (def handler (-> (biff/reitit-handler {:router router})
                  biff/wrap-base-defaults
-                 #_premium/wrap-stripe-event))
+                 lib.mid/wrap-stripe-event))
 
 (def static-pages (apply biff/safe-merge (map :static modules)))
 
