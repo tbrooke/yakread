@@ -165,3 +165,7 @@
   {:biff.pipe/current :biff.pipe/pathom
    :biff.pipe.pathom/entity entity
    :biff.pipe.pathom/query query})
+
+(defn render [route]
+  {:biff.pipe/current :biff.pipe/render*
+   :biff.pipe.render/route route})

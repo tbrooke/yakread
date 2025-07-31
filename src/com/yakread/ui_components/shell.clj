@@ -255,12 +255,12 @@
                        {:x-csrf-token csrf/*anti-forgery-token*})
           :hx-ext "morph"}
          sidebar
-         [:.grow
+         [:.grow.flex.flex-col
           banner
           [:div {:class (concat '[mx-auto sm:px-8
                                   py-4 sm:pt-8 sm:pb-6
                                   flex flex-col
-                                  w-full]
+                                  w-full grow]
                                 (when-not wide
                                   '[max-w-screen-sm]))}
            content

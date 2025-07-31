@@ -69,14 +69,13 @@
                  (? :sub/pinned-at)]}]
   (fn [_ {{:sub/keys [id pinned-at doc-type]}
           :params/sub}]
-    {:biff.pipe/next             [:biff.pipe/tx :biff.pipe/render-sse]
+    {:biff.pipe/next             [:biff.pipe/tx (lib.pipe/render `page-content-route)]
      :biff.pipe.tx/input         [{:db/doc-type   doc-type
                                    :db/op         :update
                                    :xt/id         id
                                    :sub/pinned-at (if pinned-at
                                                     :db/dissoc
-                                                    :db/now)}]
-     :biff.pipe.render-sse/route `page-content-route}))
+                                                    :db/now)}]}))
 
 (defpost-pathom resubscribe
   [{:params.checked/subscriptions
@@ -102,13 +101,14 @@
                  (? :sub/pinned-at)]}
   {:sub.view/card
    [:.relative
-    [:div {:class '[absolute
-                    top-1.5
-                    right-0]}
+    [:div {:class '[absolute top-1.5 right-0]}
      (ui/overflow-menu
       {:ui/rounded true}
       (ui/overflow-button
-       {:data-on-click (action :post toggle-pin {:params {:sub/id id}})}
+       {:hx-post (href toggle-pin {:sub/id id
+                                   :tab (if pinned-at "pinned" "unpinned")})
+        :hx-target "#content"
+        :hx-swap "innerHTML"}
        (if pinned-at "Unpin" "Pin"))
       (ui/overflow-button
        {:hx-post (href unsubscribe {:sub/id id})
@@ -172,8 +172,10 @@
                            (? :sub/published-at)
                            (? :sub/pinned-at)]}
      {:user/unsubscribed [:sub/id]}]}]
-  (fn [_ {{:user/keys [subscriptions unsubscribed]} :session/user}]
-    (let [{pinned-subs true unpinned-subs false} (group-by (comp some? :sub/pinned-at) subscriptions)]
+  (fn [{:keys [params]} {{:user/keys [subscriptions unsubscribed]} :session/user}]
+    (let [{pinned-subs true unpinned-subs false} (group-by (comp some? :sub/pinned-at) subscriptions)
+          show-tabs (every? not-empty [pinned-subs unpinned-subs])
+          active-tab (if (= (:tab params) "unpinned") :unpinned :pinned)]
       [:.h-full {:id (ui/dom-id ::content)}
        (ui/page-header {:title    "Subscriptions"
                         :add-href (href routes/add-sub-page)
@@ -188,24 +190,38 @@
        (if (empty? subscriptions)
          (empty-state)
          [:div.grow.flex.flex-col
-          (biff/join [:div#sub-divider {:class '[my-10
-                                                 border border-neut-200]}]
-                     (for [[id subscriptions] [["pinned" pinned-subs]
-                                               ["unpinned" unpinned-subs]]
-                           :when (not-empty subscriptions)]
-                       (ui/card-grid
-                        {:id id :ui/cols 5}
-                        (->> subscriptions
-                             (sort-by :sub/published-at #(compare %2 %1))
-                             (mapv :sub.view/card)))))])])))
+          (when show-tabs
+            [:.flex.gap-4.mb-6
+             (ui/pill {:ui/label "Pinned"
+                       :class '[pinned-tab]
+                       :data-active (str (= active-tab :pinned))
+                       :_ (str "on click set @data-active of .unpinned-tab to 'false' "
+                               "then set @data-active of .pinned-tab to 'true'")})
+             (ui/pill {:class '[unpinned-tab]
+                       :ui/label "Unpinned"
+                       :data-active (str (= active-tab :unpinned))
+                       :_ (str "on click set @data-active of .pinned-tab to 'false' "
+                               "then set @data-active of .unpinned-tab to 'true'")})])
+          (for [[tab subscriptions] [[:pinned pinned-subs]
+                                     [:unpinned unpinned-subs]]
+                :when (not-empty subscriptions)]
+            (ui/card-grid
+             {:ui/cols 5
+              :class [(if (= tab :pinned) "pinned-tab" "unpinned-tab")
+                      "data-[active=false]:hidden"]
+              :data-active (str (or (not show-tabs) (= tab active-tab)))}
+             (->> subscriptions
+                  (sort-by :sub/published-at #(compare %2 %1))
+                  (mapv :sub.view/card))))])])))
 
 (defget page-route "/dev/subscriptions"
   [:app.shell/app-shell (? :user/current)]
-  (fn [_ {:keys [app.shell/app-shell] user :user/current}]
+  (fn [{:keys [params]} {:keys [app.shell/app-shell] user :user/current}]
     (app-shell
      {:wide true}
      (if user
-       (ui/lazy-load-spaced (href page-content-route))
+       [:.grow.flex.flex-col#content
+        (ui/lazy-load-spaced (href page-content-route params))]
        [:<>
         (ui/page-header {:title    "Subscriptions"
                          :add-href (href routes/add-sub-page)})
