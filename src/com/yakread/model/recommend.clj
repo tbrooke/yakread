@@ -491,8 +491,7 @@
           [first-ad second-ad] (->> candidates
                                     (remove (fn [{:keys [xt/id] :ad/keys [user paused approve-state]}]
                                               (or (clicked-ads id)
-                                                  ;; TODO
-                                                  ;(not= approve-state :approved)
+                                                  (not= approve-state :approved)
                                                 (= user-id (:xt/id user))
                                                 paused
                                                 ;; Apparently when people requested to have their

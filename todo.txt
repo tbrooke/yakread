@@ -1,7 +1,11 @@
-- redo subs page layout (use tabs)
 - tos, privacy policy
 - deploy, migrate
-  - grep for TODO
+  - look at s3 stuff
+  - uncomment email queue thing
+    - still disable in dev
+  - also uncomment feed syncing thing
+  - also uncomment queue-add-candidate
+  - include java file thing in prod
   - get it up on another subdomain
   - import referral data
   - do discover recs approvals
@@ -16,6 +20,8 @@
   - delete your account
 
 backlog
+- look at webmanifest thing
+- gmail period thing
 - refactor model code to not treat user as a global
 - bounce/complaint handling (mailersend already blocks sending; just need to update our end so we
   don't do DB transactions for them unnecessarily)

@@ -21,7 +21,7 @@
              :in [t0 [item ...]]
              :where [[item :item/ingested-at ingested-at]
                      [(< t0 ingested-at)]]}
-           (cond->> (.minus now (Period/ofWeeks 52)) ; TODO
+           (cond->> (.minus now (Period/ofWeeks 2))
              digest-last-sent (max-key inst-ms digest-last-sent))
            all-item-ids)))
 
@@ -45,7 +45,7 @@
    (recent-items
     {:biff/db db
      :biff/now now
-     :user/digest-last-sent nil #_digest-last-sent ; TODO
+     :user/digest-last-sent digest-last-sent
      :all-item-ids (mapv :xt/id bookmarks)})})
 
 (defresolver settings-info [{:user/keys [digest-days send-digest-at]}]
