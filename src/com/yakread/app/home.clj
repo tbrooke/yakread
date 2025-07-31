@@ -97,7 +97,8 @@
          {:id "signin-form"
           :action "/auth/send-code"
           :hidden {:on-error (href signin-page-route)
-                   :redirect "/"}}
+                   :redirect "/"
+                   :ewt (:ewt params)}}
          (biff/recaptcha-callback "onSubscribe" "signin-form")
          [:.flex-grow (ui/text-input {:name "email"
                                       :placeholder "Enter your email address"

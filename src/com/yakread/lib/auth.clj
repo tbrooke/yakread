@@ -1,10 +1,9 @@
 (ns com.yakread.lib.auth
-  (:require [com.biffweb :as biff]
-            [clj-http.client :as http]
-            [com.yakread.util :as util]
-            [clojure.string :as str]
-            [rum.core :as rum]
-            [xtdb.api :as xt]))
+  (:require
+   [clj-http.client :as http]
+   [com.biffweb :as biff]
+   [com.yakread.lib.route :as lib.route]
+   [xtdb.api :as xt]))
 
 (defn passed-recaptcha? [{:keys [biff/secret biff.recaptcha/threshold params]
                           :or {threshold 0.5}}]
@@ -27,6 +26,7 @@
                         biff.auth/allowed-redirects
                         biff/base-url
                         biff/secret
+                        biff/safe-params
                         anti-forgery-token
                         params]}
                 email]
@@ -38,7 +38,8 @@
           :exp-in (* 60 link-expire-minutes)}
          :state (when check-state
                   (biff/sha256 anti-forgery-token))
-         :redirect (get allowed-redirects (:redirect params)))
+         :redirect (or (:redirect safe-params)
+                       (get allowed-redirects (:redirect params))))
         (secret :biff/jwt-secret))))
 
 (defn new-code [length]
@@ -139,7 +140,6 @@
                             (str (:on-error params "/") "?error=" error))}}))
 
 (defn verify-link-handler [{:keys [biff.auth/app-path
-                                   biff.auth/allowed-redirects
                                    biff.auth/invalid-link-path
                                    biff.auth/new-user-tx
                                    biff.auth/get-user-id
@@ -173,7 +173,7 @@
 (defn send-code-handler [{:keys [biff.auth/single-opt-in
                                  biff.auth/allowed-redirects
                                  biff.auth/new-user-tx
-                                 biff/db
+                                 biff/safe-params
                                  params]
                           :as ctx}]
   (let [{:keys [success error email code user-id]} (send-code! ctx)]
@@ -185,7 +185,8 @@
                    :biff.auth.code/code code
                    :biff.auth.code/created-at :db/now
                    :biff.auth.code/failed-attempts 0}
-                  :biff.auth.code/redirect (get allowed-redirects (:redirect params)))]
+                  :biff.auth.code/redirect (or (:redirect safe-params)
+                                               (get allowed-redirects (:redirect params))))]
                 (when (and single-opt-in (not user-id))
                   (new-user-tx ctx email)))))
     {:status 303
@@ -270,7 +271,8 @@
                              [:biff.auth.code/created-at      inst?]
                              [:biff.auth.code/failed-attempts integer?]
                              [:biff.auth.code/redirect        {:optional true} :string]]}
-   :routes [["/auth" {:middleware [[wrap-options (merge default-options options)]]}
+   :routes [["/auth" {:middleware [[wrap-options (merge default-options options)]
+                                   [lib.route/wrap-nippy-params]]}
              ["/send-link"          {:post send-link-handler}]
              ["/verify-link/:token" {:get verify-link-handler}]
              ["/verify-link"        {:post verify-link-handler}]

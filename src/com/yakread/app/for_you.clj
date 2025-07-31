@@ -83,6 +83,7 @@
    {(? :session/anon)
     [{:user/discover-recs
       [:item/id
+       :item/url
        :item/ui-read-more-card]}]}]
   (fn [{:keys [biff/now params]} {:keys [user/discover-recs session/user session/anon]
                                   {:user/keys [current-item for-you-recs]} :session/user}]
@@ -105,8 +106,7 @@
                              :highlight-unread false
                              :show-author true}))
        (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector (:user/discover-recs anon))]
-         (ui-read-more-card {:on-click-route `read-page-route
-                             :highlight-unread false
+         (ui-read-more-card {:highlight-unread false
                              :show-author true
                              :new-tab true})))]))
 
@@ -117,9 +117,6 @@
      {}
      [:div#content (ui/lazy-load-spaced (href page-content-route {:show-continue true}))])))
 
-;; TODO
-;; - propagate jwt or something for auth from email (redirect should work even if you're not signed in)
-;; - when coming from email, do redirect-on-load if the user isn't signed in
 (def read-page-route
   ["/dev/item/:item-id"
    {:name ::read-page-route
@@ -140,7 +137,7 @@
         :start
         (lib.pipe/pathom-query [{(? :params/item) [:item/id
                                                    (? :item/url)]}
-                                {(? :session/user) [(? :user/use-original-links)]}]
+                                {:session/user [(? :user/use-original-links)]}]
                                :start*)
 
         :start*
@@ -153,10 +150,6 @@
               {:status 303
                :headers {"Location" (href page-route)}}
 
-              (nil? user)
-              {:status 303
-               :headers {"Location" url}}
-
               (and use-original-links url)
               (ui/redirect-on-load {:redirect-url url
                                     :beacon-url (when-not (:skip-record params)
@@ -164,11 +157,10 @@
 
               :else
               {:biff.pipe/next [:biff.pipe/pathom :render]
-               :biff.pipe.pathom/entity output
                :biff.pipe.pathom/query [:app.shell/app-shell
                                         {:params/item [:item/ui-read-content
                                                        :item/id
-                                                       :item/title]}]})))
+                                                       (? :item/title)]}]})))
 
         :render
         (fn [{:keys [params biff.pipe.pathom/output] :as ctx}]
@@ -215,11 +207,10 @@
 
 (def module
   {:routes [["" {:middleware [lib.mid/wrap-signed-in]}
-             record-item-click]
-            record-ad-click
+             read-page-route]
             page-route
-            ["" {:middleware [#_lib.mid/wrap-profiled]}
-             page-content-route]
-            read-page-route
+            page-content-route
+            record-ad-click
+            record-item-click
             click-ad-route
             click-item-route]})

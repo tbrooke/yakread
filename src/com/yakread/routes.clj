@@ -1,5 +1,7 @@
 (ns com.yakread.routes)
 
+(def signin-page       'com.yakread.app.home/signin-page-route)
+
 (def subs-page         'com.yakread.app.subscriptions/page-route)
 (def unsubscribe!      'com.yakread.app.subscriptions/unsubscribe)
 (def add-sub-page      'com.yakread.app.subscriptions.add/page-route)
