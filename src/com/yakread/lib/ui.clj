@@ -49,7 +49,8 @@
 
 ;;;; Misc
 
-(defn footer [{:keys [dark-mode show-recaptcha-message]}]
+(defn footer [{:yakread/keys [about-url contact-url tos-url privacy-url]}
+              {:keys [dark-mode show-recaptcha-message]}]
   [:.text-sm.text-center.mt-10
    {:class (if dark-mode
              '[text-neut-100]
@@ -57,10 +58,10 @@
    [:div
     (biff/join
      interpunct
-     (for [[href label] [["https://obryant.dev" "About"]
-                         ["mailto:hello@obryant.dev?subject=Yakread" "Contact"]
-                         ["/tos/" "Terms of Service"]
-                         ["/privacy/" "Privacy Policy"]]]
+     (for [[href label] [[about-url "About"]
+                         [contact-url "Contact"]
+                         [tos-url "Terms of Service"]
+                         [privacy-url "Privacy Policy"]]]
        [:a.underline {:href href :target "_blank"} label]))]
    (when show-recaptcha-message
      [:<>
@@ -592,7 +593,7 @@
      content
      [:.flex-grow]
      [:.flex-grow]
-     (footer {:dark-mode true :show-recaptcha-message false})
+     (footer ctx {:dark-mode true :show-recaptcha-message false})
      [:.h-4]]]))
 
 (def not-found-html

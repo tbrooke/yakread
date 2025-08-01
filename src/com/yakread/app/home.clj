@@ -61,7 +61,7 @@
     [:.flex-grow]
     [:.flex-grow]
     [:.sm:h-8.flex-shrink-0]
-    (ui/footer {:show-recaptcha-message true})
+    (ui/footer ctx {:show-recaptcha-message true})
     [:.h-4]]))
 
 (def signin-button-classes
@@ -304,7 +304,7 @@
           vert-sep
           [:.sm:px-4 testimonial]
           [:.h-6.grow]
-          (ui/footer {:show-recaptcha-message true})
+          (ui/footer ctx {:show-recaptcha-message true})
           [:.h-4]])))}])
 
 (def link-sent-route

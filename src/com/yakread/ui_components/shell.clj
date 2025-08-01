@@ -230,7 +230,8 @@
          :class class}
         (lib.icons/base icon {:class '[w-6 h-6]})])]]])
 
-(defresolver app-shell [{:app.shell/keys [app-head pages sidebar]
+(defresolver app-shell [ctx
+                        {:app.shell/keys [app-head pages sidebar]
                          :keys [session/signed-in]}]
   #::pco{:input [:app.shell/app-head
                  :app.shell/sidebar
@@ -265,7 +266,7 @@
                                   '[max-w-screen-sm]))}
            content
            [:.grow]
-           (ui/footer {:show-recaptcha-message (not signed-in)})]]])))})
+           (ui/footer ctx {:show-recaptcha-message (not signed-in)})]]])))})
 
 (def module
   {:resolvers [app-shell

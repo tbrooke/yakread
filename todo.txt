@@ -1,4 +1,3 @@
-- tos, privacy policy
 - deploy, migrate
   - look at s3 stuff
   - uncomment email queue thing

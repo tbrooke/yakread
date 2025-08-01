@@ -53,4 +53,8 @@
    :dev  "pk_test_51MHGP6BJUtt9Py7hMcKVUNW5xDVNXZJgrLzhjnQR9g8yDyprlWLz4pDB9ayazGBUqzSrcoXX7TVJcrPViLQJdVvz006LPmR1b5"}
  :stripe/webhook-secret #profile {:prod #biff/secret STRIPE_WEBHOOK_SECRET
                                   :dev  #biff/secret STRIPE_TEST_WEBHOOK_SECRET}
- :yakread/domain #biff/env DOMAIN}
+ :yakread/domain #biff/env DOMAIN
+ :yakread/tos-url #biff/env TOS_URL
+ :yakread/privacy-url #biff/env PRIVACY_URL
+ :yakread/about-url #biff/env ABOUT_URL
+ :yakread/contact-url #biff/env CONTACT_URL}
