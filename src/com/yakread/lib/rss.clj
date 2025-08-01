@@ -1,12 +1,12 @@
 (ns com.yakread.lib.rss
-  (:require [com.biffweb :as biff]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.java.io :as io]
-            [remus]
-            [clj-xpath.core :as xpath])
-  (:import [org.jsoup Jsoup]
-           [org.xml.sax SAXParseException]))
+  (:require
+   [clj-xpath.core :as xpath]
+   [clojure.java.io :as io]
+   [com.biffweb :as biff]
+   [remus])
+  (:import
+   [org.jsoup Jsoup]
+   [org.xml.sax SAXParseException]))
 
 (defn- remus-parse [response]
   (biff/catchall

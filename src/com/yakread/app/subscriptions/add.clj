@@ -1,15 +1,16 @@
 (ns com.yakread.app.subscriptions.add
-  (:require [clojure.data.generators :as gen]
-            [com.biffweb :as biff :refer [q <<-]]
-            [com.yakread.lib.content :as lib.content]
-            [com.yakread.lib.middleware :as lib.middle]
-            [com.yakread.lib.pathom :as lib.pathom :refer [?]]
-            [com.yakread.lib.route :refer [defget defpost href redirect]]
-            [com.yakread.lib.rss :as lib.rss]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.lib.user :as lib.user]
-            [com.yakread.routes :as routes]
-            [xtdb.api :as xt]))
+  (:require
+   [clojure.data.generators :as gen]
+   [com.biffweb :as biff :refer [q]]
+   [com.yakread.lib.content :as lib.content]
+   [com.yakread.lib.middleware :as lib.middle]
+   [com.yakread.lib.pathom :as lib.pathom :refer [?]]
+   [com.yakread.lib.route :refer [defget defpost href redirect]]
+   [com.yakread.lib.rss :as lib.rss]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.lib.user :as lib.user]
+   [com.yakread.routes :as routes]
+   [xtdb.api :as xt]))
 
 (let [response (fn [success username]
                  {:status 303

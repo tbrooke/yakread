@@ -1,9 +1,11 @@
 (ns com.yakread.lib.content
-  (:require [com.biffweb :as biff]
-            [cld.core :as cld]
-            [clojure.string :as str]
-            [pantomime.extract :as pantomime])
-  (:import [org.jsoup Jsoup]))
+  (:require
+   [cld.core :as cld]
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [pantomime.extract :as pantomime])
+  (:import
+   [org.jsoup Jsoup]))
 
 (defn truncate
   "Truncates a string s to be at most n characters long, appending an ellipsis if any characters were removed."

@@ -1,14 +1,13 @@
 (ns com.yakread.lib.pathom
-  (:require [com.biffweb :as biff]
-            [com.wsscode.pathom3.interface.eql :as eql]
-            [com.wsscode.pathom3.interface.smart-map :as psm]
-            [com.wsscode.pathom3.connect.operation :as pco]
-            [com.wsscode.pathom3.connect.runner :as runner]
-            [clojure.data.generators :as gen]
-            [com.yakread.lib.error :as lib.error]
-            [clojure.tools.logging :as log]
-            [taoensso.tufte :refer [p]]
-            [xtdb.api :as xt]))
+  (:require
+   [clojure.data.generators :as gen]
+   [com.biffweb :as biff]
+   [com.wsscode.pathom3.connect.operation :as pco]
+   [com.wsscode.pathom3.connect.runner :as runner]
+   [com.wsscode.pathom3.interface.eql :as eql]
+   [com.yakread.lib.error :as lib.error]
+   [taoensso.tufte :refer [p]]
+   [xtdb.api :as xt]))
 
 ;; TODO try to do this without monkey patching
 (alter-var-root #'runner/processor-exception (constantly (fn [_ ex] ex)))

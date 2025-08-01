@@ -1,24 +1,14 @@
 (ns com.yakread.app.subscriptions
-  (:require [cheshire.core :as cheshire]
-            [clojure.java.io :as io]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.edn :as edn]
-            [com.biffweb :as biff]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
-            [com.yakread.lib.htmx :as lib.htmx]
-            [com.yakread.lib.pathom :as lib.pathom]
-            [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.route :as lib.route :refer [action href defget defpost defpost-pathom]]
-            [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.lib.middleware :as lib.mid]
-            [com.yakread.routes :as routes]
-            [com.yakread.util :as util]
-            [xtdb.api :as xt]
-            [taoensso.tufte :as tufte]
-            [clojure.tools.logging :as log])
-  (:import [java.time Instant]))
+  (:require
+   [cheshire.core :as cheshire]
+   [clojure.string :as str]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
+   [com.yakread.lib.middleware :as lib.mid]
+   [com.yakread.lib.pipeline :as lib.pipe]
+   [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]
+   [xtdb.api :as xt]))
 
 (defpost-pathom unsubscribe
   [{:params/sub [:sub/id

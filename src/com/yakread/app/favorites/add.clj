@@ -1,18 +1,11 @@
 (ns com.yakread.app.favorites.add
-  (:require [clojure.string :as str]
-            [clojure.data.generators :as gen]
-            [com.biffweb :as biff :refer [q <<-]]
-            [com.yakread.lib.content :as lib.content]
-            [com.yakread.lib.core :as lib.core]
-            [com.yakread.lib.item :as lib.item]
-            [com.yakread.lib.middleware :as lib.middle]
-            [com.yakread.lib.pathom :as lib.pathom :refer [?]]
-            [com.yakread.lib.route :refer [defget defpost href redirect]]
-            [com.yakread.lib.rss :as lib.rss]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.lib.user :as lib.user]
-            [com.yakread.routes :as routes]
-            [xtdb.api :as xt]))
+  (:require
+   [com.yakread.lib.item :as lib.item]
+   [com.yakread.lib.middleware :as lib.middle]
+   [com.yakread.lib.pathom :as lib.pathom :refer [?]]
+   [com.yakread.lib.route :refer [defget defpost href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]))
 
 (defpost add-item
   (lib.item/add-item-pipeline

@@ -1,17 +1,25 @@
 (ns com.yakread.lib.smtp
-  (:require [com.biffweb :as biff]
-            [clojure.string :as str]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
-            [com.yakread.lib.core :as lib.core]
-            [rum.core :as rum]
-            [clojure.stacktrace :as st])
-  (:import [javax.mail.internet MimeMessage MimeMultipart MimeBodyPart InternetAddress MimeUtility]
-           [javax.mail Authenticator PasswordAuthentication Session Message$RecipientType Transport]
-           [org.subethamail.smtp.helper
-            SimpleMessageListenerAdapter
-            SimpleMessageListener]
-           [org.subethamail.smtp.server SMTPServer]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.yakread.lib.core :as lib.core]
+   [rum.core :as rum])
+  (:import
+   [javax.mail
+    Authenticator
+    Message$RecipientType
+    PasswordAuthentication
+    Session
+    Transport]
+   [javax.mail.internet
+    InternetAddress
+    MimeBodyPart
+    MimeMessage
+    MimeMultipart
+    MimeUtility]
+   [org.subethamail.smtp.helper SimpleMessageListener SimpleMessageListenerAdapter]
+   [org.subethamail.smtp.server SMTPServer]))
 
 (defn session [{:keys [host port username password]}]
   (let [props (merge {"mail.smtp.host" host

@@ -1,13 +1,15 @@
+- configure things to actually use s3
+- use cloud fns instead of local node
 - deploy, migrate
-  - look at s3 stuff
+  - get it up on another subdomain
+  - include java file thing in prod
   - uncomment email queue thing
     - still disable in dev
   - also uncomment feed syncing thing
   - also uncomment queue-add-candidate
-  - include java file thing in prod
-  - get it up on another subdomain
-  - import referral data
+  - import data
   - do discover recs approvals
+  - finish migration (domain etc)
 - error reporting
 - finish ads
     admin page approvals
@@ -19,6 +21,7 @@
   - delete your account
 
 backlog
+- keep changes to repl.clj out of source or something
 - look at webmanifest thing
 - gmail period thing
 - refactor model code to not treat user as a global

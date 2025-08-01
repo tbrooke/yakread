@@ -1,10 +1,14 @@
 (ns repl
   (:require
+   [clojure.java.io :as io]
    [com.biffweb :as biff :refer [q]]
    [com.yakread :as main]
    [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.smtp :as lib.smtp]
-   [xtdb.api :as xt]))
+   [taoensso.tufte :as tufte :refer [p]]
+   [clj-http.client :as http]
+   [xtdb.api :as xt]
+   [cheshire.core :as cheshire]))
 
 ;;;; export these vars to be used in rich-comment forms, e.g.
 
@@ -59,6 +63,11 @@
              :db.op/upsert {:user/email email}}
             kvs)]))
 
+(defmacro print-profiled [& body]
+  `(let [[result# pstats#] (tufte/profiled {} ~@body)]
+     (println (tufte/format-pstats @pstats#))
+     result#))
+
 (comment
 
   (main/refresh)
@@ -86,32 +95,20 @@
            [:p "how do you do "
             [:a {:href "https://example.com/"} "click me"]]]]})
 
+  (time
+   (with-context
+     (fn [{:keys [biff/db biff.xtdb/node session biff/secret mailersend/from mailersend/reply-to] :as ctx}]
+       (lib.pathom/process
+        (assoc ctx :reitit.core/match {:data {:name :foobar/baz}})
+        {:params/item {:item/id #uuid "857fa10e-06a8-4450-9cc8-e257af1ec999",
+                       :item/url "https://larrysanger.org/2022/03/why-neutrality/"}}
+        [:app.shell/app-shell
+         {:params/item [:item/ui-read-content
+                        :item/id
+                        (? :item/title)]}]
+        ))
+     :session-email "hello@obryant.dev"))
 
-  (context/with-context
-    (fn [{:keys [biff/db biff.xtdb/node session] :as ctx}]
-      #_(xt/entity db :admin/moderation)
-      #_(biff/lookup-all db :item.direct/candidate-status :blocked)
-
-      #_(time
-       (do
-         (mapv first
-               (q db
-                  '{:find [(pull direct-item [*])]
-                    :in [direct]
-                    :where [[usit :user-item/item any-item]
-                            [usit :user-item/favorited-at]
-                            [any-item :item/url url]
-                            [direct-item :item/url url]
-                            [direct-item :item/doc-type direct]]}
-                  :item/direct))
-         nil))
-
-
-      (tapped
-       (process ctx [{:user/ad-rec [:ad/title
-                                    :ad/click-cost]}]))
-
-
-      ))
+  (update-user! "hello@obryant.dev" {:user/timezone :db/dissoc})
 
   )

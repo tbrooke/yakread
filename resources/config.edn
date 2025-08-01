@@ -27,34 +27,45 @@
  :biff/host #profile {:dev "0.0.0.0" :default "localhost"}
  :biff/jwt-secret #biff/secret JWT_SECRET
  :biff/port 8080
- :biff.s3/origin "https://nyc3.digitaloceanspaces.com"
- :biff.s3/access-key #profile {:prod "DO00YP8ZPFEDAV32RH6W" :default "DO801VTL3JG3NXVC2UC7"}
- :biff.s3/secret-key #profile {:prod #biff/secret S3_SECRET_KEY_PROD
-                               :default #biff/secret S3_SECRET_KEY_DEV}
- :biff.s3/bucket #profile {:prod "yakread" :default "yakread-dev"}
- :biff.s3/edge #join ["https://" #ref [:biff.s3/bucket] ".nyc3.cdn.digitaloceanspaces.com"]
- ;; buckets:
- ;; - yakread: advertising image uploads
- ;; - yakread-content: parsed/processed html content
- ;; - yakread-emails: raw emails
- ;; - yakread-dev: advertising image uploads. TODO use for everything with prefixes.
- :mailersend/api-key #biff/secret MAILERSEND_API_KEY
- :mailersend/from #biff/env MAILERSEND_FROM
+
+ :mailersend/api-key  #biff/secret MAILERSEND_API_KEY
+ :mailersend/from     #biff/env MAILERSEND_FROM
  :mailersend/reply-to #biff/env MAILERSEND_REPLY_TO
+
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
- :recaptcha/site-key #biff/env RECAPTCHA_SITE_KEY
- :stripe/api-key #profile {;:prod #biff/secret STRIPE_SECRET_KEY
-                           :dev #biff/secret STRIPE_TEST_SECRET_KEY}
- :stripe/annual-price-id #profile {:prod "price_1Mh1vyBJUtt9Py7hcM1gQJzV" :dev "price_1MgwIoBJUtt9Py7hXs1OmEp2"}
- :stripe/quarter-price-id #profile {:prod "price_1Mh1vyBJUtt9Py7hZce550Me" :dev "price_1MgxWfBJUtt9Py7hWw1yTzgI"}
- :stripe/public-api-key
- #profile
-  {:prod "pk_live_51MHGP6BJUtt9Py7htxA1DHIdULLEEOVj3Fv4P3wDjqG6CLachguy5Z0MwmhwNbhmo19G4ohNpYThoKhUle7zR5aJ003tII8UAy"
-   :dev  "pk_test_51MHGP6BJUtt9Py7hMcKVUNW5xDVNXZJgrLzhjnQR9g8yDyprlWLz4pDB9ayazGBUqzSrcoXX7TVJcrPViLQJdVvz006LPmR1b5"}
- :stripe/webhook-secret #profile {:prod #biff/secret STRIPE_WEBHOOK_SECRET
-                                  :dev  #biff/secret STRIPE_TEST_WEBHOOK_SECRET}
- :yakread/domain #biff/env DOMAIN
- :yakread/tos-url #biff/env TOS_URL
+ :recaptcha/site-key   #biff/env RECAPTCHA_SITE_KEY
+
+ :stripe/api-key          #profile {;:prod #biff/secret STRIPE_SECRET_KEY_PROD
+                                    :dev #biff/secret STRIPE_SECRET_KEY_DEV}
+ :stripe/public-api-key   #profile {:prod #biff/env STRIPE_PUBLIC_API_KEY_PROD
+                                    :dev  #biff/env STRIPE_PUBLIC_API_KEY_DEV}
+ :stripe/webhook-secret   #profile {:prod #biff/secret STRIPE_WEBHOOK_SECRET_PROD
+                                    :dev  #biff/secret STRIPE_WEBHOOK_SECRET_DEV}
+ :stripe/annual-price-id  #profile {:prod #biff/env STRIPE_ANNUAL_PRICE_ID_PROD
+                                    :dev  #biff/env STRIPE_ANNUAL_PRICE_ID_DEV}
+ :stripe/quarter-price-id #profile {:prod #biff/env STRIPE_QUARTER_PRICE_ID_PROD
+                                    :dev  #biff/env STRIPE_QUARTER_PRICE_ID_DEV}
+
+ :yakread/domain      #biff/env DOMAIN
+ :yakread/tos-url     #biff/env TOS_URL
  :yakread/privacy-url #biff/env PRIVACY_URL
- :yakread/about-url #biff/env ABOUT_URL
- :yakread/contact-url #biff/env CONTACT_URL}
+ :yakread/about-url   #biff/env ABOUT_URL
+ :yakread/contact-url #biff/env CONTACT_URL
+
+ :yakread.s3.content/bucket     #biff/env S3_CONTENT_BUCKET
+ :yakread.s3.content/origin     #biff/env S3_CONTENT_ORIGIN
+ :yakread.s3.content/edge       #biff/env S3_CONTENT_EDGE
+ :yakread.s3.content/access-key #biff/env S3_CONTENT_ACCESS_KEY
+ :yakread.s3.content/secret-key #biff/secret S3_CONTENT_SECRET_KEY
+
+ :yakread.s3.emails/bucket     #biff/env S3_EMAILS_BUCKET
+ :yakread.s3.emails/origin     #biff/env S3_EMAILS_ORIGIN
+ :yakread.s3.emails/edge       #biff/env S3_EMAILS_EDGE
+ :yakread.s3.emails/access-key #biff/env S3_EMAILS_ACCESS_KEY
+ :yakread.s3.emails/secret-key #biff/secret S3_EMAILS_SECRET_KEY
+
+ :yakread.s3.images/bucket     #biff/env S3_IMAGES_BUCKET
+ :yakread.s3.images/origin     #biff/env S3_IMAGES_ORIGIN
+ :yakread.s3.images/edge       #biff/env S3_IMAGES_EDGE
+ :yakread.s3.images/access-key #biff/env S3_IMAGES_ACCESS_KEY
+ :yakread.s3.images/secret-key #biff/secret S3_IMAGES_SECRET_KEY}

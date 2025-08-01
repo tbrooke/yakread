@@ -3,19 +3,15 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [com.biffweb :as biff :refer [q]]
+   [com.biffweb :as biff]
    [com.wsscode.pathom3.error :as p.error]
    [com.yakread.lib.datastar :as lib.d*]
    [com.yakread.lib.form :as lib.form]
    [com.yakread.lib.route :refer [href]]
-   [com.yakread.lib.serialize :as lib.serialize]
    [com.yakread.routes :as routes]
-   [com.yakread.settings :as settings]
-   [com.yakread.util :as util]
    [ring.util.request :as ring-req]
    [rum.core :as rum]
-   [taoensso.tufte :as tufte]
-   [xtdb.api :as xt]) 
+   [taoensso.tufte :as tufte]) 
   (:import
    [com.stripe.net Webhook]))
 

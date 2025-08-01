@@ -1,9 +1,8 @@
 (ns com.yakread.lib.jetty
-  (:require [com.biffweb :as biff]
-            [clojure.tools.logging :as log]
-            [ring.adapter.jetty :as jetty])
-  (:import [org.eclipse.jetty.util.thread QueuedThreadPool]
-           [java.util.concurrent Executors]))
+  (:require
+   [clojure.tools.logging :as log]
+   [com.biffweb :as biff]
+   [ring.adapter.jetty :as jetty]))
 
 (defn use-jetty [{:biff/keys [host port handler]
                   :or {host "localhost"

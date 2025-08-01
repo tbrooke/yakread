@@ -1,15 +1,14 @@
 (ns com.yakread.smtp
-  (:require [clojure.data.generators :as gen]
-            [clojure.java.process :as proc]
-            [clojure.string :as str]
-            [com.biffweb :as biff]
-            [com.yakread.lib.content :as lib.content]
-            [com.yakread.lib.core :as lib.core]
-            [com.yakread.lib.smtp :as lib.smtp]
-            [com.yakread.lib.pipeline :as lib.pipe]
-            [rum.core :as rum]
-            [xtdb.api :as xt])
-  (:import (org.jsoup Jsoup)))
+  (:require
+   [clojure.data.generators :as gen]
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.yakread.lib.content :as lib.content]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.pipeline :as lib.pipe]
+   [com.yakread.lib.smtp :as lib.smtp]
+   [rum.core :as rum]
+   [xtdb.api :as xt]))
 
 (defn accept? [{:keys [biff/db biff.smtp/message yakread/domain]}]
   (and (or (not domain) (= domain (:domain message)))

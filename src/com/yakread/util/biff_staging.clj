@@ -1,18 +1,16 @@
 (ns com.yakread.util.biff-staging
-  (:require [buddy.core.mac :as mac]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [clojure.java.io :as io]
-            [clojure.walk :as walk]
-            [com.biffweb :as biff]
-            [com.wsscode.pathom3.connect.operation :as pco]
-            [com.wsscode.pathom3.connect.planner :as-alias pcp]
-            [malli.core :as malli]
-            [malli.registry :as malr]
-            [reitit.core :as reitit]
-            [xtdb.api :as xt]
-            [com.biffweb.protocols :as biff.proto]
-            [clojure.tools.namespace.find :as ns-find]))
+  (:require
+   [buddy.core.mac :as mac]
+   [clojure.java.io :as io]
+   [clojure.tools.logging :as log]
+   [clojure.tools.namespace.find :as ns-find]
+   [com.biffweb :as biff]
+   [com.biffweb.protocols :as biff.proto]
+   [com.wsscode.pathom3.connect.operation :as pco]
+   [com.wsscode.pathom3.connect.planner :as-alias pcp]
+   [malli.core :as malli]
+   [malli.registry :as malr]
+   [xtdb.api :as xt]))
 
 (defn doc-asts [{:keys [registry] :as malli-opts}]
   (for [schema-k (keys (malr/schemas (:registry malli-opts)))

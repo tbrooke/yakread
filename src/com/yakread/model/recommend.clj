@@ -2,15 +2,13 @@
   (:require
    [clojure.data.generators :as gen]
    [com.biffweb :as biff :refer [q]]
+   [com.rpl.specter :as sp]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.pathom :as lib.pathom]
-   [taoensso.tufte :refer [profile profiled p]]
-   [lambdaisland.uri :as uri]
-   [xtdb.api :as xt]
-   [clojure.data.priority-map :as pm]
    [edn-query-language.core :as eql]
-   [com.rpl.specter :as sp]))
+   [lambdaisland.uri :as uri]
+   [xtdb.api :as xt]))
 
 (def n-skipped (some-fn :item/n-skipped :item/n-skipped-with-digests))
 

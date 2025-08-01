@@ -1,12 +1,12 @@
 (ns com.yakread.app.home
-  (:require [clojure.string :as str]
-            [com.biffweb :as biff]
-            [com.yakread.lib.route :refer [href redirect]]
-            [com.yakread.lib.icons :as lib.icons]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.ui-components.shell :as ui.shell]
-            [com.yakread.routes :as routes]
-            [xtdb.api :as xt]))
+  (:require
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.yakread.lib.icons :as lib.icons]
+   [com.yakread.lib.route :refer [href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]
+   [xtdb.api :as xt]))
 
 (def home-head
   [[:link {:rel "preconnect" :href "https://fonts.googleapis.com"}]

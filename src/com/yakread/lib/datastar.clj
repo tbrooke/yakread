@@ -1,9 +1,9 @@
 (ns com.yakread.lib.datastar
-  (:require [com.biffweb :as biff]
-            [clojure.java.io :as io]
-            [ring.core.protocols :as rp]
-            [rum.core :as rum]
-            [cheshire.core :as cheshire]))
+  (:require
+   [cheshire.core :as cheshire]
+   [clojure.java.io :as io]
+   [ring.core.protocols :as rp]
+   [rum.core :as rum]))
 
 (defn fmt-event [event]
   (str "event: datastar-" (:name event) "\n"

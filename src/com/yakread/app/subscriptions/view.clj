@@ -1,22 +1,11 @@
 (ns com.yakread.app.subscriptions.view
-  (:require [clojure.string :as str]
-            [cheshire.core :as cheshire]
-            [com.biffweb :as biff :refer [<<-]]
-            [com.yakread.util.biff-staging :as biffs]
-            [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
-            [com.yakread.lib.content :as lib.content]
-            [com.yakread.lib.htmx :as lib.htmx]
-            [com.yakread.lib.icons :as lib.icons]
-            [com.yakread.lib.middleware :as lib.middle]
-            [com.yakread.lib.pipeline :as lib.pipe]
-            [com.yakread.lib.route :as lib.route :refer [defget defpost-pathom href ?]]
-            [com.yakread.lib.serialize :as lib.serialize]
-            [com.yakread.lib.ui :as ui]
-            [com.yakread.routes :as routes]
-            [com.yakread.model.subscription :as model.sub]
-            [lambdaisland.uri :as uri]
-            [xtdb.api :as xt]
-            [rum.core :as rum]))
+  (:require
+   [com.biffweb :as biff]
+   [com.yakread.lib.middleware :as lib.middle]
+   [com.yakread.lib.pipeline :as lib.pipe]
+   [com.yakread.lib.route :as lib.route :refer [? defget defpost-pathom href]]
+   [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]))
 
 (defpost-pathom mark-read
   [{:session/user [:xt/id]}

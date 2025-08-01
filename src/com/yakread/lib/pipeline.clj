@@ -8,7 +8,6 @@
    [com.yakread.lib.datastar :as lib.d*]
    [com.yakread.lib.error :as lib.error]
    [com.yakread.lib.pathom :as lib.pathom]
-   [com.yakread.lib.s3 :as lib.s3]
    [remus]
    [xtdb.api :as xt]))
 
@@ -66,6 +65,16 @@
   (constantly
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
+
+#_(defn cloud-fn [{:cloud-fns/keys [base-url url secret]} endpoint opts]
+  (let [base-url (or base-url
+                     (str/replace url #"sample/hello$" "yakread/"))]
+    (http/post (str base-url endpoint)
+               {:headers {"X-Require-Whisk-Auth" secret}
+                :as :json
+                :form-params opts
+                :socket-timeout 10000
+                :connection-timeout 10000})))
 
 (defn call-js [fn-name opts]
   (:body

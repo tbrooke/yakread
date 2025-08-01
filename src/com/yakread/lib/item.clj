@@ -1,11 +1,12 @@
 (ns com.yakread.lib.item
-  (:require [clojure.data.generators :as gen]
-            [clojure.string :as str]
-            [com.biffweb :as biff]
-            [com.yakread.lib.route :refer [href hx-redirect]]
-            [com.yakread.lib.core :as lib.core]
-            [com.yakread.lib.content :as lib.content]
-            [com.yakread.lib.rss :as lib.rss]))
+  (:require
+   [clojure.data.generators :as gen]
+   [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.yakread.lib.content :as lib.content]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.route :refer [hx-redirect]]
+   [com.yakread.lib.rss :as lib.rss]))
 
 (def source-id (some-fn :item.feed/feed :item.email/sub))
 

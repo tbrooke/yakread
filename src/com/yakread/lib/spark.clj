@@ -1,12 +1,10 @@
 (ns com.yakread.lib.spark
   (:require
    [clojure.tools.logging :as log]
-   [com.biffweb :as biff]
    [com.wsscode.pathom3.connect.indexes :as pci]
    [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
    [com.yakread.lib.ads :as lib.ads]
-   [com.yakread.lib.core :as lib.core]
-   [com.yakread.lib.pathom :refer [process ?]]
+   [com.yakread.lib.pathom :refer [? process]]
    [xtdb.api :as xt :refer [q]])
   (:import
    [com.yakread AverageRating]

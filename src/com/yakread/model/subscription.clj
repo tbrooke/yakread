@@ -9,7 +9,6 @@
    [com.yakread.lib.serialize :as lib.serialize]
    [com.yakread.lib.user-item :as lib.user-item]
    [com.yakread.util.biff-staging :as biffs]
-   [taoensso.tufte :refer [p]]
    [xtdb.api :as xt]))
 
 (defresolver user-subs [{:keys [biff/db]} {:keys [user/id]}]

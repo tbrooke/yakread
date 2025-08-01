@@ -1,5 +1,6 @@
 (ns com.yakread.model.params
-  (:require [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]))
+  (:require
+   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]))
 
 (defresolver redirect-url [{:keys [com.yakread/sign-redirect params]} {}]
   #::pco{:output [:params/redirect-url]}
