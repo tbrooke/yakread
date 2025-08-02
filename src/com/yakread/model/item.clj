@@ -205,12 +205,11 @@
                  (? :item/url)]
          :output [:item/content]}
   (cond
-    ;; TODO actually use s3 when configured
     content-key
     {:item/content (:body
-                    (or (biff/catchall
-                         (lib.s3/mock-request ctx {:method "GET" :key (str content-key)}))
-                        (biff/s3-request ctx {:method "GET" :bucket "yakread-content" :key (str content-key)})))}
+                    (lib.s3/request ctx {:config-ns 'yakread.s3.content
+                                         :method "GET"
+                                         :key (str content-key)}))}
 
     url
     {:item/content (rum/render-static-markup [:a {:href url} url])}))

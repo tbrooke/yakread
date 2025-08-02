@@ -1,6 +1,8 @@
 (ns com.yakread.lib.s3
-  (:require [clojure.java.io :as io]
-            [clojure.edn :as edn]))
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [com.biffweb :as biff]))
 
 ;; use the filesystem instead of S3
 (defn mock-request [_ input]
@@ -10,3 +12,15 @@
                   (pr-str (select-keys input [:headers :body])))
       "GET" (edn/read-string (slurp file))
       "DELETE" (do (.delete file) nil))))
+
+(defn translate-config [{:keys [biff.s3/config-ns biff/secret] :as ctx}]
+  (cond-> ctx
+    config-ns (merge (biff/select-ns-as ctx config-ns 'biff.s3)
+                     {:biff/secret
+                      (fn [k] (secret (get {:biff.s3/secret-key
+                                            (keyword (str config-ns) "secret-key")}
+                                           k
+                                           k)))})))
+
+(defn request [ctx input]
+  (biff/s3-request (translate-config (merge ctx (biff/select-ns-as input nil 'biff.s3)))))

@@ -57,8 +57,8 @@
                 sub-id (or (:xt/id sub) :db.id/new-sub)
                 first-header (fn [header-name]
                                (some lib.smtp/decode-header (get-in message [:headers header-name])))]
-            {:biff.pipe/next [(lib.pipe/s3 raw-content-key (:raw message) "text/plain")
-                              (lib.pipe/s3 parsed-content-key html "text/html")
+            {:biff.pipe/next [(lib.pipe/s3 'yakread.s3.emails raw-content-key (:raw message) "text/plain")
+                              (lib.pipe/s3 'yakread.s3.content parsed-content-key html "text/html")
                               :biff.pipe/tx]
              :biff.pipe.tx/input (concat
                                   [(lib.core/some-vals

@@ -69,7 +69,8 @@
                      (when-not inline-content
                        {:biff.pipe/next
                         [{:biff.pipe/current :biff.pipe/s3
-                          :biff.pipe.s3/input {:method  "PUT"
+                          :biff.pipe.s3/input {:config-ns 'yakread.s3.content
+                                               :method  "PUT"
                                                :key     (str (:item/content-key item))
                                                :body    content
                                                :headers {"x-amz-acl"    "private"

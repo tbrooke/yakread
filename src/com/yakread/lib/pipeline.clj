@@ -8,6 +8,7 @@
    [com.yakread.lib.datastar :as lib.d*]
    [com.yakread.lib.error :as lib.error]
    [com.yakread.lib.pathom :as lib.pathom]
+   [com.yakread.lib.s3 :as lib.s3]
    [remus]
    [xtdb.api :as xt]))
 
@@ -132,8 +133,7 @@
                       ;; TODO use "the cloud" if configured
                       (assoc ctx :yakread.pipe.js/output (call-js fn-name input)))
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
-                   ;; TODO use config to decide whether to use s3 or filesystem
-                   (assoc ctx :biff.pipe.s3/output (biff/s3-request #_lib.s3/mock-request ctx input)))
+                   (assoc ctx :biff.pipe.s3/output (lib.s3/request ctx input)))
    :biff.pipe/sleep (fn [{:keys [biff.pipe.sleep/ms] :as ctx}]
                       (Thread/sleep ms)
                       ctx)
@@ -142,16 +142,16 @@
                               (.drainTo queue ll)
                               (assoc ctx :biff/jobs (into [job] ll))))})
 
-(defn s3 [k & [body content-type]]
+(defn s3 [config-ns k & [body content-type]]
   {:biff.pipe/current  :biff.pipe/s3
-   :biff.pipe.s3/input (if body
-                         {:method  "PUT"
-                          :key     (str k)
-                          :body    body
-                          :headers {"x-amz-acl"    "private"
-                                    "content-type" content-type}}
-                         {:method "GET"
-                          :key    (str k)})})
+   :biff.pipe.s3/input (merge {:key (str k)
+                               :config-ns config-ns}
+                              (if body
+                                {:method  "PUT"
+                                 :body    body
+                                 :headers {"x-amz-acl"    "private"
+                                           "content-type" content-type}}
+                                {:method "GET"}))})
 
 (defn tx [input-tx]
   {:biff.pipe/current :biff.pipe/tx

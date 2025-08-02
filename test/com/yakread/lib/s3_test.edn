@@ -1,0 +1,27 @@
+{:require
+ [[com.yakread.lib.s3 :refer :all]
+  [com.yakread.lib.test :as t]
+  [clojure.data.generators :as gen]],
+ :tests
+ [{:eval
+   (dissoc
+    (translate-config
+     {:biff.s3/bucket "default-bucket",
+      :com.example/bucket "different-bucket",
+      :biff.s3/config-ns (symbol "com.example")})
+    :biff/secret),
+   :result
+   {:biff.s3/bucket "different-bucket",
+    :com.example/bucket "different-bucket",
+    :biff.s3/config-ns com.example}}
+  _
+  {:eval
+   ((:biff/secret
+     (translate-config
+      {:biff/secret
+       {:biff.s3/secret-key "default-secret",
+        :com.example/secret-key "different-secret"},
+       :biff.s3/config-ns (symbol "com.example")}))
+    :biff.s3/secret-key),
+   :result "different-secret"}
+  _]}

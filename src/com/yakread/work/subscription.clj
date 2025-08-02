@@ -142,7 +142,8 @@
            s3-inputs (for [{:item/keys [content content-key]} items
                            :when content-key]
                        {:biff.pipe/current  :biff.pipe/s3
-                        :biff.pipe.s3/input {:method  "PUT"
+                        :biff.pipe.s3/input {:config-ns 'yakread.s3.content
+                                             :method  "PUT"
                                              :key     (str content-key)
                                              :body    content
                                              :headers {"x-amz-acl"    "private"

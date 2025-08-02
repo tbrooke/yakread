@@ -199,12 +199,13 @@
 
 (defpost upload-image
   :start
-  (fn [{:keys [biff.s3/edge biff.form/params multipart-params]}]
+  (fn [{:keys [yakread.s3.images/edge biff.form/params multipart-params]}]
     (let [image-id (gen/uuid)
           file-info (get multipart-params "image-file")
           url (str edge "/" image-id)]
       {:biff.pipe/next [:biff.pipe/s3 :biff.pipe/http :biff.pipe/pathom :render]
-       :biff.pipe.s3/input {:method "PUT"
+       :biff.pipe.s3/input {:config-ns 'yakread.s3.images
+                            :method "PUT"
                             :key (str image-id)
                             :body (:tempfile file-info)
                             :headers {"x-amz-acl" "public-read"

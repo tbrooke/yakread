@@ -1,5 +1,5 @@
-- configure things to actually use s3
 - use cloud fns instead of local node
+- change hardcoded domain values to use config
 - deploy, migrate
   - get it up on another subdomain
   - include java file thing in prod
