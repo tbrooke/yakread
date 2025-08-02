@@ -27,6 +27,9 @@
   (println "Run `stripe login` if this fails")
   (process/shell {} "stripe" "listen" "--forward-to" "localhost:8080/stripe/webhook"))
 
+(defn fn-deploy []
+  (process/shell {} "doctl" "serverless" "deploy" "cloud-fns"))
+
 (defn dev []
   ;; TODO run this in prod
   ;; also this won't be on the classpath on the first run
@@ -43,6 +46,7 @@
 (def custom-tasks
   {"prod-repl"   #'prod-repl
    "test-stripe" #'test-stripe
-   "dev"         #'dev})
+   "dev"         #'dev
+   "fn-deploy"   #'fn-deploy})
 
 (def tasks (merge tasks/tasks custom-tasks))

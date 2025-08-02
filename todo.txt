@@ -1,4 +1,3 @@
-- dev tasks for deploying/developing cloud fns
 - change hardcoded domain values to use config
 - deploy, migrate
   - get it up on another subdomain
