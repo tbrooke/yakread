@@ -67,24 +67,23 @@
    {:biff.pipe/next [:biff.pipe/pathom next-state]
     :biff.pipe.pathom/query query}))
 
-#_(defn cloud-fn [{:cloud-fns/keys [base-url url secret]} endpoint opts]
-  (let [base-url (or base-url
-                     (str/replace url #"sample/hello$" "yakread/"))]
-    (http/post (str base-url endpoint)
-               {:headers {"X-Require-Whisk-Auth" secret}
-                :as :json
-                :form-params opts
-                :socket-timeout 10000
-                :connection-timeout 10000})))
-
-(defn call-js [fn-name opts]
-  (:body
-   (cheshire/parse-string
-    (biff/sh
-     "node" "-e" "console.log(JSON.stringify(require('./main.js').main(JSON.parse(fs.readFileSync(0)))))"
-     :dir (str "cloud-fns/packages/yakread/" fn-name)
-     :in (cheshire/generate-string opts))
-    true)))
+(defn call-js [{:biff/keys [secret]
+                :yakread.pipe.js/keys [base-url fn-name input local] :as ctx}]
+  (let [result (if local
+                 (-> (biff/sh
+                      "node" "-e" "console.log(JSON.stringify(require('./main.js').main(JSON.parse(fs.readFileSync(0)))))"
+                      :dir (str "cloud-fns/packages/yakread/" fn-name)
+                      :in (cheshire/generate-string input))
+                     (cheshire/parse-string true)
+                     :body)
+                 (-> (str base-url fn-name)
+                     (http/post {:headers {"X-Require-Whisk-Auth" secret}
+                                 :as :json
+                                 :form-params input
+                                 :socket-timeout 10000
+                                 :connection-timeout 10000})
+                     :body))]
+    (assoc ctx :yakread.pipe.js/output result)))
 
 (def global-handlers
   {:biff.pipe/http (fn [{:biff.pipe.http/keys [input] :as ctx}]
@@ -129,9 +128,7 @@
                              (assoc ctx
                                     :com.yakread.pipe.remus/output
                                     (update (remus/parse-url url opts) :response dissoc :http-client :body)))
-   :yakread.pipe/js (fn [{:yakread.pipe.js/keys [fn-name input] :as ctx}]
-                      ;; TODO use "the cloud" if configured
-                      (assoc ctx :yakread.pipe.js/output (call-js fn-name input)))
+   :yakread.pipe/js call-js
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
                    (assoc ctx :biff.pipe.s3/output (lib.s3/request ctx input)))
    :biff.pipe/sleep (fn [{:keys [biff.pipe.sleep/ms] :as ctx}]
