@@ -13,7 +13,6 @@
    [:link {:rel "preconnect" :href "https://fonts.gstatic.com" :crossorigin true}]
    [:link {:href "https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap"
            :rel "stylesheet"}]
-   [:script {:src "https://pl.tfos.co/js/script.js" :defer "defer" :data-domain "yakread.com"}]
    [:script {:src "https://www.google.com/recaptcha/api.js" :async "async" :defer "defer"}]])
 
 (def signin-head
@@ -61,7 +60,7 @@
     [:.flex-grow]
     [:.flex-grow]
     [:.sm:h-8.flex-shrink-0]
-    (ui/footer ctx {:show-recaptcha-message true})
+    (ui/footer {:show-recaptcha-message true})
     [:.h-4]]))
 
 (def signin-button-classes
@@ -117,7 +116,7 @@
   ["/verify-code"
    {:name ::verify-code
     :get
-    (fn verify-code [{:keys [recaptcha/site-key params] :as ctx}]
+    (fn verify-code [{:keys [biff/domain recaptcha/site-key params] :as ctx}]
       (base-signin-page
        (assoc ctx
               :base/title "Sign in | Yakread"
@@ -129,7 +128,7 @@
          (biff/recaptcha-callback "verifyCode" "verify-code-form")
          [:label.block {:for "code"} "Enter the 6-digit code we sent to "
           ;; Some people try to sign in using their @yakread.com address as a username.
-          (if (some-> (:email params) str/lower-case (str/includes? "@yakread.com"))
+          (if (some-> (:email params) str/lower-case (str/includes? (str "@" domain)))
             "your email address"
             (:email params)) ":"]
          [:.h-3]
@@ -286,7 +285,7 @@
   ["/"
    {:name ::home-page-route
     :get
-    (fn home-page [{:keys [session biff/db query-string params] :as ctx}]
+    (fn home-page [{:keys [session biff/db query-string params yakread/analytics-snippet] :as ctx}]
       (if (and (not (:noredirect params))
                (some->> (:uid session) (xt/entity db)))
         {:status 303
@@ -304,26 +303,43 @@
           vert-sep
           [:.sm:px-4 testimonial]
           [:.h-6.grow]
-          (ui/footer ctx {:show-recaptcha-message true})
-          [:.h-4]])))}])
+          (ui/footer {:show-recaptcha-message true})
+          [:.h-4]]
+         [:div (biff/unsafe analytics-snippet)])))}])
 
 (def link-sent-route
   ["/link-sent"
    {:name ::link-sent-route
     :get
-    (fn link-sent [{:keys [params] :as ctx}]
+    (fn link-sent [{:keys [biff/domain params] :as ctx}]
       (ui/plain-page
        (assoc ctx :base/title "Sign up | Yakread")
        [:.text-2xl.font-bold "Check your inbox"]
        [:.h-3]
        [:.text-lg
         (if (and (:email params)
-                 (not (str/includes? (str/lower-case (:email params)) "@yakread.com")))
+                 (not (str/includes? (str/lower-case (:email params)) (str "@" domain))))
           [:<> "We've sent a sign-in link to " (:email params) "."]
           "We've sent you a sign-in link.")]))}])
+
+
+(defn info-route [href config-key]
+  [href
+   {:get (fn [{url config-key}]
+           {:status 303
+            :headers {"location" url}})}])
+
+(def about-route (info-route "/about" :yakread/about-url))
+(def contact-route (info-route "/contact" :yakread/contact-url))
+(def tos-route (info-route "/tos" :yakread/tos-url))
+(def privacy-route (info-route "/privacy" :yakread/privacy-url))
 
 (def module
   {:routes [home-page-route
             link-sent-route
             signin-page-route
-            verify-code-route]})
+            verify-code-route
+            about-route
+            contact-route
+            tos-route
+            privacy-route]})

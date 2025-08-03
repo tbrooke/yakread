@@ -14,14 +14,14 @@
 
 (defn add-item-pipeline* [{:keys [get-url on-error on-success]}]
   {:start
-   (fn [{:keys [biff/db] :as ctx}]
+   (fn [{:biff/keys [db base-url] :as ctx}]
      (let [url (str/trim (get-url ctx))]
        (if-some [item-id (biff/lookup-id db :item/url url :item/doc-type :item/direct)]
          (on-success ctx {:item/id item-id :item/url url})
          {:biff.pipe/next       [:biff.pipe/http :handle-http]
           :biff.pipe.http/input {:url url
                                  :method  :get
-                                 :headers {"User-Agent" "https://yakread.com/"}
+                                 :headers {"User-Agent" base-url}
                                  :socket-timeout 5000
                                  :connection-timeout 5000}
           :biff.pipe/catch      :biff.pipe/http

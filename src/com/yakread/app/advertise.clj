@@ -12,6 +12,7 @@
    [com.yakread.lib.route :as lib.route :refer [defget defget-pipe defpost
                                                 defpost-pathom href]]
    [com.yakread.lib.ui :as ui]
+   [com.yakread.routes :as routes]
    [rum.core :as rum]))
 
 (def required-field->label
@@ -199,7 +200,7 @@
 
 (defpost upload-image
   :start
-  (fn [{:keys [yakread.s3.images/edge biff.form/params multipart-params]}]
+  (fn [{:keys [biff/base-url yakread.s3.images/edge biff.form/params multipart-params]}]
     (let [image-id (gen/uuid)
           file-info (get multipart-params "image-file")
           url (str edge "/" image-id)]
@@ -216,7 +217,7 @@
                                                    :fit "cover"
                                                    :a "attention"})
                               :method  :get
-                              :headers {"User-Agent" "https://yakread.com/"}}
+                              :headers {"User-Agent" base-url}}
        :biff.form/params (assoc params :ad/image-url url)
        :biff.pipe.pathom/query [{::form-ad [:ad/ui-preview-card]}]
        ::url url}))
@@ -513,24 +514,28 @@
            (:ad/ui-preview-card ad)
            (:ad/ui-preview-card anon))]]))))
 
-(def policy-page
-  (ui/plain-page
-   {:base/title "Ad content policy | Yakread"}
-   [:div.text-black
-    (ui/page-well
-     (ui/section
-      {:title "Ad content policy"}
-      [:div.prose.text-left
-       [:p "I reserve the right to reject an ad for any reason, including but not limited to:"]
-       [:ul
-        [:li "It's clickbait, ragebait, or another form of low-quality content."]
-        [:li "It's NSFW."]
-        [:li "It's advertising a competitor to Yakread (i.e. another reading app)."]
-        [:li "I don't think it's a good fit for Yakread subscribers."]]
-       [:p "If you're unsure about something, feel free to "
-        [:a.link {:href "mailto:hello@obryant.dev"} "contact me"] "."]]))]))
+;; TODO move this out of source control in some way
+(def policy-route
+  ["/ad-policy"
+   {:get (fn []
+           (ui/plain-page
+            {:base/title "Ad content policy | Yakread"}
+            [:div.text-black
+             (ui/page-well
+              (ui/section
+               {:title "Ad content policy"}
+               [:div.prose.text-left
+                [:p "I reserve the right to reject an ad for any reason, including but not limited to:"]
+                [:ul
+                 [:li "It's clickbait, ragebait, or another form of low-quality content."]
+                 [:li "It's NSFW."]
+                 [:li "It's advertising a competitor to Yakread (i.e. another reading app)."]
+                 [:li "I don't think many Yakread subscribers would be interested."]]
+                [:p "If you're unsure about something, feel free to "
+                 [:a.link {:href (href routes/contact)} "contact me"] "."]]))]))}])
 
 (def module {:routes [page-route
+                      policy-route
                       ["" {:middleware [lib.mid/wrap-signed-in]}
                        save-ad
                        upload-image
@@ -540,5 +545,4 @@
                        add-payment-method
                        receive-payment-method
                        delete-payment-method]]
-             :static {"/ad-policy/" policy-page}
              :resolvers [form-ad]})

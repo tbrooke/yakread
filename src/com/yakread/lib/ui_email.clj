@@ -57,7 +57,7 @@
         :href href}
        [:span {:style {:vertical-align "middle"}} label]]]]]])
 
-(defn html [& {:keys [title content unsubscribe-link]}]
+(defn html [& {:keys [logo-on-click logo-src title content unsubscribe-url]}]
   (str
    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
    (rum/render-static-markup
@@ -78,8 +78,8 @@
       (centered
        [:div {:style {:background-color "#222"
                       :line-height "0"}}
-        [:a {:href "https://yakread.com"}
-         [:img {:src "https://yakread.com/img/logo-navbar.png"
+        [:a {:href logo-on-click}
+         [:img {:src logo-src
                 :alt "Yakread"
                 :style {:height "30px"
                         :padding "10px 15px"}}]]]
@@ -87,25 +87,25 @@
                       :color "#3b3b3b"
                       :padding "16px"}}
         content]
-       (when unsubscribe-link
+       (when unsubscribe-url
          [:div {:style {:padding "12px"
                         :font-size "85%"
                         :color "#3b3b3b"}}
-          [:div [:a {:href unsubscribe-link
+          [:div [:a {:href unsubscribe-url
                      :style {:text-decoration "underline"
                              :color "#3b3b3b"}}
                  "Unsubscribe"]
            ". " address "."]]))]])))
 
-(defn text [{:keys [unsubscribe-link content]}]
-  (str "Yakread — https://yakread.com/\n"
+(defn text [{:keys [logo-on-click unsubscribe-url content]}]
+  (str "Yakread — " logo-on-click "/\n"
        "\n\n"
        (apply str content)
        "\n\n"
        "138 E 12300 S, Unit #654, Draper, UT 84020.\n"
-       (when unsubscribe-link
+       (when unsubscribe-url
          (str "Unsubscribe: "
-              unsubscribe-link
+              unsubscribe-url
               "\n"))))
 
 (defn h-space [height]

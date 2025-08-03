@@ -157,7 +157,7 @@
 
 (defresolver html [{:biff/keys [base-url]}
                    {:digest/keys [subject-item
-                                  unsubscribe-link]
+                                  unsubscribe-url]
                     ::keys [settings
                             sponsored
                             subscriptions
@@ -171,7 +171,7 @@
                 (? ::bookmarks)
                 (? ::icymi)
                 (? ::discover)
-                :digest/unsubscribe-link]
+                :digest/unsubscribe-url]
    ::pco/output [:digest/html]}
   (when-some [sections (->> [sponsored
                              subscriptions
@@ -182,8 +182,10 @@
                             not-empty)]
     {:digest/html
      (uie/html
-      {:title (get subject-item :item/clean-title "Your reading digest")
-       :unsubscribe-link unsubscribe-link
+      {:logo-on-click base-url
+       :logo-src (str base-url "/img/logo-navbar.png")
+       :title (get subject-item :item/clean-title "Your reading digest")
+       :unsubscribe-url unsubscribe-url
        :content [:<>
                  settings
                  (uie/h-space "24px")

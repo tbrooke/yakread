@@ -12,6 +12,7 @@
  :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.spark "error"
  :biff.system-properties/org.slf4j.simpleLogger.log.org.sparkproject "error"
  :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.http.client "error"
+ :biff.system-properties/clojure.main.report "stderr"
  :biff.tasks/css-output "target/resources/public/css/main.css"
  :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]
  :biff.tasks/deploy-untracked-files [#ref [:biff.tasks/css-output] "config.env"]
@@ -23,6 +24,7 @@
  :biff.xtdb/dir "storage/xtdb"
  :biff.xtdb/topology #keyword #or [#profile {:prod #biff/env "PROD_XTDB_TOPOLOGY" :default #biff/env "XTDB_TOPOLOGY"}
                                    "standalone"]
+ :biff/domain #biff/env DOMAIN
  :biff/base-url #profile {:prod #join ["https://" #biff/env DOMAIN] :default "http://localhost:8080"}
  :biff/host #profile {:dev "0.0.0.0" :default "localhost"}
  :biff/jwt-secret #biff/secret JWT_SECRET
@@ -46,12 +48,12 @@
  :stripe/quarter-price-id #profile {:prod #biff/env STRIPE_QUARTER_PRICE_ID_PROD
                                     :dev  #biff/env STRIPE_QUARTER_PRICE_ID_DEV}
 
- :yakread/domain      #biff/env DOMAIN
- :yakread/tos-url     #biff/env TOS_URL
- :yakread/privacy-url #biff/env PRIVACY_URL
- :yakread/about-url   #biff/env ABOUT_URL
- :yakread/contact-url #biff/env CONTACT_URL
-
+ :yakread/domain            #biff/env DOMAIN
+ :yakread/tos-url           #biff/env TOS_URL
+ :yakread/privacy-url       #biff/env PRIVACY_URL
+ :yakread/about-url         #biff/env ABOUT_URL
+ :yakread/contact-url       #biff/env CONTACT_URL
+ :yakread/analytics-snippet #biff/env ANALYTICS_SNIPPET
 
  :biff.s3/origin            #biff/env S3_DEFAULT_ORIGIN
  :biff.s3/access-key        #biff/env S3_DEFAULT_ACCESS_KEY

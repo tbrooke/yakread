@@ -100,7 +100,7 @@
                   (digest-url {:user/id user-id}) "\n"))))}))
 
 (defresolver text [{:keys [biff/base-url]}
-                   {:digest/keys [unsubscribe-link]
+                   {:digest/keys [unsubscribe-url]
                     ::keys [settings
                             sponsored
                             subscriptions
@@ -113,7 +113,7 @@
                 (? ::bookmarks)
                 (? ::icymi)
                 (? ::discover)
-                :digest/unsubscribe-link]
+                :digest/unsubscribe-url]
    ::pco/output [:digest/text]}
   (when-some [sections (->> [sponsored
                              subscriptions
@@ -124,7 +124,7 @@
                             not-empty)]
     {:digest/text
      (uie/text
-      {:unsubscribe-link unsubscribe-link
+      {:unsubscribe-url unsubscribe-url
        :content (str settings
                      "\n\n"
                      "Open Yakread: " base-url (href routes/for-you) "\n"

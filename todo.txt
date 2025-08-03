@@ -1,4 +1,6 @@
-- change hardcoded domain values to use config
+- make transactional emails use mailersend
+- check pwa stuff
+- set up domain or something for mailersend?
 - deploy, migrate
   - get it up on another subdomain
   - include java file thing in prod
@@ -20,6 +22,7 @@
   - delete your account
 
 backlog
+- cache all assets in s3
 - keep changes to repl.clj out of source or something
 - look at webmanifest thing
 - gmail period thing

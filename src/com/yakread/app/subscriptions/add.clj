@@ -71,11 +71,11 @@
 
 (defpost add-rss
   :start
-  (fn [{{:keys [url]} :params}]
+  (fn [{:keys [biff/base-url] {:keys [url]} :params}]
     {:biff.pipe/next       [:biff.pipe/http :add-urls]
      :biff.pipe.http/input {:url     (lib.content/add-protocol url)
                             :method  :get
-                            :headers {"User-Agent" "https://yakread.com/"}}
+                            :headers {"User-Agent" base-url}}
      :biff.pipe/catch      :biff.pipe/http})
 
   :add-urls
@@ -117,7 +117,7 @@
                        (? :user/email-username)
                        (? :user/suggested-email-username)]}]
 
-  (fn [{:keys [params] :as ctx}
+  (fn [{:biff/keys [domain base-url] :keys [params] :as ctx}
        {:keys [app.shell/app-shell] user :user/current}]
     (app-shell
      {:title "Add subscriptions"}
@@ -130,14 +130,14 @@
         {:title "Newsletters"}
         (if-some [username (:user/email-username user)]
           [:div "Sign up for newsletters with "
-           [:span.font-semibold username "@yakread.com"]]
+           [:span.font-semibold username "@" domain]]
           (biff/form
             {:action (href set-username)
              :hx-indicator "#username-indicator"}
             (ui/form-input
              {:ui/label "Username"
               :ui/description "You can subscribe to newsletters after you pick a username."
-              :ui/postfix "@yakread.com"
+              :ui/postfix (str "@" domain)
               :ui/submit-text "Save"
               :ui/indicator-id "username-indicator"
               :ui/error (when (= (:error params) "username-unavailable")
@@ -166,7 +166,10 @@
               [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
                    bookmarks menu:"]
               [:p.my-6 [:a.text-xl.text-blue-600
-                        {:href "javascript:window.location=\"https://yakread.com/subscriptions/add?url=\"+encodeURIComponent(document.location)"}
+                        {:href (str "javascript:window.location=\""
+                                    base-url
+                                    (href page-route)
+                                    "?url=\"+encodeURIComponent(document.location)")}
                         "Subscribe | Yakread"]]
               [:p.mb-0 "Then click the bookmarklet to subscribe to the RSS feed for the current page."]])
             (ui/form-input

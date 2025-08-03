@@ -144,30 +144,6 @@
                         :clamp  true
                         :image-url image-url})])})
 
-(defresolver ad-base-card
-  [{:ad/keys [url-with-protocol title description image-url host]
-    :or {title "Lorem ipsum dolor sit amet"
-         description (str "Consectetur adipiscing elit, sed do eiusmod "
-                          "tempor incididunt ut labore et dolore magna aliqua. "
-                          "Ut enim ad minim veniam, quis nostrud exercitation "
-                          "ullamco laboris nisi ut aliquip ex ea commodo consequat.")
-         url-with-protocol "https://example.com"
-         host "example.com"
-         image-url "https://yakread.com/android-chrome-512x512.png"}}]
-  {::pco/input [(? :ad/url-with-protocol)
-                (? :ad/host)
-                (? :ad/title)
-                (? :ad/description)
-                (? :ad/image-url)]
-   ::pco/output [:ad/ui-preview-card]}
-  {:ad/ui-preview-card
-   [:a {:href url-with-protocol :target "_blank"}
-    (read-more-card* {:highlight true
-                     :details (detail-list [host [:span.underline "Ad"]])
-                     :title title
-                     :description description
-                     :image-url image-url})]})
-
 (defn ad-card-base [{:keys [href]
                      :ad/keys [url-with-protocol
                                title
@@ -182,14 +158,15 @@
                      :image-url image-url})])
 
 (defresolver ad-preview-card
-  [{:ad/keys [url-with-protocol title description image-url]
+  [{:biff/keys [base-url]}
+   {:ad/keys [url-with-protocol title description image-url]
     :or {title "Lorem ipsum dolor sit amet"
          description (str "Consectetur adipiscing elit, sed do eiusmod "
                           "tempor incididunt ut labore et dolore magna aliqua. "
                           "Ut enim ad minim veniam, quis nostrud exercitation "
                           "ullamco laboris nisi ut aliquip ex ea commodo consequat.")
          url-with-protocol "https://example.com"
-         image-url "https://yakread.com/android-chrome-512x512.png"}}]
+         image-url (str base-url "/android-chrome-512x512.png")}}]
   {::pco/input [(? :ad/url-with-protocol)
                 (? :ad/title)
                 (? :ad/description)

@@ -12,10 +12,6 @@
    [ring.middleware.anti-forgery :as csrf]
    [ring.util.response :as ring-response]))
 
-(def schema
-  {:app.shell/include-plausible :boolean
-   :app.shell/include-recaptcha :boolean})
-
 (defn css-path []
   (if-some [last-modified (some-> (io/resource "public/css/main.css")
                                   ring-response/resource-data
@@ -53,9 +49,7 @@
                   (merge page #:app.shell.page{:href (href route-sym)
                                                :active (str/starts-with? route-ns (namespace route-sym))})))))})
 
-(defresolver app-head [{:keys [app.shell/include-plausible
-                               app.shell/include-recaptcha]}
-                       {user :session/user}]
+(defresolver app-head [{user :session/user}]
   #::pco{:input [{(? :session/user) [:xt/id
                                      (? :user/timezone*)]}]}
   {:app.shell/app-head
@@ -70,14 +64,6 @@
     [:script {:src "/vendor/unpkg.com/hyperscript.org@0.9.14.js"}]
     [:script {:src "/vendor/cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"}]
     [:script {:src "/js/main.js"}]
-    ;[:script {:src "https://unpkg.com/@popperjs/core@2"}]
-    ;[:script {:src "https://unpkg.com/tippy.js@6"}]
-    (when include-plausible
-      [:script {:src "https://pl.tfos.co/js/script.js"
-                :defer "defer"
-                :data-domain "yakread.com"}])
-    (when (and (nil? user) include-recaptcha)
-      [:script {:src "https://www.google.com/recaptcha/api.js" :async "async" :defer "defer"}])
     [:script {:type "module" :src "/vendor/cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-beta.9/bundles/datastar.js"}]
     ;; TODO
     ;[:link {:rel "manifest", :href "/site.webmanifest?a"}]
@@ -266,7 +252,7 @@
                                   '[max-w-screen-sm]))}
            content
            [:.grow]
-           (ui/footer ctx {:show-recaptcha-message (not signed-in)})]]])))})
+           (ui/footer {:show-recaptcha-message (not signed-in)})]]])))})
 
 (def module
   {:resolvers [app-shell

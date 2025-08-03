@@ -19,7 +19,7 @@
 (defget page "/dev/favorites/add"
   [:app.shell/app-shell
    {(? :session/user) [:user/id]}]
-  (fn [{:keys [params] :as ctx}
+  (fn [{:keys [params biff/base-url] :as ctx}
        {:keys [app.shell/app-shell session/user]}]
     (app-shell
      {:title "Add favorites"}
@@ -45,7 +45,10 @@
              [:p "You can install the bookmarklet by dragging this link on to your browser toolbar or
                   bookmarks menu:"]
              [:p.my-6 [:a.text-xl.text-blue-600
-                       {:href "javascript:window.location=\"https://yakread.com/favorites/add?url=\"+encodeURIComponent(document.location)"}
+                       {:href (str "javascript:window.location=\""
+                                   base-url
+                                   (href page)
+                                   "?url=\"+encodeURIComponent(document.location)")}
                        "Add to favorites | Yakread"]]
              [:p.mb-0 "Then click the bookmarklet to add the current article to your favorites."]])
            (ui/form-input

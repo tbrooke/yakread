@@ -1,6 +1,10 @@
 (ns com.yakread.routes)
 
 (def signin-page       'com.yakread.app.home/signin-page-route)
+(def contact           'com.yakread.app.home/contact-route)
+(def about             'com.yakread.app.home/about-route)
+(def tos               'com.yakread.app.home/tos-route)
+(def privacy           'com.yakread.app.home/privacy-route)
 
 (def subs-page         'com.yakread.app.subscriptions/page-route)
 (def unsubscribe!      'com.yakread.app.subscriptions/unsubscribe)
@@ -23,5 +27,3 @@
 (def unsubscribe       'com.yakread.app.settings/click-unsubscribe-route)
 (def set-timezone      'com.yakread.app.settings/set-timezone)
 (def stripe-webhook    'com.yakread.app.settings/stripe-webhook)
-
-(def signin            'com.yakread.app.home/signin-page-route)

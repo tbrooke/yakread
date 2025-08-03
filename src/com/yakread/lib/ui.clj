@@ -6,6 +6,8 @@
    [clojure.string :as str]
    [com.biffweb :as biff]
    [com.yakread.lib.icons :as lib.icons]
+   [com.yakread.lib.route :refer [href]]
+   [com.yakread.routes :as routes]
    [com.yakread.util.biff-staging :as biffs]
    [lambdaisland.uri :as uri]
    [ring.util.response :as ring-response]
@@ -49,8 +51,7 @@
 
 ;;;; Misc
 
-(defn footer [{:yakread/keys [about-url contact-url tos-url privacy-url]}
-              {:keys [dark-mode show-recaptcha-message]}]
+(defn footer [{:keys [dark-mode show-recaptcha-message]}]
   [:.text-sm.text-center.mt-10
    {:class (if dark-mode
              '[text-neut-100]
@@ -58,10 +59,10 @@
    [:div
     (biff/join
      interpunct
-     (for [[href label] [[about-url "About"]
-                         [contact-url "Contact"]
-                         [tos-url "Terms of Service"]
-                         [privacy-url "Privacy Policy"]]]
+     (for [[href label] [[(href routes/about) "About"]
+                         [(href routes/contact) "Contact"]
+                         [(href routes/tos) "Terms of Service"]
+                         [(href routes/privacy) "Privacy Policy"]]]
        [:a.underline {:href href :target "_blank"} label]))]
    (when show-recaptcha-message
      [:<>
@@ -593,32 +594,32 @@
      content
      [:.flex-grow]
      [:.flex-grow]
-     (footer ctx {:dark-mode true :show-recaptcha-message false})
+     (footer {:dark-mode true :show-recaptcha-message false})
      [:.h-4]]]))
 
-(def not-found-html
+(defn not-found-html []
   (rum/render-static-markup
    (plain-page
     {}
     [:div.text-white "Page not found. Try the "
      [:a.underline {:href "/"} "home page"] " instead."])))
 
-(def internal-server-error-html
+(defn internal-server-error-html []
   (rum/render-static-markup
    (plain-page
     {}
     [:div
      "There was an unexpected error. If the problem persists, "
-     [:a.underline {:href "mailto:hello@obryant.dev"} "send me an email"]
+     [:a.underline {:href (href routes/contact)} "send me an email"]
      "."])))
 
 (defn on-error [{:keys [status]}]
   {:status status
    :headers {"content-type" "text/html"}
    :body (case status
-           404 not-found-html
-           400 not-found-html
-           500 internal-server-error-html
+           404 (not-found-html)
+           400 (not-found-html)
+           500 (internal-server-error-html)
            405 "<h1>Method Not Allowed</h1>"
            406 "<h1>Not Acceptable</h1>")})
 

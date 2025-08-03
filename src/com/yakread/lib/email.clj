@@ -13,11 +13,13 @@
      :bg-color "#17b897"
      :text-color "white"}))
 
-(defn- signin-link [{:keys [to url user-exists]}]
+(defn- signin-link [{:keys [biff/base-url]} {:keys [to url user-exists]}]
   (if user-exists
     {:to to
      :subject "Sign in to Yakread"
      :html-body (uie/html
+                 :logo-on-click base-url
+                 :logo-src (str base-url "/img/logo-navbar.png")
                  :title "Sign in to Yakread"
                  :hide-unsubscribe true
                  :content
@@ -42,6 +44,8 @@
     {:to to
      :subject "Sign up for Yakread"
      :html-body (uie/html
+                 :logo-on-click base-url
+                 :logo-src (str base-url "/img/logo-navbar.png")
                  :title "Sign up for Yakread"
                  :hide-unsubscribe true
                  :content
@@ -61,10 +65,12 @@
                      uie/address)
      :stream "outbound"}))
 
-(defn- signin-code [{:keys [to code]}]
+(defn- signin-code [{:keys [biff/base-url]} {:keys [to code]}]
   {:to to
    :subject "Sign in to Yakread"
    :html-body (uie/html
+               :logo-on-click base-url
+               :logo-src (str base-url "/img/logo-navbar.png")
                :title "Sign in to Yakread"
                :hide-unsubscribe true
                :content
@@ -90,10 +96,11 @@
                    uie/address)
    :stream "outbound"})
 
-(defn- template [k opts]
+(defn- template [ctx k opts]
   ((case k
      :signin-link signin-link
      :signin-code signin-code)
+   ctx
    opts))
 
 (defn- send-postmark* [{:keys [biff/secret postmark/from]} form-params]
@@ -145,7 +152,7 @@
 
 (defn send-email [{:keys [biff/secret recaptcha/site-key] :as ctx} opts]
   (let [form-params (if-some [template-key (:template opts)]
-                      (template template-key opts)
+                      (template ctx template-key opts)
                       opts)]
     (if (every? some? [(secret :postmark/api-key)
                        (secret :recaptcha/secret-key)

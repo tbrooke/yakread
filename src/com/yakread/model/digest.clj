@@ -83,9 +83,9 @@
                       :html html
                       :text text}}))
 
-(defresolver unsubscribe-link [{:biff/keys [base-url href-safe]}
+(defresolver unsubscribe-url [{:biff/keys [base-url href-safe]}
                                {:keys [user/id]}]
-  {:digest/unsubscribe-link
+  {:digest/unsubscribe-url
    (str base-url (href-safe routes/unsubscribe {:action :action/unsubscribe
                                                 :user/id id}))})
 
@@ -95,4 +95,4 @@
                settings-info
                subject-item
                mailersend-payload
-               unsubscribe-link]})
+               unsubscribe-url]})

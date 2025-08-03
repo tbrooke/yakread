@@ -43,7 +43,7 @@
 (def sync-feed!
   (lib.pipe/make
    :start
-   (fn [{:keys [biff/db]
+   (fn [{:biff/keys [db base-url]
          {:keys [feed/id]} :biff/job}]
      (let [{:feed/keys [url etag last-modified]} (xt/entity db id)]
        ;; TODO uncomment
@@ -55,7 +55,7 @@
         :com.yakread.pipe.remus/opts
         {:headers            (into {}
                                    (remove (comp nil? val))
-                                   {"User-Agent" "https://yakread.com/"
+                                   {"User-Agent" base-url
                                     "If-None-Match" etag
                                     "If-Modified-Since" last-modified})
 
