@@ -40,6 +40,7 @@
  :recaptcha/secret-key #biff/secret RECAPTCHA_SECRET_KEY
  :recaptcha/site-key   #biff/env RECAPTCHA_SITE_KEY
 
+ ;; TODO uncomment
  :stripe/api-key          #profile {;:prod #biff/secret STRIPE_SECRET_KEY_PROD
                                     :dev #biff/secret STRIPE_SECRET_KEY_DEV}
  :stripe/public-api-key   #profile {:prod #biff/env STRIPE_PUBLIC_API_KEY_PROD

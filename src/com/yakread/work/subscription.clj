@@ -24,12 +24,10 @@
                                 [(list 'get-attr 'feed :feed/synced-at epoch) '[synced-at ...]]
                                 '[(< synced-at t0)]]}
                        (.minusSeconds now (* 60 60 4)))]
-       (log/warn "sync-feed! is disabled; remember to re-enable it later.")
-       ;; TODO uncomment
-       {:biff.pipe/next [] #_(for [id feed-ids]
-                               {:biff.pipe/current :biff.pipe/queue
-                                :biff.pipe.queue/id :work.subscription/sync-feed
-                                :biff.pipe.queue/job {:feed/id id}})}))))
+       {:biff.pipe/next (for [id feed-ids]
+                          {:biff.pipe/current :biff.pipe/queue
+                           :biff.pipe.queue/id :work.subscription/sync-feed
+                           :biff.pipe.queue/job {:feed/id id}})}))))
 
 (defn- entry->html [entry]
   (->> (concat (:contents entry) [(:description entry)])

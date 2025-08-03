@@ -2,6 +2,7 @@
   (:require
    [clojure.data.generators :as gen]
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [com.biffweb :as biff]
    [com.yakread.lib.content :as lib.content]
    [com.yakread.lib.core :as lib.core]
@@ -11,8 +12,11 @@
    [xtdb.api :as xt]))
 
 (defn accept? [{:keys [biff/db biff.smtp/message yakread/domain]}]
-  (and (or (not domain) (= domain (:domain message)))
-       (some? (biff/lookup-id db :user/email-username (str/lower-case (:username message))))))
+  (let [result (and (or (not domain) (= domain (:domain message)))
+                    (some? (biff/lookup-id db :user/email-username (str/lower-case (:username message)))))]
+    (log/info (if result "Accepted" "Rejected") "incoming email for "
+              (str (str/lower-case (:username message)) "@" (:domain message)))
+    result))
 
 (defn- extract-html [message]
   (let [{:keys [content content-type]}

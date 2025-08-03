@@ -14,9 +14,9 @@
 
 (let [response (fn [success username]
                  {:status 303
-                  :headers (href `page-route (when-not success
-                                               {:error "username-unavailable"
-                                                :email-username username}))})]
+                  :headers {"location" (href `page-route (when-not success
+                                                           {:error "username-unavailable"
+                                                            :email-username username}))}})]
   (defpost set-username
     :start
     (fn [{:keys [biff/db session params]}]

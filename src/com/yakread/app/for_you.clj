@@ -106,7 +106,7 @@
         [:div "There's nothing here yet. Try adding some "
          (ui/web-link {:href (href routes/subs-page)} "subscriptions")
          " or "
-         (ui/web-link {:href (href routes/subs-page)} "bookmarks.")]
+         (ui/web-link {:href (href routes/bookmarks-page)} "bookmarks.")]
         [:.grow]
         [:.grow]]
 

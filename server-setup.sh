@@ -124,8 +124,10 @@ certbot --nginx
 
 # App dependencies
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-apt-get -y install nodejs iptables-persistent
+apt-get -y install nodejs # iptables-persistent -- installing this removes ufw.
 ufw allow 25
 ufw allow 2525
 iptables -A PREROUTING -t nat -p tcp --dport 25 -j REDIRECT --to-port 2525
-iptables-save > /etc/iptables/rules.v4
+# TODO figure out how to persist iptables rules without removing ufw.
+# maybe just use a startup script to set the rules manually?
+#iptables-save > /etc/iptables/rules.v4

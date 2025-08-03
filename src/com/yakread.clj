@@ -125,8 +125,6 @@
                      :biff.beholder/on-save #'on-save
                      :biff.pipe/global-handlers lib.pipeline/global-handlers
                      :biff.xtdb/tx-fns biff/tx-fns
-                     #_#_:com.yakread.subetha/accept? #'ingest/accept-email?
-                     #_#_:com.yakread.subetha/deliver #'ingest/deliver-email
                      :com.yakread/home-feed-cache (atom {})
                      lib.pathom/plan-cache-kw (atom {})
                      :biff.smtp/accept? #'smtp/accept?

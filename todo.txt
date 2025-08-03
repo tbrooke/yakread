@@ -1,9 +1,12 @@
 - deploy, migrate
-  - get it up on another subdomain
-  - uncomment feed syncing thing
+  - prod testing
+    - why can't I open email item
+    - 
+  - update all the route paths (remove "dev")
   - import data (only active-ish users)
   - do discover recs approvals
   - for you feed: don't include current item
+  - uncomment stripe api key
   - finish migration (domain etc)
   - turn on digests
     - uncomment email queue thing
@@ -20,6 +23,8 @@
   - delete your account
 
 backlog
+- why aren't obryant.dev rss posts in order on subs page
+- why doesn't ad preview show up on initial page load
 - should individual pipe states be standalone defmethods or similar?
 - cache all assets in s3
 - keep changes to repl.clj out of source or something
