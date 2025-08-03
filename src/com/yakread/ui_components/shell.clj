@@ -65,8 +65,7 @@
     [:script {:src "/vendor/cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"}]
     [:script {:src "/js/main.js"}]
     [:script {:type "module" :src "/vendor/cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-beta.9/bundles/datastar.js"}]
-    ;; TODO
-    ;[:link {:rel "manifest", :href "/site.webmanifest?a"}]
+    [:link {:rel "manifest", :href "/site.webmanifest"}]
     [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
     [:link {:rel "icon", :type "image/png", :sizes "32x32", :href "/favicon-32x32.png"}]
     [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]

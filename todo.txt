@@ -1,13 +1,10 @@
-- check pwa stuff
-- set up domain or something for mailersend?
 - deploy, migrate
   - get it up on another subdomain
-  - include java file thing in prod
   - uncomment email queue thing
     - still disable in dev
   - also uncomment feed syncing thing
   - also uncomment queue-add-candidate
-  - import data
+  - import data (only active-ish users)
   - do discover recs approvals
   - finish migration (domain etc)
 - error reporting

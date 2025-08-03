@@ -30,16 +30,22 @@
 (defn fn-deploy []
   (process/shell {} "doctl" "serverless" "deploy" "cloud-fns"))
 
-(defn dev []
-  ;; TODO run this in prod
-  ;; also this won't be on the classpath on the first run
+(defn -javac []
   (sh/sh "javac"
          "--release" "17"
          "-cp" (:out (sh/sh "clj" "-Spath"))
          "-d" "target/classes"
          "java/com/yakread/AverageRating.java"
-         "-Xlint:-options")
+         "-Xlint:-options"))
+
+(defn dev []
+  ;; NOTE this won't be on the classpath on the first run.
+  (javac)
   (tasks/dev))
+
+(defn deploy []
+  (javac)
+  (tasks/deploy))
 
 ;; Tasks should be vars (#'hello instead of hello) so that `clj -Mdev help` can
 ;; print their docstrings.
@@ -47,6 +53,7 @@
   {"prod-repl"   #'prod-repl
    "test-stripe" #'test-stripe
    "dev"         #'dev
+   "deploy"      #'deploy
    "fn-deploy"   #'fn-deploy})
 
 (def tasks (merge tasks/tasks custom-tasks))
