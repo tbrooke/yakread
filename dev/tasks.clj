@@ -30,7 +30,7 @@
 (defn fn-deploy []
   (process/shell {} "doctl" "serverless" "deploy" "cloud-fns"))
 
-(defn -javac []
+(defn javac []
   (sh/sh "javac"
          "--release" "17"
          "-cp" (:out (sh/sh "clj" "-Spath"))

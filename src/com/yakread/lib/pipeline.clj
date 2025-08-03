@@ -3,6 +3,7 @@
    [cheshire.core :as cheshire]
    [clj-http.client :as http]
    [clojure.data.generators :as gen]
+   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [com.biffweb :as biff]
    [com.yakread.lib.datastar :as lib.d*]
@@ -38,6 +39,8 @@
                              (throw (ex-info (str "No handler for " current) {})))
                  seed (long (* (rand) Long/MAX_VALUE))]
              (recur (try
+                      (when (:biff.pipe/verbose ctx)
+                        (log/info "calling pipe handler for" current))
                       (binding [gen/*rnd* (java.util.Random. seed)]
                         (handler ctx))
                       (catch Exception e

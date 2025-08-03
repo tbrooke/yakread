@@ -47,9 +47,8 @@
                               '{:find [url feed]
                                 :in [[url ...]]
                                 :where [[feed :feed/url url]]}
-                              feed-urls))
-        new-urls  (remove url->feed feed-urls)]
-    (for [[i url] (map-indexed vector feed-urls)
+                              feed-urls))]
+    (for [url feed-urls
           :let [feed-id (get url->feed url (gen/uuid))]
           doc (concat [{:db/doc-type    :sub/feed
                         :db.op/upsert   {:sub/user user-id

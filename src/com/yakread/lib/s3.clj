@@ -17,10 +17,10 @@
   (cond-> ctx
     config-ns (merge (biff/select-ns-as ctx config-ns 'biff.s3)
                      {:biff/secret
-                      (fn [k] (secret (get {:biff.s3/secret-key
-                                            (keyword (str config-ns) "secret-key")}
-                                           k
-                                           k)))})))
+                      (fn [k]
+                        (or (when (= k :biff.s3/secret-key)
+                              (secret (keyword (str config-ns) "secret-key")))
+                            (secret k)))})))
 
 (defn request [ctx input]
   (biff/s3-request (translate-config (merge ctx (biff/select-ns-as input nil 'biff.s3)))))

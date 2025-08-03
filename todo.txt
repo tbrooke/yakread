@@ -1,12 +1,14 @@
 - deploy, migrate
   - get it up on another subdomain
-  - uncomment email queue thing
-    - still disable in dev
-  - also uncomment feed syncing thing
-  - also uncomment queue-add-candidate
+  - uncomment feed syncing thing
   - import data (only active-ish users)
   - do discover recs approvals
+  - for you feed: don't include current item
   - finish migration (domain etc)
+  - turn on digests
+    - uncomment email queue thing
+      - still disable in dev
+    - also uncomment queue-add-candidate
 - error reporting
 - finish ads
     admin page approvals
@@ -18,6 +20,7 @@
   - delete your account
 
 backlog
+- should individual pipe states be standalone defmethods or similar?
 - cache all assets in s3
 - keep changes to repl.clj out of source or something
 - look at webmanifest thing

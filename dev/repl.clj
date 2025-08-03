@@ -98,17 +98,17 @@
   (time
    (with-context
      (fn [{:keys [biff/db biff.xtdb/node session biff/secret mailersend/from mailersend/reply-to] :as ctx}]
-       (lib.pathom/process
-        (assoc ctx :reitit.core/match {:data {:name :foobar/baz}})
-        {:params/item {:item/id #uuid "857fa10e-06a8-4450-9cc8-e257af1ec999",
-                       :item/url "https://larrysanger.org/2022/03/why-neutrality/"}}
-        [:app.shell/app-shell
-         {:params/item [:item/ui-read-content
-                        :item/id
-                        (? :item/title)]}]
-        ))
+       (biff/submit-job ctx
+                        :work.subscription/sync-feed
+                        {:feed/id (first
+                                   (q db
+                                      '{:find id
+                                        :where [[id :feed/url]]}))
+                         :biff/priority 0})
+       )
      :session-email "hello@obryant.dev"))
 
   (update-user! "hello@obryant.dev" {:user/timezone :db/dissoc})
+
 
   )

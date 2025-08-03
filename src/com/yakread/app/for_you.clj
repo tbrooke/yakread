@@ -88,7 +88,8 @@
   (fn [{:keys [biff/now params]} {:keys [user/discover-recs session/user session/anon]
                                   {:user/keys [current-item for-you-recs]} :session/user}]
     [:div {:class '[flex flex-col gap-6
-                    max-w-screen-sm]}
+                    max-w-screen-sm
+                    h-full]}
      (when-let [{:keys [item/ui-read-more-card]} (and (:show-continue params) current-item)]
        [:div
         (ui-read-more-card {:on-click-route `read-page-route
@@ -98,13 +99,26 @@
         [:div.text-center
          (ui/muted-link {:href (href routes/history)}
                         "View reading history")]])
-     (if user
+     (cond
+       (every? empty? [for-you-recs (:user/discover-recs anon)])
+       [:<>
+        [:.grow]
+        [:div "There's nothing here yet. Try adding some "
+         (ui/web-link {:href (href routes/subs-page)} "subscriptions")
+         " or "
+         (ui/web-link {:href (href routes/subs-page)} "bookmarks.")]
+        [:.grow]
+        [:.grow]]
+
+       user
        (for [[i {:rec/keys [ui-read-more-card]}] (map-indexed vector for-you-recs)]
          (ui-read-more-card {:on-click-route `read-page-route
                              :on-click-params {:skip (set (mapv :xt/id (take i for-you-recs)))
                                                :t now}
                              :highlight-unread false
                              :show-author true}))
+
+       :else
        (for [[i {:item/keys [ui-read-more-card]}] (map-indexed vector (:user/discover-recs anon))]
          (ui-read-more-card {:highlight-unread false
                              :show-author true
@@ -115,7 +129,7 @@
   (fn [_ {:keys [app.shell/app-shell]}]
     (app-shell
      {}
-     [:div#content (ui/lazy-load-spaced (href page-content-route {:show-continue true}))])))
+     [:div#content.h-full (ui/lazy-load-spaced (href page-content-route {:show-continue true}))])))
 
 (def read-page-route
   ["/dev/item/:item-id"

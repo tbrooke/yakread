@@ -246,11 +246,11 @@
           [:div {:class (concat '[mx-auto sm:px-8
                                   py-4 sm:pt-8 sm:pb-6
                                   flex flex-col
-                                  w-full grow]
+                                  w-full grow
+                                  justify-between]
                                 (when-not wide
                                   '[max-w-screen-sm]))}
-           content
-           [:.grow]
+           [:.flex.flex-col.grow content]
            (ui/footer {:show-recaptcha-message (not signed-in)})]]])))})
 
 (def module

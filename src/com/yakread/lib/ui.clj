@@ -52,7 +52,7 @@
 ;;;; Misc
 
 (defn footer [{:keys [dark-mode show-recaptcha-message]}]
-  [:.text-sm.text-center.mt-10
+  [:.text-sm.text-center.mt-10.justify-self-end
    {:class (if dark-mode
              '[text-neut-100]
              '[text-neut-600])}

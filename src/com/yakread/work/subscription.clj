@@ -46,9 +46,7 @@
    (fn [{:biff/keys [db base-url]
          {:keys [feed/id]} :biff/job}]
      (let [{:feed/keys [url etag last-modified]} (xt/entity db id)]
-       ;; TODO uncomment
-       nil
-       #_{:biff.pipe/next             [:com.yakread.pipe/remus :end]
+       {:biff.pipe/next             [:com.yakread.pipe/remus :end]
         :biff.pipe/catch            :com.yakread.pipe/remus
         :com.yakread.pipe.remus/url url
 
