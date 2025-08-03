@@ -81,7 +81,8 @@
                       :to [{:email email}]
                       :subject (get subject-item :item/title "Your reading digest")
                       :html html
-                      :text text}}))
+                      :text text
+                      :precedence_bulk true}}))
 
 (defresolver unsubscribe-url [{:biff/keys [base-url href-safe]}
                                {:keys [user/id]}]

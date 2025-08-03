@@ -1,4 +1,3 @@
-- make transactional emails use mailersend
 - check pwa stuff
 - set up domain or something for mailersend?
 - deploy, migrate
