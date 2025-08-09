@@ -145,7 +145,7 @@
      (ui/page-header {:title     "Unsubscribed"
                       :back-href (href routes/subs-page)})
      (ui/page-well
-      [:form.space-y-4
+      [:form.space-y-8
        {:hx-post (href resubscribe)}
        (ui/callout {:ui/type :info}
                    "These newsletters are hidden from your subscriptions list. Even if you move a

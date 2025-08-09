@@ -1,7 +1,4 @@
 - deploy, migrate
-  - prod testing
-    - why can't I open email item
-    - 
   - update all the route paths (remove "dev")
   - import data (only active-ish users)
   - do discover recs approvals

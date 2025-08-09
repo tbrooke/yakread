@@ -120,10 +120,11 @@
     [:img.h-10 {:src spinner-gif}]]))
 
 (defn lazy-load-spaced [href]
-  [:<>
-   [:.grow]
-   (lazy-load href)
-   [:.grow]])
+  [:.flex.justify-center.items-center.grow
+   {:hx-get href
+    :hx-trigger "intersect once"
+    :hx-swap "outerHTML"}
+   [:img.h-10 {:src spinner-gif}]])
 
 (defn callout [{:ui/keys [icon] type* :ui/type :as opts} & contents]
   [:div (dom-opts opts

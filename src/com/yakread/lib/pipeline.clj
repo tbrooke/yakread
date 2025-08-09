@@ -11,7 +11,8 @@
    [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.s3 :as lib.s3]
    [remus]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]
+   [taoensso.tufte :refer [p]]))
 
 ;; TODO rename to :biff/now, :biff/seed
 (defn make [& {:as id->handler}]
@@ -42,7 +43,7 @@
                       (when (:biff.pipe/verbose ctx)
                         (log/info "calling pipe handler for" current))
                       (binding [gen/*rnd* (java.util.Random. seed)]
-                        (handler ctx))
+                        (p current (handler ctx)))
                       (catch Exception e
                         (if (= (:biff.pipe/catch ctx) current)
                           (assoc ctx :biff.pipe/exception e)

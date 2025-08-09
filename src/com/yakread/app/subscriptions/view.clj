@@ -90,7 +90,6 @@
 
               :else
               {:biff.pipe/next [:biff.pipe/pathom :render]
-               :biff.pipe.pathom/entity output
                :biff.pipe.pathom/query [:app.shell/app-shell
                                         {:params/item [:item/id
                                                        :item/title

@@ -38,10 +38,11 @@
                                         :rec/id item-id
                                         :skip skip
                                         :t t})
-                              (when-not (biff/lookup-id
-                                         db
-                                         :user-item/user user-id
-                                         :user-item/item item-id)
+                              (when-not (:user-item/viewed-at
+                                         (biff/lookup
+                                          db
+                                          :user-item/user user-id
+                                          :user-item/item item-id))
                                 [{:db/doc-type :user-item
                                   :db.op/upsert {:user-item/user user-id
                                                  :user-item/item item-id}
@@ -103,10 +104,11 @@
        (every? empty? [for-you-recs (:user/discover-recs anon)])
        [:<>
         [:.grow]
-        [:div "There's nothing here yet. Try adding some "
-         (ui/web-link {:href (href routes/subs-page)} "subscriptions")
-         " or "
-         (ui/web-link {:href (href routes/bookmarks-page)} "bookmarks.")]
+        [:div.text-center "There's no content to recommend yet. Try adding some "
+         [:span.inline-block
+          (ui/web-link {:href (href routes/subs-page)} "subscriptions")
+          " or "
+          (ui/web-link {:href (href routes/bookmarks-page)} "bookmarks.")]]
         [:.grow]
         [:.grow]]
 
@@ -189,9 +191,12 @@
              (ui-read-content {:leave-item-redirect (href page-route)
                                :unsubscribe-redirect (href page-route)})
              [:div.h-10]
-             ;; todo make sure mark-read finishes before this queries
-             ;; make ui/lazy-load include a delay of a few seconds
-             [:div#content (ui/lazy-load-spaced (href page-content-route))]))))))}])
+             [:div#content
+              [:.flex.justify-center
+               {:hx-get (href page-content-route)
+                :hx-trigger "load delay:2s"
+                :hx-swap "outerHTML"}
+               [:img.h-10 {:src ui/spinner-gif}]]]))))))}])
 
 (def click-ad-route
   ["/dev/c/:ewt"

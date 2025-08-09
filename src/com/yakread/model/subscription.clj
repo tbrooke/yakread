@@ -137,9 +137,9 @@
     (when (and sub (= (:uid session) (:sub/user sub)))
       {:params/sub (biffs/joinify @malli-opts sub)})))
 
-(defresolver params-checked [{:keys [biff/db biff/malli-opts session params]} _]
+(defresolver params-checked [{:keys [biff/db biff/malli-opts session form-params params]} _]
   #::pco{:output [{:params.checked/subscriptions [:sub/id]}]}
-  (let [subs* (mapv #(some->> (parse-uuid %) (xt/entity db))
+  (let [subs* (mapv #(some->> % name parse-uuid (xt/entity db))
                     (keys (:subs params)))]
     (when (every? #(= (:uid session) (:sub/user %)) subs*)
       {:params.checked/subscriptions (mapv #(biffs/joinify @malli-opts %) subs*)})))
