@@ -236,7 +236,7 @@
             (ui/button {:type "submit" :class "!min-w-[150px]"} "$60 / 12 months"))]
          [:.h-6]])]))})
 
-(defget page "/dev/settings"
+(defget page "/settings"
   [:app.shell/app-shell
    {(? :session/user) [:xt/id
                        :user/email
@@ -289,11 +289,11 @@
          premium)]))))
 
 (def unsubscribe-success
-  ["/dev/unsubscribed"
+  ["/unsubscribed"
    {:get (fn [_] (ui/plain-page {} "You have been unsubscribed."))}])
 
 (def click-unsubscribe-route
-  ["/dev/unsubscribe/:ewt"
+  ["/unsubscribe/:ewt"
    {:get
     (fn [{:keys [uri]}]
       [:html

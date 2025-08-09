@@ -7,7 +7,7 @@ I'm rewriting it. During this migration I'll be copying over a lot of code too t
 I'm using Yakread as a playground for new [Biff](https://biffweb.com) features: I'll periodically move code from here to
 there. See [Experimental Biff features for growing Clojure projects](https://biffweb.com/p/experimental-features/).
 
-Run the app with `clj -M:run dev`. Go to `http://localhost:8080/dev/subscriptions/add` to sign in. Afterward you'll be
+Run the app with `clj -M:run dev`. Go to `http://localhost:8080/subscriptions/add` to sign in. Afterward you'll be
 greeted with a page that says "TODO." The console output will have a sign-in link; click on that.
 
 ## Progress

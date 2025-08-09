@@ -74,7 +74,7 @@
                                   :ad.click/cost click-cost
                                   :ad.click/source (or source :web)}]))}))))
 
-(defget page-content-route "/dev/for-you/content"
+(defget page-content-route "/for-you/content"
   [{(? :session/user)
     [{(? :user/current-item)
       [:item/ui-read-more-card]}
@@ -126,7 +126,7 @@
                              :show-author true
                              :new-tab true})))]))
 
-(defget page-route "/dev/for-you"
+(defget page-route "/for-you"
   [:app.shell/app-shell]
   (fn [_ {:keys [app.shell/app-shell]}]
     (app-shell
@@ -134,7 +134,7 @@
      [:div#content.h-full (ui/lazy-load-spaced (href page-content-route {:show-continue true}))])))
 
 (def read-page-route
-  ["/dev/item/:item-id"
+  ["/item/:item-id"
    {:name ::read-page-route
     :get
     (let [record-click-url
@@ -199,7 +199,7 @@
                [:img.h-10 {:src ui/spinner-gif}]]]))))))}])
 
 (def click-ad-route
-  ["/dev/c/:ewt"
+  ["/c/:ewt"
    {:name ::click-ad-route
     :get (lib.route/wrap-nippy-params
           (fn [{:biff/keys [safe-params href-safe]}]
@@ -211,7 +211,7 @@
                   :beacon-url (href-safe record-ad-click safe-params)})))))}])
 
 (def click-item-route
-  ["/dev/r/:ewt"
+  ["/r/:ewt"
    {:name ::click-item-route
     :get (lib.route/wrap-nippy-params
           (fn [{:biff/keys [safe-params href-safe]}]

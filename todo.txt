@@ -1,15 +1,14 @@
 - deploy, migrate
-  - update all the route paths (remove "dev")
-  - import data (only active-ish users)
+  - error reporting
+  - update discover approval process
+  - import data (unsubscribe inactive users)
   - do discover recs approvals
-  - for you feed: don't include current item
   - uncomment stripe api key
   - finish migration (domain etc)
   - turn on digests
     - uncomment email queue thing
       - still disable in dev
     - also uncomment queue-add-candidate
-- error reporting
 - finish ads
     admin page approvals
     charge
@@ -20,6 +19,7 @@
   - delete your account
 
 backlog
+- think about best way to define different kinds of routes again
 - why aren't obryant.dev rss posts in order on subs page
 - why doesn't ad preview show up on initial page load
 - should individual pipe states be standalone defmethods or similar?

@@ -16,7 +16,7 @@
                     :user-item/bookmarked-at :db/dissoc}
     :redirect-to `page}))
 
-(defget page "/dev/favorites/add"
+(defget page "/favorites/add"
   [:app.shell/app-shell
    {(? :session/user) [:user/id]}]
   (fn [{:keys [params biff/base-url] :as ctx}

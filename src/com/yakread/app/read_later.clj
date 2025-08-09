@@ -12,7 +12,7 @@
                         :btn-label "Add bookmarks"
                         :btn-href (href routes/add-bookmark-page)}))
 
-(defget page-content "/dev/read-later/content"
+(defget page-content "/read-later/content"
   [{:session/user
     [{:user/bookmarks [:item/id
                        :item/ui-small-card
@@ -26,7 +26,7 @@
             (sort-by (comp :user-item/bookmarked-at :item/user-item) #(compare %2 %1))
             (mapv :item/ui-small-card))))))
 
-(defget page "/dev/read-later"
+(defget page "/read-later"
   [:app.shell/app-shell (? :user/current)]
   (fn [_ {:keys [app.shell/app-shell] user :user/current}]
     (app-shell

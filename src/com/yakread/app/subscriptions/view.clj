@@ -41,7 +41,7 @@
                        :user-item/item id}
         :user-item/skipped-at [:db/default :db/now]})}))
 
-(defget read-content-route "/dev/sub-item/:item-id/content"
+(defget read-content-route "/sub-item/:item-id/content"
   [{(? :params/item) [:item/ui-read-content
                       {:item/sub [:sub/id
                                   :sub/title
@@ -61,7 +61,7 @@
        [:div#content (ui/lazy-load-spaced (href `page-content-route (:sub/id sub)))]])))
 
 (def read-page-route
-  ["/dev/sub-item/:item-id"
+  ["/sub-item/:item-id"
    {:name ::read-page-route
     :get
     (let [record-click-url (fn [item]
@@ -105,7 +105,7 @@
              [:div {:hx-post (record-click-url item) :hx-trigger "load" :hx-swap "outerHTML"}]
              (ui/lazy-load-spaced (href read-content-route id))))))))}])
 
-(defget page-content-route "/dev/subscription/:sub-id/content"
+(defget page-content-route "/subscription/:sub-id/content"
   [{:params/sub [:sub/id
                  :sub/title
                  {:sub/items
@@ -131,7 +131,7 @@
                             :highlight-unread true
                             :show-author false}))]]))
 
-(defget page-route "/dev/subscription/:sub-id"
+(defget page-route "/subscription/:sub-id"
   [:app.shell/app-shell
    {:params/sub [:sub/id
                  :sub/title

@@ -28,7 +28,7 @@
  :expected
  {:status 204,
   :headers
-  {"HX-Location" ["/dev/subscription/1slV6GjSR3mE1qvYI7LyCw" nil]},
+  {"HX-Location" ["/subscription/1slV6GjSR3mE1qvYI7LyCw" nil]},
   :biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/input
   [{:db/doc-type :user-item,
@@ -102,7 +102,7 @@
  :expected
  {:status 204,
   :headers
-  {"HX-Location" ["/dev/subscription/RuW_TNxWQCqtfQNhAnTAZw" nil]},
+  {"HX-Location" ["/subscription/RuW_TNxWQCqtfQNhAnTAZw" nil]},
   :biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/retry false,
   :biff.pipe.tx/input
@@ -120,7 +120,7 @@
                     #:params{:sub #:sub{:id 1, :doc-type :sub/email}}},
  :expected
  {:status 204,
-  :headers {"HX-Location" ["/dev/subscriptions" nil]},
+  :headers {"HX-Location" ["/subscriptions" nil]},
   :biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/retry false,
   :biff.pipe.tx/input
@@ -137,7 +137,7 @@
                     #:params{:sub #:sub{:id 1, :doc-type :sub/feed}}},
  :expected
  {:status 204,
-  :headers {"HX-Location" ["/dev/subscriptions" nil]},
+  :headers {"HX-Location" ["/subscriptions" nil]},
   :biff.pipe/next [:biff.pipe/tx],
   :biff.pipe.tx/retry false,
   :biff.pipe.tx/input [[:xtdb.api/delete 1]]}}

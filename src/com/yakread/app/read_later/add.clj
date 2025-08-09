@@ -46,7 +46,7 @@
                                                        :biff/priority i}})})
       (hx-redirect `page {:batch-error true}))))
 
-(defget page "/dev/read-later/add"
+(defget page "/read-later/add"
   [:app.shell/app-shell
    {(? :session/user) [:user/id]}]
   (fn [{:keys [biff/base-url params] :as ctx}

@@ -131,7 +131,7 @@
                         :btn-label "Add subscriptions"
                         :btn-href (href routes/add-sub-page)}))
 
-(defget unsubs-page "/dev/subscriptions/unsubscribed"
+(defget unsubs-page "/subscriptions/unsubscribed"
   [:app.shell/app-shell
    {:session/user
     [{:user/unsubscribed
@@ -155,7 +155,7 @@
          (ui/checkbox {:name (str "subs[" id "]") :ui/label title}))
        (ui/button {:type "submit"} "Move to subscriptions")]))))
 
-(defget page-content-route "/dev/subscriptions/content"
+(defget page-content-route "/subscriptions/content"
   [{:session/user
     [{:user/subscriptions [:sub/id
                            :sub.view/card
@@ -204,7 +204,7 @@
                   (sort-by :sub/published-at #(compare %2 %1))
                   (mapv :sub.view/card))))])])))
 
-(defget page-route "/dev/subscriptions"
+(defget page-route "/subscriptions"
   [:app.shell/app-shell (? :user/current)]
   (fn [{:keys [params]} {:keys [app.shell/app-shell] user :user/current}]
     (app-shell

@@ -26,7 +26,7 @@
       (merge {:biff.pipe/next [(pipe/tx tx)]}
              (hx-redirect `page-route)))))
 
-(defget page-route "/dev/admin"
+(defget page-route "/admin"
   [:app.shell/app-shell
    :admin.moderation/n-items
    {:admin.moderation/next-batch
@@ -61,7 +61,7 @@
 (comment (reset! resolver-cache nil))
 
 (def digest-template-route
-  ["/dev/admin/digest"
+  ["/admin/digest"
    {:middleware [lib.mid/wrap-profiled]
     :get
     (fn [{:keys [params] :as ctx}]

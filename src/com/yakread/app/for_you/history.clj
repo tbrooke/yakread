@@ -5,7 +5,7 @@
    [com.yakread.lib.ui :as ui]
    [com.yakread.routes :as routes]))
 
-(defget next-batch "/dev/history/next"
+(defget next-batch "/history/next"
   [{:session/user
     [{:user/history-items [:item/id
                            :item/ui-small-card]}]}]
@@ -15,7 +15,7 @@
             (not-empty history-items)
             (conj (ui/lazy-load (href next-batch {:after (:item/id (last history-items))})))))))
 
-(defget page "/dev/history"
+(defget page "/history"
   [:app.shell/app-shell :user/current]
   (fn [_ {:keys [app.shell/app-shell] user :user/current}]
     (app-shell

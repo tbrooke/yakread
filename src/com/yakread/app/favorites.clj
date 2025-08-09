@@ -12,7 +12,7 @@
                         :btn-label "Add articles"
                         :btn-href (href routes/add-favorite-page)}))
 
-(defget page-content "/dev/favorites/content"
+(defget page-content "/favorites/content"
   [{:session/user
     [{:user/favorites [:item/id
                        :item/ui-small-card
@@ -26,7 +26,7 @@
             (sort-by (comp :user-item/favorited-at :item/user-item) #(compare %2 %1))
             (mapv :item/ui-small-card))))))
 
-(defget page "/dev/favorites"
+(defget page "/favorites"
   [:app.shell/app-shell (? :user/current)]
   (fn [_ {:keys [app.shell/app-shell] user :user/current}]
     (app-shell

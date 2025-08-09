@@ -110,7 +110,7 @@
          :headers            {"Location" (href `page-route {:added-feeds (count urls)})}})
       (redirect `page-route {:error "invalid-opml-file"}))))
 
-(defget page-route "/dev/subscriptions/add"
+(defget page-route "/subscriptions/add"
   [:app.shell/app-shell
    {(? :user/current) [:xt/id
                        (? :user/email-username)

@@ -5,7 +5,7 @@
  :doc "already has a username",
  :db-contents #{{:xt/id 1, :user/email-username "abc"}},
  :ctx {:session {:uid 1}, :params {:username "123"}},
- :expected {:status 303, :headers ["/dev/subscriptions/add" nil]}}
+ :expected {:status 303, :headers ["/subscriptions/add" nil]}}
 
 {:route-name :com.yakread.app.subscriptions.add/set-username,
  :method :post,
@@ -16,7 +16,7 @@
  :expected
  {:status 303,
   :headers
-  ["/dev/subscriptions/add"
+  ["/subscriptions/add"
    {:error "username-unavailable", :email-username "admin"}]}}
 
 {:route-name :com.yakread.app.subscriptions.add/set-username,
@@ -28,7 +28,7 @@
  :expected
  {:status 303,
   :headers
-  ["/dev/subscriptions/add"
+  ["/subscriptions/add"
    {:error "username-unavailable", :email-username "abc"}]}}
 
 {:route-name :com.yakread.app.subscriptions.add/set-username,
@@ -57,7 +57,7 @@
  :expected
  {:status 303,
   :headers
-  ["/dev/subscriptions/add"
+  ["/subscriptions/add"
    {:error "username-unavailable", :email-username "hello"}]}}
 
 {:route-name :com.yakread.app.subscriptions.add/set-username,
@@ -65,7 +65,7 @@
  :handler-id :end,
  :doc "succeed",
  :ctx #:com.yakread.app.subscriptions.add{:username "hello"},
- :expected {:status 303, :headers ["/dev/subscriptions/add" nil]}}
+ :expected {:status 303, :headers ["/subscriptions/add" nil]}}
 
 {:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
@@ -90,7 +90,7 @@
  {:status 303,
   :headers
   {"Location"
-   ["/dev/subscriptions/add"
+   ["/subscriptions/add"
     {:error "invalid-rss-feed", :url "https://example.com"}]}}}
 
 {:route-name :com.yakread.app.subscriptions.add/add-rss,
@@ -119,7 +119,7 @@
     :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
-  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 1}]}}}
+  :headers {"Location" ["/subscriptions/add" {:added-feeds 1}]}}}
 
 {:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
@@ -147,7 +147,7 @@
     :feed/url [:db/unique "https://obryant.dev/feed.xml"]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
-  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 1}]}}}
+  :headers {"Location" ["/subscriptions/add" {:added-feeds 1}]}}}
 
 {:route-name :com.yakread.app.subscriptions.add/add-rss,
  :method :post,
@@ -164,7 +164,7 @@
     :sub/created-at [:db/default :db/now]}),
   :biff.pipe.tx/retry :add-urls,
   :status 303,
-  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 1}]}}}
+  :headers {"Location" ["/subscriptions/add" {:added-feeds 1}]}}}
 
 {:route-name :com.yakread.app.subscriptions.add/add-opml,
  :method :post,
@@ -232,7 +232,7 @@
     [:db/unique "https://www.clojuriststogether.org/index.xml"]}),
   :biff.pipe.tx/retry :end,
   :status 303,
-  :headers {"Location" ["/dev/subscriptions/add" {:added-feeds 3}]}}}
+  :headers {"Location" ["/subscriptions/add" {:added-feeds 3}]}}}
 
 {:route-name :com.yakread.app.subscriptions.add/add-opml,
  :method :post,
@@ -242,6 +242,6 @@
  :expected
  {:status 303,
   :headers
-  {"Location" ["/dev/subscriptions/add" {:error "invalid-opml-file"}]}}}
+  {"Location" ["/subscriptions/add" {:error "invalid-opml-file"}]}}}
 
 ]

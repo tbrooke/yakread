@@ -15,7 +15,7 @@
     :db.op/upsert #:user-item{:user 1, :item 2},
     :user-item/favorited-at :db/now}],
   :status 303,
-  :headers {"HX-Redirect" ["/dev/favorites/add" {:added true}]}}}
+  :headers {"HX-Redirect" ["/favorites/add" {:added true}]}}}
 
 {:route-name :com.yakread.app.favorites.add/add-item,
  :method :post,
@@ -61,7 +61,7 @@
                    :body "<p>how now brown cow</p>"}},
  :expected
  {:status 303,
-  :headers {"HX-Redirect" ["/dev/favorites/add" {:error true}]}}}
+  :headers {"HX-Redirect" ["/favorites/add" {:error true}]}}}
 
 {:route-name :com.yakread.app.favorites.add/add-item,
  :method :post,
@@ -99,7 +99,7 @@
                 :item #uuid "a32dc9f6-4f1d-f03a-8ce9-70b71df42503"},
     :user-item/favorited-at :db/now}],
   :status 303,
-  :headers {"HX-Redirect" ["/dev/favorites/add" {:added true}]}}}
+  :headers {"HX-Redirect" ["/favorites/add" {:added true}]}}}
 
 {:route-name :com.yakread.app.favorites.add/add-item,
  :method :post,
@@ -135,7 +135,7 @@
                 :item #uuid "629bc222-9cef-e94d-fc1e-932efb9a0f58"},
     :user-item/favorited-at :db/now}],
   :status 303,
-  :headers {"HX-Redirect" ["/dev/favorites/add" {:added true}]}}}
+  :headers {"HX-Redirect" ["/favorites/add" {:added true}]}}}
 
 {:route-name :com.yakread.app.favorites.add/add-item,
  :method :post,
@@ -143,6 +143,6 @@
  :doc "empty content",
  :expected
  {:status 303,
-  :headers {"HX-Redirect" ["/dev/favorites/add" {:error true}]}}}
+  :headers {"HX-Redirect" ["/favorites/add" {:error true}]}}}
 
 ]

@@ -9,7 +9,7 @@
   {:batch "https://example.com foo http://obryant.dev/some-post bar"}},
  :expected
  {:status 303,
-  :headers {"HX-Redirect" ["/dev/read-later/add" {:batch-added 2}]},
+  :headers {"HX-Redirect" ["/read-later/add" {:batch-added 2}]},
   :biff.pipe/next
   ({:biff.pipe/current :biff.pipe/queue,
     :biff.pipe.queue/id :com.yakread.app.read-later.add/add-item,
@@ -32,6 +32,6 @@
   {:batch "ttps://example.com foo ttp://obryant.dev/some-post bar"}},
  :expected
  {:status 303,
-  :headers {"HX-Redirect" ["/dev/read-later/add" {:batch-error true}]}}}
+  :headers {"HX-Redirect" ["/read-later/add" {:batch-error true}]}}}
 
 ]
