@@ -3,34 +3,31 @@
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]))
 
-(defresolver moderation [_ _]
-  {::pco/output [{:admin/moderation [:xt/id]}]}
-  {:admin/moderation {:xt/id :admin/moderation}})
+(defresolver next-batch [{:keys [biff/db]} _]
+  {::pco/output [{:admin.moderation/next-batch [:item/id :item.moderation/likes]}
+                 :admin.moderation/remaining
+                 :admin.moderation/approved
+                 :admin.moderation/blocked
+                 :admin.moderation/ingest-failed]}
+  (let [items (q db
+                 '{:find [direct-item (count usit)]
+                   :keys [item/id item.moderation/likes]
+                   :in [direct]
+                   :order-by [[(count usit) :desc]]
+                   :where [[usit :user-item/item any-item]
+                           [usit :user-item/favorited-at]
+                           [any-item :item/url url]
+                           [direct-item :item/url url]
+                           [direct-item :item/doc-type direct]
+                           (not [direct-item :item.direct/candidate-status])]}
+                 :item/direct)
+        statuses (into {} (q db
+                             '{:find [status (count item)]
+                               :where [[item :item.direct/candidate-status status]]}))]
+    {:admin.moderation/remaining (count items)
+     :admin.moderation/approved (get statuses :approved 0)
+     :admin.moderation/blocked (get statuses :blocked 0)
+     :admin.moderation/ingest-failed (get statuses :ingest-failed 0)
+     :admin.moderation/next-batch (vec (take 50 items))}))
 
-(defresolver next-batch [{:keys [biff/db]} {:keys [admin/moderation]}]
-  {::pco/input [{:admin/moderation
-                 [{(? :admin.moderation/latest-item)
-                   [:item/id
-                    :item/ingested-at]}]}]
-   ::pco/output [{:admin.moderation/next-batch [:item/id]}
-                 :admin.moderation/n-items]}
-  (let [{:item/keys [id ingested-at]} (:admin.moderation/latest-item moderation)
-        items (->> (q db
-                      '{:find [item ingested-at]
-                        :keys [item/id item/ingested-at]
-                        :in [t direct]
-                        :where [[item :item/doc-type direct]
-                                [item :item/ingested-at ingested-at]
-                                [(<= t ingested-at)]]
-                        :order-by [[ingested-at :asc]
-                                   [item :asc]]}
-                      (or ingested-at (java.time.Instant/ofEpochMilli 0))
-                      :item/direct)
-                   (drop-while #(and id
-                                     (= (:item/ingested-at %) ingested-at)
-                                     (<= (compare (:item/id %) id) 0))))]
-    {:admin.moderation/n-items (count items)
-     :admin.moderation/next-batch (vec (take 20 items))}))
-
-(def module {:resolvers [moderation
-                         next-batch]})
+(def module {:resolvers [next-batch]})

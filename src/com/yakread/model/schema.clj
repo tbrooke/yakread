@@ -88,7 +88,7 @@
    ;; Items fetched from a user-supplied URL (bookmarked or favorited)
    :item/direct (inherit :item/base
                          [:item/doc-type [:= :item/direct]]
-                         [:item.direct/candidate-status ? [:enum :ingest-failed :blocked]])
+                         [:item.direct/candidate-status ? [:enum :ingest-failed :blocked :approved]])
    :item/any    [:or :item/feed :item/email :item/direct]
 
    :feed [:map {:closed true}
@@ -205,11 +205,7 @@
                [:ad.credit/created-at            :time/instant]
                ;; We store :xt/id in the Stripe payment intent metadata and use it to look up the
                ;; charge status.
-               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]
-
-   :admin/moderation [:map {:closed true}
-                      [:xt/id [:= :admin/moderation]]
-                      [:admin.moderation/latest-item (r :item/direct) :uuid]]})
+               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]})
 
 (def module
   {:schema schema})

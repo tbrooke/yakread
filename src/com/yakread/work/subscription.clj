@@ -16,18 +16,20 @@
 (def sync-all-feeds!
   (lib.pipe/make
    :start
-   (fn [{:keys [biff/db biff/now]}]
-     (let [feed-ids (q db
-                       {:find 'feed
-                        :in '[t0]
-                        :where ['[feed :feed/url]
-                                [(list 'get-attr 'feed :feed/synced-at epoch) '[synced-at ...]]
-                                '[(< synced-at t0)]]}
-                       (.minusSeconds now (* 60 60 4)))]
-       {:biff.pipe/next (for [id feed-ids]
-                          {:biff.pipe/current :biff.pipe/queue
-                           :biff.pipe.queue/id :work.subscription/sync-feed
-                           :biff.pipe.queue/job {:feed/id id}})}))))
+   (fn [{:keys [biff/db biff/now yakread.work.sync-all-feeds/enabled]}]
+     (when enabled
+       (let [feed-ids (q db
+                         {:find 'feed
+                          :in '[t0]
+                          :where ['[feed :feed/url]
+                                  [(list 'get-attr 'feed :feed/synced-at epoch) '[synced-at ...]]
+                                  '[(< synced-at t0)]]}
+                         (.minusSeconds now (* 60 60 4)))]
+         (log/info "Syncing" (count feed-ids) "feeds")
+         {:biff.pipe/next (for [id feed-ids]
+                            {:biff.pipe/current :biff.pipe/queue
+                             :biff.pipe.queue/id :work.subscription/sync-feed
+                             :biff.pipe.queue/job {:feed/id id}})})))))
 
 (defn- entry->html [entry]
   (->> (concat (:contents entry) [(:description entry)])

@@ -1,4 +1,3 @@
-- update discover approval process
 - update import data, test it out
 - deploy, migrate
   - put maintenance message on old site, pause emails

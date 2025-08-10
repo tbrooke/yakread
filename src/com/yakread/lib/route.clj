@@ -19,6 +19,9 @@
 
 (def ^:dynamic *testing* false)
 
+(defn nippy-params [params]
+  {:npy (biffs/base64-url-encode (nippy/freeze params))})
+
 (defn href [route & args]
   (let [path-template (first
                        (if (symbol? route)
@@ -33,7 +36,7 @@
       [path query-params]
       (str path
            (when (not-empty query-params)
-             (str "?" (uri/map->query-string {:npy (biffs/base64-url-encode (nippy/freeze query-params))})))))))
+             (str "?" (uri/map->query-string (nippy-params query-params))))))))
 
 (defn href-safe [{:keys [biff/jwt-secret]} route query-params]
   (let [path (first

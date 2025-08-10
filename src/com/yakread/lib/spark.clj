@@ -16,29 +16,14 @@
 (defn- median [xs]
   (first (take (/ (count xs) 2) xs)))
 
-(defresolver screening-info [{:keys [biff/db]} _]
-  {::pco/output [::screened-to ::screened-to-id]}
-  (when-some [[screened-to screened-to-id]
-              (first (q db
-                        '{:find [ingested-at item]
-                          :where [[moderation :admin.moderation/latest-item item]
-                                  [item :item/ingested-at ingested-at]]}))]
-    {::screened-to screened-to
-     ::screened-to-id screened-to-id}))
-
-(defresolver item-candidates [{:keys [biff/db]} {::keys [screened-to screened-to-id]}]
+(defresolver item-candidates [{:keys [biff/db]} _]
   {::pco/output [{::item-candidates [:xt/id
                                      :item/url]}]}
   {::item-candidates
    (into []
-         (keep (fn [[{:keys [item.direct/candidate-status
-                             item/ingested-at
-                             xt/id]
+         (keep (fn [[{:keys [item.direct/candidate-status]
                       :as candidate}]]
-                 (when-not (or (#{:ingest-failed :blocked} candidate-status)
-                               (< (inst-ms screened-to) (inst-ms ingested-at))
-                               (and (= screened-to ingested-at)
-                                    (< (compare screened-to-id id) 0)))
+                 (when (= :approved candidate-status)
                    candidate)))
          (q db
             '{:find [(pull direct-item [:xt/id
@@ -305,8 +290,7 @@
 (defresolver item-candidate-ids [{::keys [item-candidates]}]
   {:yakread.model/item-candidate-ids (into #{} (map :xt/id) item-candidates)})
 
-(def ^:private pathom-env (pci/register [screening-info
-                                         item-candidates
+(def ^:private pathom-env (pci/register [item-candidates
                                          ads
                                          ad-ratings
                                          dedupe-item-id

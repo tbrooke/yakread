@@ -44,14 +44,14 @@
 
 (defpipe queue-prepare-digest
   :start
-  (fn [{:biff/keys [db queues] :as ctx}]
+  (fn [{:keys [biff/db biff/queues yakread.work.digest/enabled] :as ctx}]
     ;; There is a small race condition where the queue could be empty even though the
     ;; :work.digest/prepare-digest consumer(s) are still processing jobs, in which case the
     ;; corresponding users could receive two digests. To deal with that, we could
     ;; have the :work.digest/send-digest queue consumer check for the most recently sent digest for
     ;; each user and make sure it isn't within the past e.g. 6 hours. Probably doesn't matter
     ;; though.
-    (when (= 0 (.size (:work.digest/prepare-digest queues)))
+    (when (and enabled (= 0 (.size (:work.digest/prepare-digest queues))))
       (let [users (->> (q db '{:find (pull user [*])
                                :where [[user :user/email]]})
                        (filterv #(send-digest? ctx %))

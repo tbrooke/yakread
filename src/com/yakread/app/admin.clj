@@ -1,61 +1,79 @@
 (ns com.yakread.app.admin
   (:require
+   [com.biffweb :as biff]
    [clojure.string :as str]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.pipeline :as pipe]
-   [com.yakread.lib.route :refer [defget defpost href hx-redirect]]
+   [com.yakread.lib.route :as lib.route :refer [defget defpost href hx-redirect]]
    [com.yakread.lib.ui :as ui]
    [xtdb.api :as xt]))
 
+(declare page-route)
+
 (defpost save-moderation
   :start
-  (fn [{{:keys [block latest-item]} :params}]
+  (fn [{{:keys [block all-items]} :params}]
     (let [block-ids (->> (if (string? block)
                            [block]
                            block)
-                         (mapv parse-uuid))
-          tx (into [{:db/doc-type :admin/moderation
-                     :xt/id :admin/moderation
-                     :admin.moderation/latest-item latest-item}]
-                   (for [id block-ids]
-                     {:db/doc-type :item/direct
-                      :db/op :update
-                      :xt/id id
-                      :item.direct/candidate-status :blocked}))]
-      (merge {:biff.pipe/next [(pipe/tx tx)]}
-             (hx-redirect `page-route)))))
+                         (mapv parse-uuid)
+                         set)
+          tx (for [id all-items]
+               {:db/doc-type :item/direct
+                :db/op :update
+                :xt/id id
+                :item.direct/candidate-status (if (block-ids id)
+                                                :blocked
+                                                :approved)})]
+      {:biff.pipe/next [(pipe/tx tx)]
+       :status 303
+       :headers {"location" (href page-route)}})))
 
-(defget page-route "/admin"
-  [:app.shell/app-shell
-   :admin.moderation/n-items
+(defget page-content-route "/admin/content"
+  [:admin.moderation/remaining
+   :admin.moderation/approved
+   :admin.moderation/blocked
+   :admin.moderation/ingest-failed
    {:admin.moderation/next-batch
     [:item/id
+     :item.moderation/likes
      :item/ui-read-more-card]}]
+  (fn [ctx {:admin.moderation/keys [next-batch remaining approved blocked ingest-failed]}]
+    [:<>
+     [:div remaining " items left. " approved " approved. " blocked " blocked. "
+      ingest-failed " ingest failed."]
+     [:.h-6]
+     (biff/form
+       {:action (href save-moderation)
+        :hidden (lib.route/nippy-params {:all-items (mapv :item/id next-batch)})}
+       [:div.grid.grid-cols-2.gap-6
+        (for [{:item/keys [id ui-read-more-card]
+               :keys [item.moderation/likes]} next-batch]
+          [:<>
+           [:div
+            [:div (str likes) " likes"]
+            [:.h-2]
+            (ui-read-more-card {:show-author true
+                                :new-tab true})]
+           (ui/checkbox {:ui/label "block?"
+                         :ui/size :large
+                         :name "block"
+                         :value id})])
+        (ui/button {:type "submit"
+                    :ui/size :large
+                    :ui/type :primary
+                    :class '[w-full]}
+          "Save")])]))
+
+(defget page-route "/admin"
+  [:app.shell/app-shell]
   (fn [ctx {:keys [app.shell/app-shell]
             :admin.moderation/keys [n-items next-batch]}]
     (app-shell
      {:wide true}
      (ui/page-header {:title "Screen discover candidates"})
-     [:div n-items " items left."]
-     [:.h-6]
-     [:form
-      [:div.grid.grid-cols-2.gap-6
-       (for [{:item/keys [id ui-read-more-card]} next-batch]
-         [:<>
-          (ui-read-more-card {:show-author true
-                              :new-tab true})
-          (ui/checkbox {:ui/label "block?"
-                        :ui/size :large
-                        :name "block"
-                        :value id})])
-       (ui/button {:type "submit"
-                   :ui/size :large
-                   :ui/type :primary
-                   :class '[w-full]
-                   :hx-post (href save-moderation
-                                  {:latest-item (:item/id (last next-batch))})}
-         "Save")]])))
+     (ui/lazy-load (href page-content-route)))))
 
 (defonce resolver-cache (atom nil))
 (comment (reset! resolver-cache nil))
@@ -92,5 +110,6 @@
 (def module
   {:routes ["" {:middleware [wrap-admin]}
             page-route
+            page-content-route
             save-moderation
             digest-template-route]})

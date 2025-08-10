@@ -13,7 +13,8 @@
     (queue-prepare-digest
      {:biff/db db,
       :biff/now #time/instant "2000-01-01T16:00:01Z",
-      :biff/queues {:work.digest/prepare-digest (t/queue)}}
+      :biff/queues {:work.digest/prepare-digest (t/queue)},
+      :yakread.work.digest/enabled true}
      :start)),
    :result
    {:biff.pipe/next

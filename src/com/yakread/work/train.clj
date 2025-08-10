@@ -32,8 +32,8 @@
 
 (defpipe queue-add-candidate
   :start
-  (fn [{:keys [biff/db biff/queues]}]
-    (when (= 0 (.size (:work.train/add-candidate queues)))
+  (fn [{:keys [biff/db biff/queues yakread.work.queue-add-candidate/enabled]}]
+    (when (and enabled (= 0 (.size (:work.train/add-candidate queues))))
       (let [urls (q db
                     '{:find url
                       :where [[usit :user-item/item item]
