@@ -1,21 +1,16 @@
 (ns repl.import
-  (:require [com.biffweb :as biff :refer [q]]
-            [com.yakread.util.biff-staging :as biffs]
-            [com.yakread :as main]
-            [clojure.java.io :as io]
-            [clojure.set :as set]
-            [com.yakread :as main]
-            [com.yakread.smtp :as smtp]
-            [com.yakread.lib.core :as lib.core]
-            [com.yakread.lib.route :as lib.route]
-            [com.yakread.lib.pathom :as lib.pathom :refer [?]]
-            [com.yakread.lib.smtp :as lib.smtp]
-            [reitit.core :as reitit]
-            [xtdb.api :as xt]
-            [taoensso.nippy :as nippy]
-            [malli.core :as malli]
-            [clojure.data.generators :as gen])
-  (:import (java.time LocalTime Instant)))
+  (:require
+   [clojure.data.generators :as gen]
+   [clojure.set :as set]
+   [com.biffweb :as biff :refer [q]]
+   [com.yakread :as main]
+   [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.smtp :as lib.smtp]
+   [com.yakread.util.biff-staging :as biffs]
+   [malli.core :as malli]
+   [xtdb.api :as xt])
+  (:import
+   (java.time LocalTime)))
 
 (defn update-some [m k f & args]
   (if (contains? m k)
@@ -135,7 +130,7 @@
         (->> (biff/lookup-all db :item.email/user (:xt/id user))
              (group-by (some-fn :item/author-name :item.email/from-address))
              (mapv (fn [[from items]]
-                     (let [sub-id (uuid-from from)] ; TODO pass user ID/email to uuid-from
+                     (let [sub-id (uuid-from [email from])]
                        [(-> (merge {:xt/id sub-id
                                     :sub/user (:xt/id user)
                                     :sub/created-at (apply min-key inst-ms (mapv :item/fetched-at items))

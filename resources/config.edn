@@ -66,9 +66,10 @@
  :yakread.pipe.js/base-url #biff/env CLOUD_FN_BASE_URL
  :yakread.pipe.js/secret   #biff/secret CLOUD_FN_SECRET
 
- :yakread.work.sync-all-feeds/enabled      #profile {:prod true :default false}
- :yakread.work.queue-add-candidate/enabled #profile {:prod true :default false}
- :yakread.work.digest/enabled              #profile {:prod true :default false}
+ ;; disable until migration is complete
+ :yakread.work.sync-all-feeds/enabled      #profile {:prod false #_true :default false}
+ :yakread.work.queue-add-candidate/enabled #profile {:prod false #_true :default false}
+ :yakread.work.digest/enabled              #profile {:prod false #_true :default false}
 
  :biff/alert-email             #biff/env ALERT_EMAIL
  :biff.error-reporting/enabled #profile {:prod true}}

@@ -172,16 +172,22 @@
                      :biff.middleware/on-error #'ui/on-error})
 
 (defn start []
-  (let [new-system (reduce (fn [system component]
-                             (log/info "starting:" (str component))
-                             (component system))
-                           initial-system
-                           components)]
-    (reset! system new-system)
-    (generate-assets! new-system)
-    (log/info "System started.")
-    (log/info "Go to" (:biff/base-url new-system))
-    new-system))
+  (try
+    (let [new-system (reduce (fn [system component]
+                               (log/info "starting:" (str component))
+                               (component system))
+                             initial-system
+                             components)]
+      (reset! system new-system)
+      (generate-assets! new-system)
+      (log/info "System started.")
+      (log/info "Go to" (:biff/base-url new-system))
+      new-system)
+    (catch Exception e
+      (log/error e)
+      ;; Give the error handler some time to report
+      (Thread/sleep 5000)
+      (throw e))))
 
 (defn -main [& args]
   (tel.tl/tools-logging->telemere!)

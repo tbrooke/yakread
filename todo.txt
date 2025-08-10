@@ -1,14 +1,15 @@
-- update import data, test it out
 - deploy, migrate
-  - put maintenance message on old site, pause emails
-  - import data (unsubscribe inactive users)
+  - put maintenance message on old site, pause digests
+      leave email ingest on
+  - export data (note snapshot time)
+  - import data
   - do discover recs approvals
   - uncomment stripe api key
   - update old domain target
-  - turn on digests
-    - uncomment email queue thing
-      - still disable in dev
-    - also uncomment queue-add-candidate
+      update :biff/domain on new site
+  - import emails from old yakread.com that came after the snapshot
+  - unsubscribe inactive users
+  - turn on background jobs
 - finish ads
     admin page approvals
     charge

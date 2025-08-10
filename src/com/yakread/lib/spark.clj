@@ -208,13 +208,15 @@
         lambda 0.1
         alpha 0.05
         _ (log/info "training ALS")
-        als (ALS/trainImplicit spark-ratings rank iterations lambda alpha)
+        als (when (not-empty all-ratings)
+              (ALS/trainImplicit spark-ratings rank iterations lambda alpha))
         _ (log/info "computing baselines")
-        baselines (-> (into {} (.. als
-                                   (recommendUsersForProducts (count user->index))
-                                   (map (AverageRating.)
-                                        (.apply ClassTag$/MODULE$ clojure.lang.PersistentVector))
-                                   (collect)))
+        baselines (-> (into {} (when als
+                                 (.. als
+                                     (recommendUsersForProducts (count user->index))
+                                     (map (AverageRating.)
+                                          (.apply ClassTag$/MODULE$ clojure.lang.PersistentVector))
+                                     (collect))))
                       (update-keys index->candidate))
         item-candidate-ids (into #{} (map :xt/id) item-candidates)
         ad-candidate-ids (into #{} (map :xt/id) all-ads)
@@ -232,11 +234,13 @@
                                   (map (fn [^Rating rating]
                                          [(index->candidate (.product rating))
                                           (.rating rating)]))
-                                  (.recommendProducts als user-idx (count index->candidate)))
+                                  (when als
+                                    (.recommendProducts als user-idx (count index->candidate))))
                             baselines)]
                       (fn [candidate-id candidate-type]
                         (or (candidate->score candidate-id)
-                            (type->median-score candidate-type)))))}))
+                            (type->median-score candidate-type)
+                            0.5))))}))
 
 (defresolver get-candidates [{::keys [item-ratings
                                       ad-ratings
