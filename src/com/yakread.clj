@@ -2,6 +2,7 @@
   (:require
    [cld.core :as cld]
    [clojure.data.generators :as gen]
+   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.tools.namespace.repl :as tn-repl]
    [com.biffweb :as biff]
@@ -28,6 +29,8 @@
    [malli.util :as malli.u]
    [nrepl.cmdline :as nrepl-cmd]
    [reitit.ring :as reitit-ring]
+   [taoensso.telemere :as tel]
+   [taoensso.telemere.tools-logging :as tel.tl]
    [time-literals.read-write :as time-literals])
   (:gen-class))
 
@@ -102,10 +105,46 @@
                 :biff/href-safe (partial lib.route/href-safe ctx)})
         (pcp/with-plan-cache (atom {})))))
 
+;; TODO use a lib.pipe thing for this
+(defn- handle-error [{:keys [biff/send-email biff/domain biff.error-reporting/state] :as ctx} signal]
+  (when (= (:level signal) :error)
+    (let [max-errors 50
+          rate-limit-seconds (* 60 5)
+          now-seconds (/ (System/nanoTime) (* 1000 1000 1000.0))
+          {:keys [batch]} (swap! state
+                                 (fn [{:keys [errors last-sent-at] :as state}]
+                                   (let [errors (conj errors signal)]
+                                     (if-let [batch (and (< rate-limit-seconds (- now-seconds last-sent-at))
+                                                         (not-empty (subvec errors (max 0 (- (count errors) max-errors)))))]
+
+                                       {:batch batch
+                                        :errors []
+                                        :last-sent-at now-seconds}
+                                       (-> state
+                                           (assoc :errors errors)
+                                           (dissoc :batch))))))]
+      (when (not-empty batch)
+        (send-email ctx
+                    {:template :alert
+                     :subject (str domain " error")
+                     :rum [:pre
+                           (str/join "\n\n\n\n"
+                                     (for [error batch]
+                                       ((tel/format-signal-fn {}) error)))]})))))
+
+(defn use-error-reporting [{:keys [biff.error-reporting/enabled] :as ctx}]
+  (if-not enabled
+    ctx
+    (let [ctx (assoc ctx :biff.error-reporting/state (atom {:errors []
+                                                            :last-sent-at 0}))]
+      (tel/add-handler! :biff/error-reporting (fn [signal] (handle-error ctx signal)))
+      (update ctx :biff/stop conj #(tel/remove-handler! :biff/error-reporting)))))
+
 (defonce system (atom {}))
 
 (def components
   [biff/use-aero-config
+   use-error-reporting
    biff/use-xt
    lib.spark/use-spark
    biff/use-queues
@@ -145,6 +184,11 @@
     new-system))
 
 (defn -main [& args]
+  (tel.tl/tools-logging->telemere!)
+  ;; TODO probably move this into config
+  (tel/set-ns-filter! {:disallow ["org.apache.spark.*"
+                                  "org.sparkproject.*"
+                                  "org.apache.http.client.*"]})
   (cld/default-init!)
   (time-literals/print-time-literals-clj!)
   (alter-var-root #'gen/*rnd* (constantly (java.util.Random. (inst-ms (java.time.Instant/now)))))

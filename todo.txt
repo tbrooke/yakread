@@ -1,10 +1,11 @@
+- update discover approval process
+- update import data, test it out
 - deploy, migrate
-  - error reporting
-  - update discover approval process
+  - put maintenance message on old site, pause emails
   - import data (unsubscribe inactive users)
   - do discover recs approvals
   - uncomment stripe api key
-  - finish migration (domain etc)
+  - update old domain target
   - turn on digests
     - uncomment email queue thing
       - still disable in dev

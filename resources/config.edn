@@ -8,11 +8,7 @@
                    "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]"]
  :biff.nrepl/port #or [#biff/env NREPL_PORT "7888"]
 
- :biff.system-properties/clojure.tools.logging.factory "clojure.tools.logging.impl/slf4j-factory"
  :biff.system-properties/user.timezone "UTC"
- :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.spark "error"
- :biff.system-properties/org.slf4j.simpleLogger.log.org.sparkproject "error"
- :biff.system-properties/org.slf4j.simpleLogger.log.org.apache.http.client "error"
  :biff.system-properties/clojure.main.report "stderr"
 
  :biff.tasks/css-output "target/resources/public/css/main.css"
@@ -33,7 +29,7 @@
  :biff/jwt-secret #biff/secret JWT_SECRET
  :biff/port 8080
 
- :mailersend/api-key  #biff/secret MAILERSEND_API_KEY
+ :mailersend/api-key  #profile {:prod #biff/secret MAILERSEND_API_KEY}
  :mailersend/from     #biff/env MAILERSEND_FROM
  :mailersend/reply-to #biff/env MAILERSEND_REPLY_TO
 
@@ -68,4 +64,7 @@
  :yakread.s3.images/edge    #biff/env S3_IMAGES_EDGE
 
  :yakread.pipe.js/base-url #biff/env CLOUD_FN_BASE_URL
- :yakread.pipe.js/secret   #biff/secret CLOUD_FN_SECRET}
+ :yakread.pipe.js/secret   #biff/secret CLOUD_FN_SECRET
+
+ :biff/alert-email             #biff/env ALERT_EMAIL
+ :biff.error-reporting/enabled #profile {:prod true}}

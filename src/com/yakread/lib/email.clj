@@ -1,10 +1,9 @@
 (ns com.yakread.lib.email
-  (:require [camel-snake-kebab.core :as csk]
-            [camel-snake-kebab.extras :as cske]
-            [cheshire.core :as cheshire]
-            [clj-http.client :as http]
-            [clojure.tools.logging :as log]
-            [com.yakread.lib.ui-email :as uie]))
+  (:require
+   [clj-http.client :as http]
+   [clojure.tools.logging :as log]
+   [com.yakread.lib.ui-email :as uie]
+   [rum.core :as rum]))
 
 (defn- button [{:keys [href]} label]
   (uie/button
@@ -93,10 +92,17 @@
               "\n"
               uie/address)})
 
+(defn- alert [{:keys [biff/alert-email]} {:keys [subject rum text]}]
+  {:to [{:email alert-email}]
+   :subject subject
+   :html (rum/render-static-markup rum)
+   :text text})
+
 (defn- template [ctx k opts]
   ((case k
      :signin-link signin-link
-     :signin-code signin-code)
+     :signin-code signin-code
+     :alert alert)
    ctx
    opts))
 
@@ -114,11 +120,11 @@
       (log/error (:body result)))
     success))
 
-(defn- send-console [ctx form-params]
-  (println "TO:" (:to form-params))
+(defn- send-console [_ form-params]
+  (println "TO:" (-> form-params :to first :email))
   (println "SUBJECT:" (:subject form-params))
   (println)
-  (println (:text-body form-params))
+  (println (:text form-params))
   (println)
   (println "To send emails instead of printing them to the console, add your"
            "API keys for MailerSend and Recaptcha to config.env.")

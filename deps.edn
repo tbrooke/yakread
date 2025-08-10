@@ -1,7 +1,7 @@
 {:paths ["src" "resources" "target/resources" "target/classes"]
  :deps {com.biffweb/biff                    {:git/url "https://github.com/jacobobryant/biff"
                                              ;; indexes branch
-                                             :git/sha "eb24e187f89ec230c923076cd83d2c19eedf4b1c"}
+                                             :git/sha "7836079fc64a6334ea5a43e5e92bcbd7faa1d300"}
         vouch-opensource/fugato             {:git/url "https://github.com/vouch-opensource/fugato"
                                              :git/sha "4c1f687bca84f1f7777f347acdaafd49c182eae0"}
         com.stuartsierra/dependency         {:mvn/version "1.0.0"}
@@ -38,10 +38,12 @@
         com.rpl/specter                     {:mvn/version "1.1.4"}
         com.vdurmont/emoji-java             {:mvn/version "5.1.1"}
 
-        org.slf4j/slf4j-simple     {:mvn/version "2.0.0-alpha5"}
-        org.slf4j/log4j-over-slf4j {:mvn/version "1.7.36"}
-        org.slf4j/jul-to-slf4j     {:mvn/version "1.7.36"}
-        org.slf4j/jcl-over-slf4j   {:mvn/version "1.7.36"}}
+        com.taoensso/telemere               {:mvn/version "1.0.1"}
+        com.taoensso/telemere-slf4j         {:mvn/version "1.0.1"}
+        org.slf4j/slf4j-api                 {:mvn/version "2.0.17"}
+        org.slf4j/log4j-over-slf4j          {:mvn/version "1.7.36"}
+        org.slf4j/jul-to-slf4j              {:mvn/version "1.7.36"}
+        org.slf4j/jcl-over-slf4j            {:mvn/version "1.7.36"}}
  :aliases
  {:run {:extra-deps {com.biffweb/tasks {:git/url "https://github.com/jacobobryant/biff",
                                         :git/sha "c53c273c7e1a1773a57f9df6750a7c4448e47052"
