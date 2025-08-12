@@ -1,14 +1,11 @@
 - deploy, migrate
-  - put maintenance message on old site, pause digests
-      leave email ingest on
-  - export data (note snapshot time)
-  - import data
-  - do discover recs approvals
+  - unsubscribe inactive users
   - uncomment stripe api key
+  - move data to prod
   - update old domain target
+      remember mx records
       update :biff/domain on new site
   - import emails from old yakread.com that came after the snapshot
-  - unsubscribe inactive users
   - turn on background jobs
 - finish ads
     admin page approvals
@@ -21,7 +18,6 @@
 
 backlog
 - think about best way to define different kinds of routes again
-- why aren't obryant.dev rss posts in order on subs page
 - why doesn't ad preview show up on initial page load
 - should individual pipe states be standalone defmethods or similar?
 - cache all assets in s3

@@ -109,7 +109,8 @@
   [{:params/sub [:sub/id
                  :sub/title
                  {:sub/items
-                  [:item/ui-read-more-card]}]}]
+                  [:item/ui-read-more-card
+                   :item/published-at]}]}]
   (fn [_ {{:sub/keys [id title items]} :params/sub}]
     [:<>
      [:.flex.gap-4.max-sm:px-4

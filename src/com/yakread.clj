@@ -195,6 +195,7 @@
   (tel/set-ns-filter! {:disallow ["org.apache.spark.*"
                                   "org.sparkproject.*"
                                   "org.apache.http.client.*"]})
+  (log/info "heap size:" (/ (.maxMemory (Runtime/getRuntime)) (* 1024 1024)))
   (cld/default-init!)
   (time-literals/print-time-literals-clj!)
   (alter-var-root #'gen/*rnd* (constantly (java.util.Random. (inst-ms (java.time.Instant/now)))))

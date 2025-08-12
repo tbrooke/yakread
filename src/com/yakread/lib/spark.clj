@@ -20,23 +20,11 @@
   {::pco/output [{::item-candidates [:xt/id
                                      :item/url]}]}
   {::item-candidates
-   (into []
-         (keep (fn [[{:keys [item.direct/candidate-status]
-                      :as candidate}]]
-                 (when (= :approved candidate-status)
-                   candidate)))
-         (q db
-            '{:find [(pull direct-item [:xt/id
-                                        :item/url
-                                        :item/ingested-at
-                                        :item.direct/candidate-status])]
-              :in [direct]
-              :where [[usit :user-item/item any-item]
-                      [usit :user-item/favorited-at]
-                      [any-item :item/url url]
-                      [direct-item :item/url url]
-                      [direct-item :item/doc-type direct]]}
-            :item/direct))})
+   (vec (q db
+           '{:find [(pull direct-item [:xt/id :item/url])]
+             :in [approved]
+             :where [[direct-item :item.direct/candidate-status approved]]}
+           :approved))})
 
 (defresolver ads [{:biff/keys [db now]} _]
   {::pco/output [{::all-ads [:xt/id]}
@@ -325,9 +313,8 @@
       :yakread.model/get-candidates
       )
 
-  (-> (new-model (repl/context))
-      :yakread.model/get-candidates
-      )
+  (time (do (new-model (repl/context))
+          :done))
 
   (do (reset! (:yakread/model (repl/context))
               (new-model (repl/context)))

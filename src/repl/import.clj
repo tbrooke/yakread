@@ -2,8 +2,8 @@
   (:require
    [clojure.data.generators :as gen]
    [clojure.set :as set]
+   [clojure.tools.logging :as log]
    [com.biffweb :as biff :refer [q]]
-   [com.yakread :as main]
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.smtp :as lib.smtp]
    [com.yakread.util.biff-staging :as biffs]
@@ -17,20 +17,30 @@
     (apply update m k f args)
     m))
 
-(def schema->keys (into {}
-                        (map (juxt (comp :schema :properties)
-                                   (comp keys :keys)))
-                        (biffs/doc-asts main/malli-opts)))
+(def malli-opts
+  (delay @(resolve 'com.yakread/malli-opts)))
+
+(def schema->keys (delay
+                   (into {}
+                         (map (juxt (comp :schema :properties)
+                                    (comp keys :keys)))
+                         (biffs/doc-asts @malli-opts))))
 
 (defn uuid-from [x]
   (binding [gen/*rnd* (java.util.Random. (hash x))]
     (gen/uuid)))
 
-(defn truncate-stuff [item]
-  (cond-> item
-    (< 1000 (count (:item/title item))) (update :item/title subs 0 100)
-    (< 1000 (count (:item/image-url item))) (dissoc :item/image-url)
-    (< 1000 (count (:item/url item))) (dissoc :item/url)))
+(defn truncate-stuff [thing]
+  (cond-> thing
+    (< 1000 (count (:item/title thing))) (update :item/title subs 0 100)
+    (< 1000 (count (:item/image-url thing))) (dissoc :item/image-url)
+    (< 1000 (count (:item/url thing))) (dissoc :item/url)
+    (< 1000 (count (:feed/image-url thing))) (dissoc :feed/image-url)
+    (< 1000 (count (:feed/url thing))) (update :feed/url subs 0 1000)
+    (< 1000 (count (:feed/title thing))) (update :feed/title subs 0 1000)
+    (< 1000 (count (:feed/description thing))) (update :feed/description subs 0 1000)
+    (< 1000 (count (:feed/etag thing))) (update :feed/etag subs 0 1000)
+    (< 1000 (count (:feed/last-modified thing))) (update :feed/last-modified subs 0 1000)))
 
 ;; indexer rules:
 ;; - items must come before user-items
@@ -77,17 +87,17 @@
         base-update (fn [doc schema]
                       (-> doc
                           (set/rename-keys rename-keys)
-                          (select-keys (schema->keys schema))
+                          (select-keys (@schema->keys schema))
                           (update-vals #(if (inst? %)
                                           (.toInstant %)
                                           %))))
         validate (fn [doc schema]
-                   (if (malli/validate schema doc main/malli-opts)
+                   (if (malli/validate schema doc @malli-opts)
                      doc
                      (throw (ex-info "invalid doc"
                                      {:doc doc
                                       :schema schema
-                                      :explanation (malli/explain schema doc main/malli-opts)}))))
+                                      :explanation (malli/explain schema doc @malli-opts)}))))
         base-update-item (fn [item schema]
                            (-> item
                                (base-update schema)
@@ -102,11 +112,12 @@
                                [conn :conn.rss/url]]}
                      (:xt/id user))
         pinned (biff/lookup db :pinned/user (:xt/id user))
-        rss-items (q db
-                     '{:find (pull item [*])
-                       :in [[url ...]]
-                       :where [[item :item.rss/feed-url url]]}
-                     (keep :conn.rss/url rss-conns))
+        rss-items (biff/lazy-q db
+                               '{:find (pull item [*])
+                                 :in [[url ...]]
+                                 :where [[item :item.rss/feed-url url]]}
+                               (keep :conn.rss/url rss-conns)
+                               #(doall %))
         item->bookmarked-at (into {}
                                   (for [bookmark (biff/lookup-all db :bookmark/user (:xt/id user))
                                         item (:bookmark/items bookmark)]
@@ -181,6 +192,7 @@
                                     (base-update :feed)
                                     (merge (when (:rss/failed feed)
                                              {:feed/failed-syncs 1}))
+                                    truncate-stuff
                                     (validate :feed))]))
                         (q db
                            '{:find [url (pull feed [*])]
@@ -236,7 +248,7 @@
            (assoc :skip/clicked #{})
            (validate :skip)))
      (when ad
-       [(-> ad
+       [(-> (merge {:ad/updated-at #inst "2020"} ad)
             (base-update :ad)
             (validate :ad))])
      (for [ad-click ad-clicks]
@@ -279,7 +291,7 @@
                                   (filter #(< 1 (count (val %)))))
         all-docs (remove (set user-items-missing-item) all-docs)]
     (when (not-empty user-items-missing-item)
-      (println "WARNING some user-items' items weren't imported"))
+      (log/warn "some user-items' items weren't imported"))
     (when (not-empty duplicate-user-items)
       (throw (ex-info "some user-items were duplicated"
                       {:n (count (mapcat val duplicate-user-items))
@@ -323,6 +335,11 @@
                      [rec :rec/user user]
                      [user :user/email email]]})))
 
+(defn all-emails [from-db]
+  (sort (q from-db
+           '{:find email
+             :where [[user :user/email email]]})))
+
 (defn import-liked-users! [from-node to-node]
   (let [emails (liked-user-emails (xt/db from-node))]
     (println "importing" (count emails) "users")
@@ -332,10 +349,25 @@
     (println "Syncing...")
     (xt/sync to-node))))
 
+(defn import-all-users! [from-node to-node]
+  (let [emails (all-emails (xt/db from-node))]
+    (log/info "importing" (count emails) "users")
+    ;; Increment the drop if we crash and have to resume.
+    (doseq [[i email] (drop 2241 (map-indexed vector emails))]
+      (log/info "Importing" i email)
+      (import-user-docs! from-node to-node email)
+      (log/info "Syncing...")
+      (xt/sync to-node))))
+
 (defn open-from-node []
   (:biff.xtdb/node (biff/use-xtdb {:biff.xtdb/topology :standalone,
-                                   :biff.xtdb/dir "storage/export-xtdb-2"
-                                   :biff.xtdb/opts {:xtdb/query-engine {:query-timeout 100000}}})))
+                                   :biff.xtdb/dir "export/xtdb"
+                                   :biff.xtdb/opts {:xtdb/query-engine {:query-timeout 1000000}}})))
+
+(defn do-it [{:keys [biff.xtdb/node] :as ctx}]
+  (with-open [from-node (open-from-node)]
+    (import-all-users! from-node node))
+  ctx)
 
 (comment
 
@@ -350,6 +382,17 @@
   (with-open [from-node (open-from-node)]
     (import-liked-users! from-node to-node))
 
+  ;; Export command:
+  ;; time for dir in tx-log docs index; do rsync -av app@yakread.com:storage/xtdb/$dir/ /mnt/yakread_export/storage/xtdb/$dir/; done
+
+  (future
+    (log/info "testing"))
+
+  (future
+    (biff/catchall-verbose
+     (with-open [from-node (open-from-node)]
+       (import-all-users! from-node to-node))))
+
   (try
     (with-open [from-node (open-from-node)]
       (->> (all-user-docs (xt/db from-node) "...")
@@ -358,6 +401,5 @@
            time))
     (catch Exception e
       (ex-data e)))
-
 
   )
