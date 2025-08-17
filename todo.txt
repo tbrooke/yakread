@@ -1,4 +1,3 @@
-- figure out why discover candidates are empty
 - deploy, migrate
   - update old domain target
       remember mx records
