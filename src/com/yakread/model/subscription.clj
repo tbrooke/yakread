@@ -229,6 +229,22 @@
                      {:sub/unread-items unread-items})))
           subscriptions)))
 
+(defresolver mv [{:keys [biff/db]} subs*]
+  {::pco/input  [:sub/id]
+   ::pco/output [{:sub/mv [:xt/id]}]
+   ::pco/batch?  true}
+  (let [sub->mv (into {}
+                      (q db
+                         '{:find [sub mv]
+                           :in [[sub ...]]
+                           :where [[mv :mv.sub/sub sub]]}
+                         (mapv :sub/id subs*)))]
+    (mapv (fn [{:keys [sub/id] :as sub}]
+            (merge sub
+                   (when-some [mv-id (sub->mv id)]
+                     {:sub/mv {:xt/id mv-id}})))
+          subs*)))
+
 (def module {:resolvers [user-subs
                          sub-info
                          sub-id->xt-id
@@ -243,6 +259,7 @@
                          unread-items
                          feed-sub-subtitle
                          latest-email-item
-                         email-subtitle]
+                         email-subtitle
+                         mv]
              :indexes [last-published-index
                        unread-index]})

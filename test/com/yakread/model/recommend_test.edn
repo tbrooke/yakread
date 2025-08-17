@@ -49,7 +49,7 @@
        :user-item/item "item5",
        :user-item/user "user1",
        :user-item/viewed-at #time/instant "2003-01-01T00:00:00Z"}]]
-    (sub-affinity
+    (sub-affinity*
      {:biff/db db}
      [{:sub/id "sub1",
        :sub/title "my sub",
@@ -62,10 +62,10 @@
    :result
    [{:sub/n-interactions 3,
      :sub/new false,
-     :sub/affinity-high 0.8861517686835451,
+     :sub/affinity-low* 0.6287594284880811,
      :sub/title "my sub",
+     :sub/affinity-high* 0.8861517686835451,
      :sub/id "sub1",
-     :sub/affinity-low 0.6287594284880811,
      :sub/scores (10.0 -0.9355069850316178 -0.8751733190429475),
      :sub/items [{:xt/id "item1"} {:xt/id "item2"} {:xt/id "item3"}],
      :sub/user {:xt/id "user1"},
@@ -75,10 +75,10 @@
       {:action :favorited, :t #time/instant "2001-01-01T00:00:00Z"})}
     {:sub/n-interactions 2,
      :sub/new false,
-     :sub/affinity-high 0.872047711040352,
+     :sub/affinity-low* 0.27354641067767876,
      :sub/title "my other sub",
+     :sub/affinity-high* 0.872047711040352,
      :sub/id "sub2",
-     :sub/affinity-low 0.27354641067767876,
      :sub/scores (2.0 -0.9355069850316178),
      :sub/items [{:xt/id "item4"} {:xt/id "item5"}],
      :sub/user {:xt/id "user1"},

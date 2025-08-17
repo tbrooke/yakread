@@ -32,6 +32,7 @@
   [com.yakread.ui-components.item.read]
   [com.yakread.ui-components.shell]
   [com.yakread.work.digest]
+  [com.yakread.work.materialized-views]
   [com.yakread.work.subscription]
   [com.yakread.work.train]))
 
@@ -67,5 +68,6 @@
   com.yakread.ui-components.item.read/module
   com.yakread.ui-components.shell/module
   com.yakread.work.digest/module
+  com.yakread.work.materialized-views/module
   com.yakread.work.subscription/module
   com.yakread.work.train/module])

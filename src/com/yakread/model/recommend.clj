@@ -8,12 +8,12 @@
    [com.yakread.lib.pathom :as lib.pathom]
    [edn-query-language.core :as eql]
    [lambdaisland.uri :as uri]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]
+   [clojure.tools.logging :as log]))
 
 (def n-skipped (some-fn :item/n-skipped :item/n-skipped-with-digests))
 
 ;; TODO for further optimization:
-;; - materialize :sub/affinity
 ;; - figure out why com.yakread.util.biff-staging/entity-resolver gets called 3,000 times in dev
 ;;   (pathom overhead is 50%)
 
@@ -85,7 +85,7 @@
            (sort-by val >)
            (mapv key))))
 
-(defresolver sub-affinity
+(defresolver sub-affinity*
   "Returns the 10 most recent interactions (e.g. viewed, liked, etc) for a given sub."
   [{:keys [biff/db]} subscriptions]
   {::pco/input [:sub/id
@@ -93,8 +93,8 @@
                 {:sub/user [:xt/id]}
                 {:sub/items [:xt/id]}]
    ::pco/output [:sub/new
-                 :sub/affinity-low
-                 :sub/affinity-high
+                 :sub/affinity-low*
+                 :sub/affinity-high*
                  :sub/n-interactions]
    ::pco/batch? true}
   (let [q-inputs             (for [{:sub/keys [id user items]} subscriptions
@@ -139,8 +139,8 @@
                       :sub/n-interactions (count interactions)
                       :sub/scores scores
                       :sub/new (empty? interactions)
-                      :sub/affinity-low (affinity 0 5)
-                      :sub/affinity-high (affinity 5 0)})))
+                      :sub/affinity-low* (affinity 0 5)
+                      :sub/affinity-high* (affinity 5 0)})))
           subscriptions)))
 
 (defn rerank
@@ -169,24 +169,24 @@
 
 (defresolver selected-subs [{:user/keys [unread-subscriptions]}]
   {::pco/input [{:user/unread-subscriptions [:xt/id
-                                             :sub/new
-                                             :sub/affinity-low
-                                             :sub/affinity-high
+                                             {(? :sub/mv) [(? :mv.sub/affinity-low)
+                                                           (? :mv.sub/affinity-high)]}
                                              (? :sub/pinned-at)
                                              (? :sub/published-at)]}]
    ::pco/output [{:user/selected-subs [:xt/id
                                        :item/rec-type]}]}
-  (let [{new-subs true old-subs false} (group-by :sub/new (gen/shuffle unread-subscriptions))
+  (let [new? (fn [sub] (some? (get-in sub [:sub/mv :mv.sub/affinity-low])))
+        {new-subs true old-subs false} (group-by new? (gen/shuffle unread-subscriptions))
         ;; We'll always show new subs first e.g. so the user will see any confirmation emails.
         new-subs (sort-by :sub/published-at #(compare %2 %1) new-subs)
-        old-subs (concat (drop 5 new-subs) old-subs)
+        old-subs (concat (drop 3 new-subs) old-subs)
         new-subs (->> new-subs
-                      (take 5)
+                      (take 3)
                       (mapv #(assoc % :item/rec-type :item.rec-type/new-subscription)))
         {pinned true unpinned false} (->> (interleave-uniform
                                            ;; Do a mix of explore and exploit
-                                           (sort-by :sub/affinity-low > old-subs)
-                                           (sort-by :sub/affinity-high > old-subs))
+                                           (sort-by #(get-in % [:sub/mv :mv.sub/affinity-low] 0.0) > old-subs)
+                                           (sort-by #(get-in % [:sub/mv :mv.sub/affinity-high] 1.0) > old-subs))
                                           distinct
                                           (map-indexed (fn [i sub]
                                                          (assoc sub ::rank i)))
@@ -557,7 +557,7 @@
                           (pick-by-skipped icymi-bookmark-recs icymi-sub-recs))})
 
 (def module
-  {:resolvers [sub-affinity
+  {:resolvers [sub-affinity*
                for-you-sub-recs
                icymi-sub-recs
                for-you-bookmark-recs

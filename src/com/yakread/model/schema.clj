@@ -205,7 +205,16 @@
                [:ad.credit/created-at            :time/instant]
                ;; We store :xt/id in the Stripe payment intent metadata and use it to look up the
                ;; charge status.
-               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]})
+               [:ad.credit/charge-status ?       [:enum :pending :confirmed :failed]]]
+
+   :mv.sub [:map {:closed true}
+            [:xt/id                          :uuid]
+            [:mv.sub/sub            (r :sub) :uuid]
+            [:mv.sub/affinity-low   ?        :double]
+            [:mv.sub/affinity-high  ?        :double]
+            [:mv.sub/last-published ?        :time/instant]
+            [:mv.sub/unread         ?        :int]
+            [:mv.sub/read           ?        :int]]})
 
 (def module
   {:schema schema})

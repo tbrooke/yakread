@@ -1,11 +1,10 @@
+- figure out why discover candidates are empty
 - deploy, migrate
-  - unsubscribe inactive users
-  - uncomment stripe api key
-  - move data to prod
   - update old domain target
       remember mx records
-      update :biff/domain on new site
   - import emails from old yakread.com that came after the snapshot
+  - do a bunch more discover approvals
+      test out some digests for random people
   - turn on background jobs
 - finish ads
     admin page approvals
@@ -52,7 +51,6 @@ backlog
 - check :item/image-url gets set correctly for feed items
 - maybe include wrap-signed-in as part of defget/defpost
 - autogenerate tests for all defgets, defposts, defresolvers
-- when viewing an item for the first time, unread status is stale in the feed below. maybe just need to make it lazy
 - infer :item/url for emails
 
 ---
