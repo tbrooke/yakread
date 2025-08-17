@@ -56,7 +56,7 @@
 
 (def module
   {:tasks [{:task     #'retrain
-            :schedule (lib.core/every-n-minutes 30)}
+            :schedule (lib.core/every-n-minutes 60)}
            {:task     #'queue-add-candidate
             :schedule (lib.core/every-n-minutes 10)}]
    :queues [{:id        :work.train/add-candidate

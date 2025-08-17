@@ -20,11 +20,12 @@
   {::pco/output [{::item-candidates [:xt/id
                                      :item/url]}]}
   {::item-candidates
-   (vec (q db
-           '{:find [(pull direct-item [:xt/id :item/url])]
-             :in [approved]
-             :where [[direct-item :item.direct/candidate-status approved]]}
-           :approved))})
+   (mapv first
+         (q db
+            '{:find [(pull direct-item [:xt/id :item/url])]
+              :in [approved]
+              :where [[direct-item :item.direct/candidate-status approved]]}
+            :approved))})
 
 (defresolver ads [{:biff/keys [db now]} _]
   {::pco/output [{::all-ads [:xt/id]}
