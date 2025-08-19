@@ -7,7 +7,7 @@
    {:id :monitor :route 'com.yakread.app.admin.monitor/page-route :target "_blank" :label "Monitor"}])
 
 (defn navbar [active]
-  [:.flex.gap-4.mb-6
+  [:.flex.gap-4.mb-6.max-sm:mx-4
    (for [{:keys [label id route target]} pages]
      (ui/pill {:ui/label label
                :href (href route)

@@ -1,8 +1,8 @@
 (ns com.yakread.app.admin.monitor
   (:require
-   [com.yakread.lib.admin :as lib]
+   [com.yakread.lib.content :as lib.content]
    [com.yakread.lib.middleware :as lib.mid]
-   [com.yakread.lib.route :as lib.route :refer [defget href]]
+   [com.yakread.lib.route :as lib.route :refer [defget]]
    [com.yakread.lib.ui :as ui]
    [taoensso.tufte :as tufte]))
 
@@ -24,7 +24,7 @@
                    (reduce tufte/merge-pstats pstats))]
       [:pre
        (tufte/format-pstats
-        (update @pstats :stats update-keys #(com.yakread.lib.content/truncate (str %) 50)))])))
+        (update @pstats :stats update-keys #(lib.content/truncate (str %) 50)))])))
 
 (def module
   {:routes ["" {:middleware [lib.mid/wrap-admin]}

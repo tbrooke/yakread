@@ -41,30 +41,31 @@
      :item/ui-read-more-card]}]
   (fn [ctx {:admin.moderation/keys [next-batch remaining approved blocked ingest-failed]}]
     [:<>
-     [:div remaining " items left. " approved " approved. " blocked " blocked. "
+     [:.max-sm:mx-4 remaining " items left. " approved " approved. " blocked " blocked. "
       ingest-failed " ingest failed."]
      [:.h-6]
-     (biff/form
-       {:action (href save-moderation)
-        :hidden (lib.route/nippy-params {:all-items (mapv :item/id next-batch)})}
-       [:div.grid.grid-cols-2.gap-6
-        (for [{:item/keys [id ui-read-more-card]
-               :keys [item.moderation/likes]} next-batch]
-          [:<>
-           [:div
-            [:div (str likes) " likes"]
-            [:.h-2]
-            (ui-read-more-card {:show-author true
-                                :new-tab true})]
-           (ui/checkbox {:ui/label "block?"
-                         :ui/size :large
-                         :name "block"
-                         :value id})])
-        (ui/button {:type "submit"
-                    :ui/size :large
-                    :ui/type :primary
-                    :class '[w-full]}
-          "Save")])]))
+     [:.max-sm:mx-4
+      (biff/form
+        {:action (href save-moderation)
+         :hidden (lib.route/nippy-params {:all-items (mapv :item/id next-batch)})}
+        [:div.grid.xl:grid-cols-2.gap-6
+         (for [{:item/keys [id ui-read-more-card]
+                :keys [item.moderation/likes]} next-batch]
+           [:<>
+            [:div
+             [:div (str likes) " likes"]
+             [:.h-2]
+             (ui-read-more-card {:show-author true
+                                 :new-tab true})]
+            (ui/checkbox {:ui/label "block?"
+                          :ui/size :large
+                          :name "block"
+                          :value id})])
+         (ui/button {:type "submit"
+                     :ui/size :large
+                     :ui/type :primary
+                     :class '[w-full]}
+           "Save")])]]))
 
 (defget page-route "/admin"
   [:app.shell/app-shell]

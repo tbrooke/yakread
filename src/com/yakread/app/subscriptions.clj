@@ -91,7 +91,7 @@
                  (? :sub/pinned-at)]}
   {:sub.view/card
    [:.relative
-    [:div {:class '[absolute top-1.5 right-0]}
+    [:div {:class '[absolute top-1.5 right-4 sm:right-0]}
      (ui/overflow-menu
       {:ui/rounded true}
       (ui/overflow-button
@@ -110,7 +110,8 @@
                           shadow
                           p-2
                           text-sm
-                          hover:bg-neut-50]
+                          hover:bg-neut-50
+                          max-sm:mx-4]
                         (when (< 0 unread)
                           '[border-l-4
                             border-tealv-500]))}
@@ -181,7 +182,7 @@
          (empty-state)
          [:div.grow.flex.flex-col
           (when show-tabs
-            [:.flex.gap-4.mb-6
+            [:.flex.gap-4.mb-6.max-sm:.mx-4
              (ui/pill {:ui/label "Pinned"
                        :class '[pinned-tab]
                        :data-active (str (= active-tab :pinned))

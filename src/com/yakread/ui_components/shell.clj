@@ -99,8 +99,8 @@
                    "lg:w-[16rem]"
                    flex-shrink-0
                    bg-neut-900
-                   text-neut-50
-                   z-20]}
+                   text-neut-50]
+          :style {:z-index 100001}}
     [:.sticky.top-0.py-2.flex.flex-col.px-4.h-screen
      [:.h-4]
      [:a.self-center {:href "/"}
@@ -186,9 +186,9 @@
                    inset-0
                    bg-black
                    opacity-50
-                   z-10
                    hidden
                    navbar-button]
+          :style {:z-index 100000}
           :_ (str "on click toggle .sidebar-visible on #sidebar then "
                   "toggle .hidden on .navbar-button")}]
    [:div {:class '[md:hidden
@@ -209,9 +209,10 @@
      [:.grow.h-1]
      (for [[icon class] [["bars-regular"]
                          ["xmark-regular" '[hidden]]]]
-       [:button.navbar-button.z-20
+       [:button.navbar-button
         {:_ (str "on click toggle .sidebar-visible on #sidebar then "
                  "toggle .hidden on .navbar-button")
+         :style {:z-index 100001}
          :class class}
         (lib.icons/base icon {:class '[w-6 h-6]})])]]])
 
