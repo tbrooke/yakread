@@ -11,7 +11,8 @@
    [com.yakread.routes :as routes]
    [ring.util.request :as ring-req]
    [rum.core :as rum]
-   [taoensso.tufte :as tufte]) 
+   [taoensso.tufte :as tufte]
+   [xtdb.api :as xt])
   (:import
    [com.stripe.net Webhook]))
 
@@ -107,6 +108,27 @@
          (log/error e "Error while handling stripe webhook event")
          {:status 400 :body ""}))
       (handler req))))
+
+(defn wrap-monitoring [handler]
+  (fn [{:keys [com.yakread/pstats uri] :as ctx}]
+    (let [[response pstats*] (tufte/profiled
+                              {}
+                              (tufte/p (str "uri:" uri)
+                                (handler ctx)))]
+      (swap! pstats update (str (java.time.LocalDate/now))
+             (fn [pstats]
+               (if pstats
+                 (tufte/merge-pstats pstats pstats*)
+                 pstats*)))
+      response)))
+
+(defn wrap-admin [handler]
+  (fn [{:keys [biff/db session] :as ctx}]
+    (if (contains? (:user/roles (xt/entity db (:uid session))) :admin)
+      (handler ctx)
+      {:status 401
+       :headers {"content-type" "text/html"}
+       :body "<h1>Unauthorized</h1>"})))
 
 (def default-site-middleware
   [biff/wrap-site-defaults

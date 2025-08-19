@@ -51,7 +51,8 @@
 
 (def handler (-> (biff/reitit-handler {:router router})
                  biff/wrap-base-defaults
-                 lib.mid/wrap-stripe-event))
+                 lib.mid/wrap-stripe-event
+                 lib.mid/wrap-monitoring))
 
 (def static-pages (apply biff/safe-merge (map :static modules)))
 
@@ -169,7 +170,8 @@
                      :biff.smtp/accept? #'smtp/accept?
                      :biff.smtp/deliver #'smtp/deliver*
                      :biff/components components
-                     :biff.middleware/on-error #'ui/on-error})
+                     :biff.middleware/on-error #'ui/on-error
+                     :com.yakread/pstats (atom {})})
 
 (defn start []
   (try

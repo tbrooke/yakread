@@ -1,13 +1,13 @@
 (ns com.yakread.app.admin
   (:require
-   [com.biffweb :as biff]
    [clojure.string :as str]
+   [com.biffweb :as biff]
+   [com.yakread.lib.admin :as lib]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.pipeline :as pipe]
-   [com.yakread.lib.route :as lib.route :refer [defget defpost href hx-redirect]]
-   [com.yakread.lib.ui :as ui]
-   [xtdb.api :as xt]))
+   [com.yakread.lib.route :as lib.route :refer [defget defpost href]]
+   [com.yakread.lib.ui :as ui]))
 
 (declare page-route)
 
@@ -68,11 +68,11 @@
 
 (defget page-route "/admin"
   [:app.shell/app-shell]
-  (fn [ctx {:keys [app.shell/app-shell]
-            :admin.moderation/keys [n-items next-batch]}]
+  (fn [ctx {:keys [app.shell/app-shell]}]
     (app-shell
      {:wide true}
-     (ui/page-header {:title "Screen discover candidates"})
+     (ui/page-header {:title "Admin"})
+     (lib/navbar :screen-discover)
      (ui/lazy-load (href page-content-route)))))
 
 (defonce resolver-cache (atom nil))
@@ -99,16 +99,8 @@
          :headers {"content-type" content-type}
          :body content}))}])
 
-(defn wrap-admin [handler]
-  (fn [{:keys [biff/db session] :as ctx}]
-    (if (contains? (:user/roles (xt/entity db (:uid session))) :admin)
-      (handler ctx)
-      {:status 401
-       :headers {"content-type" "text/html"}
-       :body "<h1>Unauthorized</h1>"})))
-
 (def module
-  {:routes ["" {:middleware [wrap-admin]}
+  {:routes ["" {:middleware [lib.mid/wrap-admin]}
             page-route
             page-content-route
             save-moderation
