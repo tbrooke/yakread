@@ -45,7 +45,7 @@ EOD
 }
 sudo -u app bash -c "$(declare -f set_up_app); set_up_app"
 
-# Systemd service
+# Systemd services
 cat > /etc/systemd/system/app.service << EOD
 [Unit]
 Description=app
@@ -64,6 +64,24 @@ ExecStart=/bin/sh -c "mkdir -p target/resources; clj -M:prod"
 WantedBy=multi-user.target
 EOD
 systemctl enable app
+
+cat > /etc/systemd/system/startup.service << EOD
+[Unit]
+Description=system startup commands
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+Restart=on-failure
+RestartSec=5s
+ExecStart=iptables -A PREROUTING -t nat -p tcp --dport 25 -j REDIRECT --to-port 2525
+
+[Install]
+WantedBy=multi-user.target
+EOD
+systemctl enable startup
+systemctl start startup
+
 cat > /etc/systemd/journald.conf << EOD
 [Journal]
 Storage=persistent
@@ -124,10 +142,16 @@ certbot --nginx
 
 # App dependencies
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-apt-get -y install nodejs # iptables-persistent -- installing this removes ufw.
+apt-get -y install nodejs
 ufw allow 25
 ufw allow 2525
-iptables -A PREROUTING -t nat -p tcp --dport 25 -j REDIRECT --to-port 2525
-# TODO figure out how to persist iptables rules without removing ufw.
-# maybe just use a startup script to set the rules manually?
-#iptables-save > /etc/iptables/rules.v4
+
+# fail2ban:
+# apt install fail2ban
+# cp /etc/fail2ban/{jail.conf,jail.local}
+# add enabled = true to [nginx-botsearch] section
+# in /etc/fail2ban/filter.d/nginx-botsearch.conf, add this line to failregex:
+#
+#   .*client: <HOST>,.*
+#
+# systemctl enable fail2ban; systemctl start fail2ban

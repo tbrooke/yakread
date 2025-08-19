@@ -273,13 +273,14 @@
   ([opts]
    (confirmed-submit opts "Save" "Saved 🗸")))
 
-(defn pill [{:ui/keys [label] :as opts}]
-  [:button (dom-opts opts
-                     '[py-1 px-3 rounded
-                       "data-[active=true]:bg-neut-800"
-                       "data-[active=true]:text-white"
-                       "data-[active=false]:underline"
-                       "data-[active=false]:text-neut-800"])
+(defn pill [{:keys [ui/label href] :as opts}]
+  [(if href :a :button)
+   (dom-opts opts
+             '[py-1 px-3 rounded
+               "data-[active=true]:bg-neut-800"
+               "data-[active=true]:text-white"
+               "data-[active=false]:underline"
+               "data-[active=false]:text-neut-800"])
    label])
 
 ;;;; Inputs
@@ -486,6 +487,13 @@
                   sm:rounded shadow
                   flex flex-col gap-10
                   max-w-screen-sm]}
+   contents])
+
+(defn wide-page-well [& contents]
+  [:div {:class '[bg-white
+                  p-4
+                  sm:rounded shadow
+                  flex flex-col gap-10]}
    contents])
 
 (defn section [{:keys [title]} & contents]

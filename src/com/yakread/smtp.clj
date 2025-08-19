@@ -14,8 +14,9 @@
 (defn accept? [{:keys [biff/db biff.smtp/message yakread/domain]}]
   (let [result (and (or (not domain) (= domain (:domain message)))
                     (some? (biff/lookup-id db :user/email-username (str/lower-case (:username message)))))]
-    (log/info (if result "Accepted" "Rejected") "incoming email for "
-              (str (str/lower-case (:username message)) "@" (:domain message)))
+    (when-not result
+      (log/warn "Rejected incoming email for"
+                (str (str/lower-case (:username message)) "@" (:domain message))))
     result))
 
 (defn- extract-html [message]
@@ -38,56 +39,63 @@
           (->> (str/split-lines content)
                (biff/join [:br]))]]]))))
 
+
 (def deliver*
   (lib.pipe/make
    :start (fn [{:keys [biff.smtp/message]}]
             {:biff.pipe/next [:yakread.pipe/js :end]
+             :biff.pipe/catch :yakread.pipe/js
              :yakread.pipe.js/fn-name "juice"
              :yakread.pipe.js/input {:html (extract-html message)}})
-   :end (fn [{:keys [biff.smtp/message biff/db]
+   :end (fn [{:keys [biff.smtp/message biff/db biff.pipe/now]
               {:keys [html]} :yakread.pipe.js/output}]
-          (let [html (-> html
-                         lib.content/normalize
-                         (str/replace #"#transparent" "transparent"))
-                raw-content-key (gen/uuid)
-                parsed-content-key (gen/uuid)
-                from (some (fn [k]
-                             (->> (concat (:from message) (:reply-to message))
-                                  (some k)))
-                           [:personal :address])
-                text (lib.content/html->text html)
-                user-id (biff/lookup-id db :user/email-username (str/lower-case (:username message)))
-                sub (biff/lookup db :sub/user user-id :sub.email/from from)
-                sub-id (or (:xt/id sub) :db.id/new-sub)
-                first-header (fn [header-name]
-                               (some lib.smtp/decode-header (get-in message [:headers header-name])))]
-            {:biff.pipe/next [(lib.pipe/s3 'yakread.s3.emails raw-content-key (:raw message) "text/plain")
-                              (lib.pipe/s3 'yakread.s3.content parsed-content-key html "text/html")
-                              :biff.pipe/tx]
-             :biff.pipe.tx/input (concat
-                                  [(lib.core/some-vals
-                                    {:db/doc-type :item/email
-                                     :item/ingested-at :db/now
-                                     :item/title (:subject message)
-                                     :item/url (some-> (first-header "list-post")
-                                                       (str/replace #"[<>]" ""))
-                                     :item/content-key parsed-content-key
-                                     :item/published-at :db/now
-                                     :item/excerpt (lib.content/excerpt text)
-                                     :item/author-name from
-                                     :item/lang (lib.content/lang html)
-                                     :item/length (count text)
-                                     :item.email/sub sub-id
-                                     :item.email/raw-content-key raw-content-key
-                                     :item.email/list-unsubscribe (first-header "list-unsubscribe")
-                                     :item.email/list-unsubscribe-post (first-header "list-unsubscribe-post")
-                                     :item.email/reply-to (some :address (:reply-to message))
-                                     :item.email/maybe-confirmation (or (nil? sub) nil)})]
-                                  (when-not sub
-                                    [{:db/doc-type :sub/email
-                                      :xt/id sub-id
-                                      :sub/user user-id
-                                      :sub.email/from from
-                                      :sub/created-at :db/now}
-                                     [::xt/fn :biff/ensure-unique {:sub/user user-id
-                                                                   :sub.email/from from}]]))}))))
+          (if-not html
+            (do
+              (log/warn "juice failed to parse message for" (:username message))
+              {:biff.pipe/next [(lib.pipe/spit (str "storage/juice-failed/" (.toEpochMilli now) ".edn")
+                                               (pr-str message))]})
+            (let [html (-> html
+                           lib.content/normalize
+                           (str/replace #"#transparent" "transparent"))
+                  raw-content-key (gen/uuid)
+                  parsed-content-key (gen/uuid)
+                  from (some (fn [k]
+                               (->> (concat (:from message) (:reply-to message))
+                                    (some k)))
+                             [:personal :address])
+                  text (lib.content/html->text html)
+                  user-id (biff/lookup-id db :user/email-username (str/lower-case (:username message)))
+                  sub (biff/lookup db :sub/user user-id :sub.email/from from)
+                  sub-id (or (:xt/id sub) :db.id/new-sub)
+                  first-header (fn [header-name]
+                                 (some lib.smtp/decode-header (get-in message [:headers header-name])))]
+              {:biff.pipe/next [(lib.pipe/s3 'yakread.s3.emails raw-content-key (:raw message) "text/plain")
+                                (lib.pipe/s3 'yakread.s3.content parsed-content-key html "text/html")
+                                :biff.pipe/tx]
+               :biff.pipe.tx/input (concat
+                                    [(lib.core/some-vals
+                                      {:db/doc-type :item/email
+                                       :item/ingested-at :db/now
+                                       :item/title (:subject message)
+                                       :item/url (some-> (first-header "list-post")
+                                                         (str/replace #"[<>]" ""))
+                                       :item/content-key parsed-content-key
+                                       :item/published-at :db/now
+                                       :item/excerpt (lib.content/excerpt text)
+                                       :item/author-name from
+                                       :item/lang (lib.content/lang html)
+                                       :item/length (count text)
+                                       :item.email/sub sub-id
+                                       :item.email/raw-content-key raw-content-key
+                                       :item.email/list-unsubscribe (first-header "list-unsubscribe")
+                                       :item.email/list-unsubscribe-post (first-header "list-unsubscribe-post")
+                                       :item.email/reply-to (some :address (:reply-to message))
+                                       :item.email/maybe-confirmation (or (nil? sub) nil)})]
+                                    (when-not sub
+                                      [{:db/doc-type :sub/email
+                                        :xt/id sub-id
+                                        :sub/user user-id
+                                        :sub.email/from from
+                                        :sub/created-at :db/now}
+                                       [::xt/fn :biff/ensure-unique {:sub/user user-id
+                                                                     :sub.email/from from}]]))})))))

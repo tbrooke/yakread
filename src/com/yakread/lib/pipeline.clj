@@ -1,5 +1,7 @@
 (ns com.yakread.lib.pipeline
+  (:refer-clojure :exclude [spit])
   (:require
+   [clojure.java.io :as io]
    [cheshire.core :as cheshire]
    [clj-http.client :as http]
    [clojure.data.generators :as gen]
@@ -141,7 +143,16 @@
    :biff.pipe/drain-queue (fn [{:biff/keys [job queue] :as ctx}]
                             (let [ll (java.util.LinkedList.)]
                               (.drainTo queue ll)
-                              (assoc ctx :biff/jobs (into [job] ll))))})
+                              (assoc ctx :biff/jobs (into [job] ll))))
+   :biff.pipe/spit (fn [{:biff.pipe.spit/keys [file content] :as ctx}]
+                     (io/make-parents (io/file file))
+                     (clojure.core/spit file content)
+                     ctx)})
+
+(defn spit [file content]
+  {:biff.pipe/current :biff.pipe/spit
+   :biff.pipe.spit/file file
+   :biff.pipe.spit/content content})
 
 (defn s3 [config-ns k & [body content-type]]
   {:biff.pipe/current  :biff.pipe/s3

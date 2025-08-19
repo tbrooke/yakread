@@ -108,10 +108,10 @@
     (lib.core/some-vals
      (merge {:raw raw
              :headers headers
-             :sender (some-> (.getSender msg) datafy-address)
-             :from (not-empty (mapv datafy-address (.getFrom msg)))
-             :reply-to (not-empty (mapv datafy-address (.getReplyTo msg)))
-             :recipients (not-empty (mapv datafy-address (.getAllRecipients msg)))
+             :sender (some-> (biff/catchall (.getSender msg)) datafy-address)
+             :from (not-empty (mapv datafy-address (biff/catchall (.getFrom msg))))
+             :reply-to (not-empty (mapv datafy-address (biff/catchall (.getReplyTo msg))))
+             :recipients (not-empty (mapv datafy-address (biff/catchall (.getAllRecipients msg))))
              :subject (.getSubject msg)
              :content (not-empty (datafy-content (.getContent msg)))}
             (to-details to)))))
