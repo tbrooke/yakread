@@ -1,19 +1,18 @@
-- figure out if performance is ok enough
 - do a bunch more discover approvals
-    make the UI better on mobile
     test out some digests for random people
 - import emails from old yakread.com that came after the snapshot
+- figure out if performance is ok enough
 - turn on background jobs
 - finish ads
     admin page approvals
     charge
 - migrate the sample
-- spam filtering
 - more settings
   - export data
   - delete your account
 
 backlog
+- spam filtering
 - fix bug in juice parsing maybe
 - think about best way to define different kinds of routes again
 - why doesn't ad preview show up on initial page load

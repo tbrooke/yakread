@@ -45,25 +45,24 @@
 
 (defpipe on-tx
   :start
-  (fn [{:keys [biff/db yakread.work.materialized-views/enabled] ::xt/keys [tx]}]
-    (when enabled
-      {:biff.pipe/next
-       (for [[op doc] tx
-             :when (= op ::xt/put)
-             job (distinct
-                  (cond
-                    (:user-item/user doc)
-                    (when-some [sub (sub-id db
-                                            (:user-item/user doc)
-                                            (:user-item/item doc))]
-                      [{:view :sub-affinity :sub/id sub}])
+  (fn [{:keys [biff/db] ::xt/keys [tx]}]
+    {:biff.pipe/next
+     (for [[op doc] (::xt/tx-ops tx)
+           :when (= op ::xt/put)
+           job (distinct
+                (cond
+                  (:user-item/user doc)
+                  (when-some [sub (sub-id db
+                                          (:user-item/user doc)
+                                          (:user-item/item doc))]
+                    [{:view :sub-affinity :sub/id sub}])
 
-                    (:skip/user doc)
-                    (for [item (:skip/items doc)
-                          :let [sub (sub-id db (:skip/user doc) item)]
-                          :when sub]
-                      {:view :sub-affinity :sub/id sub})))]
-         (lib.pipe/queue :work.materialized-views/update job))})))
+                  (:skip/user doc)
+                  (for [item (:skip/items doc)
+                        :let [sub (sub-id db (:skip/user doc) item)]
+                        :when sub]
+                    {:view :sub-affinity :sub/id sub})))]
+       (lib.pipe/queue :work.materialized-views/update job))}))
 
 (def module {:on-tx (fn [ctx tx] (on-tx (assoc ctx ::xt/tx tx)))
              :queues [{:id        :work.materialized-views/update
