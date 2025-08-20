@@ -1,7 +1,5 @@
-- do a bunch more discover approvals
-    test out some digests for random people
+- see if for-you recs can be faster without much effort
 - import emails from old yakread.com that came after the snapshot
-- figure out if performance is ok enough
 - turn on background jobs
 - finish ads
     admin page approvals

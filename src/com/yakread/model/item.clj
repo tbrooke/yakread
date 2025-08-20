@@ -134,26 +134,13 @@
                   {:xt/id item
                    :item/user-item {:xt/id id}})))}))
 
-(defresolver current-item [{:keys [biff/db]} {user-id :user/id}]
-  #::pco{:input [:user/id]
+;; TODO why do I have to put ? in the input?
+(defresolver current-item [{:keys [biff/db]} input]
+  #::pco{:input [{(? :user/mv) [{(? :mv.user/current-item) [:xt/id]}]}]
          :output [{:user/current-item [:item/id :item/rec-type]}]}
-  (when-some [viewed-at (ffirst
-                         (q db
-                            '{:find [(max t)]
-                              :in [user]
-                              :where [[user-item :user-item/user user]
-                                      [user-item :user-item/viewed-at t]]}
-                            user-id))]
+  (when-some [id (get-in input [:user/mv :mv.user/current-item :xt/id])]
     {:user/current-item
-     {:item/id (ffirst
-                (q db
-                   '{:find [item]
-                     :in [user viewed-at]
-                     :where [[usit :user-item/user user]
-                             [usit :user-item/viewed-at viewed-at]
-                             [usit :user-item/item item]]}
-                   user-id
-                   viewed-at))
+     {:item/id id
       :item/rec-type :item.rec-type/current}}))
 
 (defresolver source [{:keys [item.email/sub item.feed/feed]}]

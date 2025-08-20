@@ -214,7 +214,12 @@
             [:mv.sub/affinity-high  ?        :double]
             [:mv.sub/last-published ?        :time/instant]
             [:mv.sub/unread         ?        :int]
-            [:mv.sub/read           ?        :int]]})
+            [:mv.sub/read           ?        :int]]
+
+   :mv.user [:map {:closed true}
+             [:xt/id :uuid]
+             [:mv.user/user         (r :user)      :uuid]
+             [:mv.user/current-item (?r :item/any) :uuid]]})
 
 (def module
   {:schema schema})

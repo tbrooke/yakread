@@ -1,6 +1,7 @@
 (ns com.yakread.model.user
   (:require
    [clojure.string :as str]
+   [com.biffweb :as biff]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.user :as lib.user]))
@@ -68,6 +69,11 @@
                        (or (not cancel-at)
                            (lib.core/increasing? now cancel-at))))})
 
+(defresolver mv [{:keys [biff/db]} {:user/keys [id]}]
+  {::pco/output [{:user/mv [:xt/id]}]}
+  (when-some [id (biff/lookup-id db :mv.user/user id)]
+    {:user/mv {:xt/id id}}))
+
 (def module {:resolvers [session-user
                          session-anon
                          signed-in
@@ -78,4 +84,5 @@
                          default-digest-days
                          default-send-digest-at
                          default-timezone
-                         premium]})
+                         premium
+                         mv]})
