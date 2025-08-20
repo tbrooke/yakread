@@ -517,7 +517,7 @@
 ;; TODO move this out of source control in some way
 (def policy-route
   ["/ad-policy"
-   {:get (fn []
+   {:get (fn [_]
            (ui/plain-page
             {:base/title "Ad content policy | Yakread"}
             [:div.text-black

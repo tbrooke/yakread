@@ -29,6 +29,6 @@
         (ui/lazy-load {:class '[col-span-full]} (href next-batch)))]])))
 
 (def module
-  {:routes [page
-            ["" {:middleware [lib.mid/wrap-signed-in]}
+  {:routes [["" {:middleware [lib.mid/wrap-signed-in]}
+             page
              next-batch]]})
