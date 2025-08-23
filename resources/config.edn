@@ -54,6 +54,7 @@
  :yakread/about-url         #biff/env ABOUT_URL
  :yakread/contact-url       #biff/env CONTACT_URL
  :yakread/analytics-snippet #biff/env ANALYTICS_SNIPPET
+ :yakread/admin-ids         #biff/env ADMIN_IDS
 
  :biff.s3/origin            #biff/env S3_DEFAULT_ORIGIN
  :biff.s3/access-key        #biff/env S3_DEFAULT_ACCESS_KEY
@@ -67,9 +68,9 @@
  :yakread.pipe.js/secret   #biff/secret CLOUD_FN_SECRET
 
  ;; disable until migration is complete
- :yakread.work.sync-all-feeds/enabled      #profile {:prod false #_true :default false}
- :yakread.work.queue-add-candidate/enabled #profile {:prod false #_true :default false}
- :yakread.work.digest/enabled              #profile {:prod false #_true :default false}
+ :yakread.work.sync-all-feeds/enabled      #profile {:prod true :default false}
+ :yakread.work.queue-add-candidate/enabled #profile {:prod true :default false}
+ :yakread.work.digest/enabled              #profile {:prod true :default false}
 
  :yakread.work.materialized-views/enabled #or [#biff/env MATERIALIZED_VIEWS_ENABLED true]
 

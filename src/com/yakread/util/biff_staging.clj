@@ -1,6 +1,7 @@
 (ns com.yakread.util.biff-staging
   (:require
    [buddy.core.mac :as mac]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.tools.logging :as log]
    [clojure.tools.namespace.find :as ns-find]
@@ -10,7 +11,8 @@
    [com.wsscode.pathom3.connect.planner :as-alias pcp]
    [malli.core :as malli]
    [malli.registry :as malr]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]
+   [aero.core :as aero]))
 
 (defn doc-asts [{:keys [registry] :as malli-opts}]
   (for [schema-k (keys (malr/schemas (:registry malli-opts)))
@@ -122,3 +124,7 @@
 
 (defn unsafe [& html]
   {:dangerouslySetInnerHTML {:__html (apply str html)}})
+
+(defmethod aero/reader 'biff/edn
+  [_ _ value]
+  (edn/read-string value))

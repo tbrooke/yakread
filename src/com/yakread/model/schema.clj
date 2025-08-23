@@ -9,7 +9,7 @@
 (defn ?r [target] (assoc (r target) :optional true))
 
 (def schema
-  {::string  [:string {:max 1000}]
+  {::string  [:string {:max 2000}]
    ::day     [:enum :sunday :monday :tuesday :wednesday :thursday :friday :saturday]
    ::cents   [:int {:biff.form/parser #(Math/round (* 100 (Float/parseFloat %)))}]
 

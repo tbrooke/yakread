@@ -28,11 +28,12 @@
           ::url                 url})))
 
    :handle-http
-   (fn [{:keys [biff.pipe.http/output ::url biff.pipe/exception] :as ctx}]
+   (fn [{:keys [biff.pipe.http/output ::url] :as ctx}]
      (if-not (and (some-> output :headers (get "Content-Type") (str/includes? "text"))
-                  (< (count (:body output)) (* 2 1000 1000)))
+                  (< (count (:body output)) (* 1000 1000)))
        (on-error ctx {:item/url url})
        {:biff.pipe/next [:yakread.pipe/js :handle-readability]
+        :biff.pipe/catch :yakread.pipe/js
         ::url url
         ::raw-html (:body output)
         :yakread.pipe.js/fn-name "readability"

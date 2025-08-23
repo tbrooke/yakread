@@ -34,7 +34,8 @@
                                       next-step
                                       {:biff.pipe/current next-step})
                  now (java.time.Instant/now)
-                 ctx (merge ctx result
+                 ctx (merge ctx
+                            result
                             extra-params
                             {:biff.pipe/next remaining
                              :biff.pipe/now now})

@@ -20,7 +20,8 @@
              :limit 50
              :in [t0 [item ...]]
              :where [[item :item/ingested-at ingested-at]
-                     [(< t0 ingested-at)]]}
+                     [(< t0 ingested-at)]]
+             :timeout 120000}
            (cond->> (.minus now (Period/ofWeeks 2))
              digest-last-sent (max-key inst-ms digest-last-sent))
            all-item-ids)))

@@ -13,7 +13,7 @@
   (lib.item/add-item-pipeline*
    {:get-url    (comp :item/url :biff/job)
     :on-success (fn [_ctx item]
-                  (log/info "Ingested candidate" (pr-str (:item/url item)))
+                  ;(log/info "Ingested candidate" (pr-str (:item/url item)))
                   {})
     :on-error   (fn [ctx {:keys [item/url]}]
                   (let [{:keys [status]} (ex-data (:biff.pipe/exception ctx))]
@@ -36,6 +36,7 @@
     (when (and enabled (= 0 (.size (:work.train/add-candidate queues))))
       (let [urls (q db
                     '{:find url
+                      :timeout 120000
                       :where [[usit :user-item/item item]
                               [usit :user-item/favorited-at]
                               [item :item/url url]]})
@@ -44,21 +45,21 @@
                             '{:find url
                               :in [[url ...] direct]
                               :where [[item :item/url url]
-                                      [item :item/doc-type direct]]}
+                                      [item :item/doc-type direct]]
+                              :timeout 120000}
                             urls
                             :item/direct))
             urls (vec (remove direct-urls urls))]
         (when (not-empty urls)
           (log/info "Found" (count urls) "candidate URLs"))
-        ;; TODO uncomment
-        {:biff.pipe/next [] #_(for [url urls]
+        {:biff.pipe/next (for [url urls]
                            (lib.pipe/queue :work.train/add-candidate {:item/url url}))}))))
 
 (def module
   {:tasks [{:task     #'retrain
             :schedule (lib.core/every-n-minutes 60)}
            {:task     #'queue-add-candidate
-            :schedule (lib.core/every-n-minutes 10)}]
+            :schedule (lib.core/every-n-minutes (* 60 12))}]
    :queues [{:id        :work.train/add-candidate
              :consumer  #'add-candidate!
              :n-threads 1}]})

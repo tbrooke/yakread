@@ -1,6 +1,3 @@
-- see if for-you recs can be faster without much effort
-- import emails from old yakread.com that came after the snapshot
-- turn on background jobs
 - finish ads
     admin page approvals
     charge
@@ -10,6 +7,7 @@
   - delete your account
 
 backlog
+- handle long unbreaking titles (e.g. urls) in for you feed
 - spam filtering
 - fix bug in juice parsing maybe
 - think about best way to define different kinds of routes again

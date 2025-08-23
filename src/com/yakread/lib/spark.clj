@@ -119,7 +119,8 @@
         item-usits (->> (q db
                            '{:find [(pull usit [*])]
                              :in [[item ...]]
-                             :where [[usit :user-item/item item]]}
+                             :where [[usit :user-item/item item]]
+                             :timeout 120000}
                            all-item-ids)
                         (mapv (comp dedupe-usit first))
                         (group-by usit-key)

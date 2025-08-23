@@ -58,8 +58,10 @@
                        (sort-by :user/email))]
         (when (not-empty users)
           (log/info "Sending digest to" (count users) "users"))
-        {:biff.pipe/next (for [user users]
-                           (lib.pipe/queue :work.digest/prepare-digest user))}))))
+        (if (= enabled :dry-run)
+          (run! #(log/info (:user/email %)) users)
+          {:biff.pipe/next (for [user users]
+                             (lib.pipe/queue :work.digest/prepare-digest user))})))))
 
 (defpipe prepare-digest
   :start
@@ -87,7 +89,11 @@
                       {:digest/subject  (get-in output [:digest/subject-item :item/id])
                        :digest/ad       (get-in output [:user/ad-rec :ad/id])
                        :digest/icymi    (mapv :item/id (:user/icymi-recs output))
-                       :digest/discover (mapv :item/id (:user/digest-discover-recs output))})]]
+                       :digest/discover (mapv :item/id (:user/digest-discover-recs output))})
+                {:db/doc-type :user
+                 :xt/id (:xt/id user)
+                 :db/op :update
+                 :user/digest-last-sent :db/now}]]
         {:biff.pipe/next [(lib.pipe/tx tx)
                           (lib.pipe/queue :work.digest/send-digest
                                           {:user/email (:user/email user)
@@ -104,7 +110,7 @@
     (cond
       (= 0 (.size (:work.digest/prepare-digest queues)))
       ;; Wait in case the last jobs are still being processed.
-      {:biff.pipe/next [(lib.pipe/sleep 10000) :biff.pipe/drain-queue :start*]}
+      {:biff.pipe/next [(lib.pipe/sleep 100000) :biff.pipe/drain-queue :start*]}
 
       (<= n-emails-limit (.size (:work.digest/send-digest queues)))
       {:biff.pipe/next [:biff.pipe/drain-queue :start*]}
@@ -165,9 +171,8 @@
                       (lib.pipe/sleep (+ (/ 60000 15) 1000))]}))
 
 (def module
-  {:tasks [;; TODO uncomment
-           #_{:task #'queue-prepare-digest
-              :schedule (lib.core/every-n-minutes 10)}]
+  {:tasks [{:task #'queue-prepare-digest
+            :schedule (lib.core/every-n-minutes 30)}]
    :queues [{:id :work.digest/prepare-digest
              :consumer #'prepare-digest
              :n-threads 4}

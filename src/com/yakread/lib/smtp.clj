@@ -91,7 +91,7 @@
     (lib.core/some-vals
      {:headers (datafy-headers content)
       :file-name (.getFileName content)
-      :content (datafy-content (.getContent content))})
+      :content (datafy-content (or (biff/catchall (.getContent content)) ""))})
 
     :else
     content))
@@ -113,7 +113,7 @@
              :reply-to (not-empty (mapv datafy-address (biff/catchall (.getReplyTo msg))))
              :recipients (not-empty (mapv datafy-address (biff/catchall (.getAllRecipients msg))))
              :subject (.getSubject msg)
-             :content (not-empty (datafy-content (.getContent msg)))}
+             :content (some-> (biff/catchall (.getContent msg)) datafy-content not-empty)}
             (to-details to)))))
 
 (defn use-server [{:biff.smtp/keys [port accept?]

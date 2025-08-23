@@ -12,19 +12,42 @@
 
 (def ^:private epoch (java.time.Instant/ofEpochMilli 0))
 
-;; TODO modify sync waiting period based on user activity, :feed/failed-syncs
+(defn- active-users [db now]
+  (let [t0 (.minusSeconds now (* 60 60 24 30 6))]
+    (reduce (fn [active where]
+              (into active (q db
+                              {:find 'user
+                               :in '[t0]
+                               :timeout 60000
+                               :where (into '[[(< t0 t)]] where)}
+                              t0)))
+            #{}
+            '[[[user :user/joined-at t]]
+              [[usit :user-item/user user]
+               [usit :user-item/viewed-at t]]
+              [[ad :ad/user user]
+               [ad :ad/updated-at t]]
+              [[click :ad.click/user user]
+               [click :ad.click/created-at t]]])))
+
+;; TODO modify sync waiting period based on :feed/failed-syncs
 (def sync-all-feeds!
   (lib.pipe/make
    :start
-   (fn [{:keys [biff/db biff/now yakread.work.sync-all-feeds/enabled]}]
-     (when enabled
-       (let [feed-ids (q db
+   (fn [{:keys [biff/db biff/now yakread.work.sync-all-feeds/enabled biff/queues]}]
+     (when (and enabled (= 0 (.size (:work.subscription/sync-feed queues))))
+       (let [users (active-users db now)
+             feed-ids (q db
                          {:find 'feed
-                          :in '[t0]
-                          :where ['[feed :feed/url]
+                          :in '[t0 [user ...]]
+                          :timeout 999999
+                          :where ['[sub :sub/user user]
+                                  '[sub :sub.feed/feed feed]
+                                  '[feed :feed/url]
                                   [(list 'get-attr 'feed :feed/synced-at epoch) '[synced-at ...]]
                                   '[(< synced-at t0)]]}
-                         (.minusSeconds now (* 60 60 4)))]
+                         (.minusSeconds now (* 60 60 12))
+                         users)]
          (log/info "Syncing" (count feed-ids) "feeds")
          {:biff.pipe/next (for [id feed-ids]
                             {:biff.pipe/current :biff.pipe/queue
@@ -123,6 +146,7 @@
            existing-titles (set (q db
                                    '{:find title
                                      :in [feed [title ...]]
+                                     :timeout 120000
                                      :where [[item :item.feed/feed feed]
                                              [item :item/title title]]}
                                    feed-id
@@ -130,6 +154,7 @@
            existing-guids  (set (q db
                                    '{:find guid
                                      :in [feed [guid ...]]
+                                     :timeout 120000
                                      :where [[item :item.feed/feed feed]
                                              [item :item.feed/guid guid]]}
                                    feed-id
@@ -150,12 +175,13 @@
                          (cond-> item
                            (:item/content-key item) (dissoc :item/content)))
                        items)]
-       {:biff.pipe/next     (concat s3-inputs [:biff.pipe/tx])
-        :biff.pipe.tx/input (concat [feed-doc] items)}))))
+       {:biff.pipe/next     (concat [(lib.pipe/tx [feed-doc])]
+                                    s3-inputs
+                                    [(lib.pipe/tx items)])}))))
 
 (def module
   {:tasks [{:task     #'sync-all-feeds!
-            :schedule (lib.core/every-n-minutes 5)}]
+            :schedule (lib.core/every-n-minutes 30)}]
    :queues [{:id        :work.subscription/sync-feed
              :consumer  #'sync-feed!
-             :n-threads 10}]})
+             :n-threads 4}]})

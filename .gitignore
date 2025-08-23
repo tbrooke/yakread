@@ -22,3 +22,4 @@ storage-bak
 resources/emails
 resources/public/vendor
 dev/repl.clj
+export/

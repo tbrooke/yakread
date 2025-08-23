@@ -7,9 +7,11 @@
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.pathom :as lib.pathom]
    [edn-query-language.core :as eql]
+   [com.wsscode.pathom3.interface.eql :as p.eql]
    [lambdaisland.uri :as uri]
    [xtdb.api :as xt]
-   [clojure.tools.logging :as log]))
+   [clojure.tools.logging :as log]
+   [taoensso.tufte :refer [p]]))
 
 (def n-skipped (some-fn :item/n-skipped :item/n-skipped-with-digests))
 
@@ -399,49 +401,51 @@
    (fn [{:keys [biff/db]}
         {user-id :user/id
          candidates :user/item-candidates}]
-     (let [read-urls (into #{}
-                           (map first)
-                           (when user-id
-                             (xt/q db
-                                   '{:find [url]
-                                     :in [user [url ...]]
-                                     :where [[usit :user-item/user user]
-                                             [usit :user-item/item item]
-                                             [item :item/url url]
-                                             (or [usit :user-item/viewed-at _]
-                                                 [usit :user-item/skipped-at _]
-                                                 [usit :user-item/favorited-at _]
-                                                 [usit :user-item/disliked-at _]
-                                                 [usit :user-item/reported-at _])]}
-                                   user-id
-                                   (mapv :item/url candidates))))
-           candidates (vec (remove (comp read-urls :item/url) candidates))
+     (let [;; TODO use an LRU cache probably
+           read? (fn [url]
+                   (boolean
+                    (not-empty
+                     (xt/q db
+                           '{:find [url]
+                             :in [user url]
+                             :where [[usit :user-item/user user]
+                                     [usit :user-item/item item]
+                                     [item :item/url url]
+                                     (or [usit :user-item/viewed-at _]
+                                         [usit :user-item/skipped-at _]
+                                         [usit :user-item/favorited-at _]
+                                         [usit :user-item/disliked-at _]
+                                         [usit :user-item/reported-at _])]}
+                           user-id
+                           url))))
+
+           candidates (vec candidates) ; does this matter?
            url->host (into {} (map (juxt :item/url (comp :host uri/uri :item/url))) candidates)
 
            recommendations
-           (first
-            (reduce (fn [[selected candidates] _]
-                      (if (empty? candidates)
-                        (reduced [selected candidates])
-                        (let [selection (if (< (gen/double) 0.1)
-                                          (gen/rand-nth candidates)
-                                          (->> candidates
-                                               take-rand
-                                               (sort-by (comp - inst-ms :candidate/last-liked))
-                                               take-rand
-                                               gen/shuffle
-                                               (sort-by (fn [{n-skips n-skips-key
-                                                              :candidate/keys [score]}]
-                                                          [n-skips (- score)]))
-                                               (rerank 0.25)
-                                               first))
-                              candidates (filterv (fn [{:keys [item/url]}]
-                                                    (not= (url->host url)
-                                                          (url->host (:item/url selection))))
-                                                  candidates)]
-                          [(conj selected selection) candidates])))
-                    [[] candidates]
-                    (range n-recs)))]
+           (loop [selected []
+                  candidates candidates]
+             (if (or (<= n-recs (count selected)) (empty? candidates))
+               selected
+               (let [selection (if (< (gen/double) 0.1)
+                                 (gen/rand-nth candidates)
+                                 (->> candidates
+                                      take-rand
+                                      (sort-by (comp - inst-ms :candidate/last-liked))
+                                      take-rand
+                                      gen/shuffle
+                                      (sort-by (fn [{n-skips n-skips-key
+                                                     :candidate/keys [score]}]
+                                                 [n-skips (- score)]))
+                                      (rerank 0.25)
+                                      first))]
+                 (if (read? (:item/url selection))
+                   (recur selected (vec (remove #{selection} candidates)))
+                   (recur (conj selected selection)
+                          (filterv (fn [{:keys [item/url]}]
+                                     (not= (url->host url)
+                                           (url->host (:item/url selection))))
+                                   candidates))))))]
     {output-key (mapv #(assoc % :item/rec-type :item.rec-type/discover) recommendations)}))))
 
 (def discover-recs
@@ -469,6 +473,7 @@
                                       :candidate/n-skips
                                       :candidate/ad-score
                                       :ad/effective-bid
+                                      :ad/approve-state
                                       :ad/paused
                                       {:ad/user [:xt/id
                                                  (? :user/email)]}]}]
@@ -517,22 +522,49 @@
        (lib.core/distinct-by :xt/id)
        (take n)))
 
-(defresolver for-you-recs [{:user/keys [ad-rec for-you-sub-recs for-you-bookmark-recs discover-recs]}]
-  #::pco{:input [{(? :user/for-you-sub-recs) [:xt/id
-                                      :item/n-skipped
-                                      :item/rec-type]}
-                 {(? :user/for-you-bookmark-recs) [:xt/id
-                                                   :item/n-skipped
-                                                   :item/rec-type]}
-                 {:user/discover-recs [:xt/id
-                                       :item/rec-type]}
-                 {(? :user/ad-rec) [:xt/id
-                                    :item/rec-type
-                                    :ad/click-cost]}]
+
+(def runtime-pathom-keys
+  [:com.wsscode.pathom3.connect.planner/graph
+   :com.wsscode.pathom3.connect.planner/node
+   :com.wsscode.pathom3.connect.runner/batch-pending*
+   :com.wsscode.pathom3.connect.runner/batch-waiting*
+   :com.wsscode.pathom3.connect.runner/graph-run-start-ms
+   :com.wsscode.pathom3.connect.runner/node-run-stats*
+   :com.wsscode.pathom3.connect.runner/resolver-cache*
+   :com.wsscode.pathom3.connect.runner/root-query
+   :com.wsscode.pathom3.connect.runner/source-entity
+   :com.wsscode.pathom3.entity-tree/entity-tree*
+   :com.wsscode.pathom3.path/path])
+
+(defresolver for-you-recs [ctx {:user/keys [id]}]
+  #::pco{:input [:user/id]
          :output [{:user/for-you-recs [:xt/id
                                        :item/rec-type
                                        :ad/click-cost]}]}
-  (let [{new-sub-recs true
+  (let [cache (:com.wsscode.pathom3.connect.runner/resolver-cache* ctx)
+        input (->> [[{(? :user/for-you-sub-recs) [:xt/id
+                                                  :item/n-skipped
+                                                  :item/rec-type]}]
+                    [{(? :user/for-you-bookmark-recs) [:xt/id
+                                                       :item/n-skipped
+                                                       :item/rec-type]}
+                     {:user/discover-recs [:xt/id
+                                           :item/rec-type]}
+                     {(? :user/ad-rec) [:xt/id
+                                        :item/rec-type
+                                        :ad/click-cost]}]]
+                   (pmap (fn [query]
+                           (lib.pathom/process
+                            (-> (apply dissoc ctx runtime-pathom-keys)
+                                (assoc ::lib.pathom/resolver-cache* cache))
+                            {:user/id id}
+                            query)))
+                   (apply merge))
+
+        {:user/keys [ad-rec for-you-sub-recs for-you-bookmark-recs discover-recs]}
+        input
+
+        {new-sub-recs true
          other-sub-recs false} (group-by #(= :item.rec-type/new-subscription (:item/rec-type %))
                                          for-you-sub-recs)
         bookmark-sub-recs (->> (pick-by-skipped for-you-bookmark-recs other-sub-recs)

@@ -8,12 +8,6 @@
 
 (declare page-route)
 
-(defget page-content-route "/admin/monitor/content"
-  []
-  (fn [ctx {:admin.moderation/keys [next-batch remaining approved blocked ingest-failed]}]
-    (ui/wide-page-well
-     [:div "how now brown cow"])))
-
 (defget page-route "/admin/monitor"
   [:app.shell/app-shell]
   (fn [{:keys [com.yakread/pstats]} {:keys [app.shell/app-shell]}]
@@ -28,5 +22,4 @@
 
 (def module
   {:routes ["" {:middleware [lib.mid/wrap-admin]}
-            page-route
-            page-content-route]})
+            page-route]})

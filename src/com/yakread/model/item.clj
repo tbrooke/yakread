@@ -254,7 +254,9 @@
                                            (or-join [digest item]
                                              [digest :digest/ad item]
                                              [digest :digest/icymi item]
-                                             [digest :digest/discover item])]}))]
+                                             [digest :digest/discover item])]}
+                                 user-id
+                                 item-ids))]
     (mapv #(assoc % :item/n-digest-sends (get item->n-digests (:xt/id %) 0)) items)))
 
 (def module
