@@ -30,4 +30,5 @@
 
 (def advertise         'com.yakread.app.advertise/page-route)
 
-(def admin             'com.yakread.app.admin.dashboard/page-route)
+(def admin             'com.yakread.app.admin/redirect)
+(def admin-dashboard   'com.yakread.app.admin.dashboard/page-route)
