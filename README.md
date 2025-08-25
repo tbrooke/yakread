@@ -26,7 +26,3 @@ In-progress:
 
 To do:
 - everything else
-
-I won't be porting over Yakread's add system. Instead I'll change the premium subscription to a pay-what-you-want model. I'm
-actually one of three people in the tech industry who think that ads are (or rather, can be) good; however, for [digital
-public infrastructure](https://publicinfrastructure.org/) I think pay-what-you-want is a better model.
