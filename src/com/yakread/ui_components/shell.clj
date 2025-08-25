@@ -24,25 +24,25 @@
   #::pco{:input [{(? :user/current) [:user/roles]}]}
   {:app.shell/pages
    (let [route-ns (-> match :data :name namespace)]
-     (->> (cond-> [#:app.shell.page{:route-sym 'com.yakread.app.for-you/page-route
+     (->> (cond-> [#:app.shell.page{:route-sym routes/for-you
                                     :title "For you"
                                     :icon "house"}
-                   #:app.shell.page{:route-sym 'com.yakread.app.subscriptions/page-route
+                   #:app.shell.page{:route-sym routes/subs-page
                                     :title "Subscriptions"
                                     :icon "rss"}
-                   #:app.shell.page{:route-sym 'com.yakread.app.read-later/page
+                   #:app.shell.page{:route-sym routes/bookmarks-page
                                     :title "Read later"
                                     :icon "bookmark"}
-                   #:app.shell.page{:route-sym 'com.yakread.app.favorites/page
+                   #:app.shell.page{:route-sym routes/favorites-page
                                     :title "Favorites"
                                     :icon "star"}
-                   #:app.shell.page{:route-sym 'com.yakread.app.settings/page
+                   #:app.shell.page{:route-sym routes/settings-page
                                     :title "Settings"
                                     :icon "gear"}
-                   #:app.shell.page{:route-sym 'com.yakread.app.advertise/page-route
+                   #:app.shell.page{:route-sym routes/advertise
                                     :title "Advertise"
                                     :icon "dollar-sign"}]
-            (contains? roles :admin) (conj #:app.shell.page{:route-sym 'com.yakread.app.admin/page-route
+            (contains? roles :admin) (conj #:app.shell.page{:route-sym routes/admin
                                                             :title "Admin"
                                                             :icon "lock"}))
           (mapv (fn [{:keys [app.shell.page/route-sym] :as page}]

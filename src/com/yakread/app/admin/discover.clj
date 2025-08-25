@@ -1,10 +1,8 @@
-(ns com.yakread.app.admin
+(ns com.yakread.app.admin.discover
   (:require
-   [clojure.string :as str]
    [com.biffweb :as biff]
    [com.yakread.lib.admin :as lib]
    [com.yakread.lib.middleware :as lib.mid]
-   [com.yakread.lib.pathom :as lib.pathom]
    [com.yakread.lib.pipeline :as pipe]
    [com.yakread.lib.route :as lib.route :refer [defget defpost href]]
    [com.yakread.lib.ui :as ui]))
@@ -30,7 +28,7 @@
        :status 303
        :headers {"location" (href page-route)}})))
 
-(defget page-content-route "/admin/content"
+(defget page-content-route "/admin/discover/content"
   [:admin.moderation/remaining
    :admin.moderation/approved
    :admin.moderation/blocked
@@ -67,7 +65,7 @@
                      :class '[w-full]}
            "Save")])]]))
 
-(defget page-route "/admin"
+(defget page-route "/admin/discover"
   [:app.shell/app-shell]
   (fn [ctx {:keys [app.shell/app-shell]}]
     (app-shell
@@ -76,33 +74,8 @@
      (lib/navbar :screen-discover)
      (ui/lazy-load (href page-content-route)))))
 
-(defonce resolver-cache (atom nil))
-(comment (reset! resolver-cache nil))
-
-(def digest-template-route
-  ["/admin/digest"
-   {:middleware [lib.mid/wrap-profiled]
-    :get
-    (fn [{:keys [params] :as ctx}]
-      (swap! resolver-cache
-             (fn [cache]
-               (into {}
-                     (remove (fn [[[op-name _ _] _]]
-                               (str/starts-with? (str op-name) "com.yakread.ui-components")))
-                     cache)))
-      (let [[output-key content-type] (if (= (:content-type params) "text")
-                                        [:digest/text "text/plain"]
-                                        [:digest/html "text/html"])
-            ctx    (assoc ctx ::lib.pathom/resolver-cache resolver-cache)
-            result (lib.pathom/process ctx {} [{:session/user [output-key]}])
-            content   (get-in result [:session/user output-key])]
-        {:status 200
-         :headers {"content-type" content-type}
-         :body content}))}])
-
 (def module
   {:routes ["" {:middleware [lib.mid/wrap-admin]}
             page-route
             page-content-route
-            save-moderation
-            digest-template-route]})
+            save-moderation]})

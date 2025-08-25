@@ -27,3 +27,7 @@
 (def unsubscribe       'com.yakread.app.settings/click-unsubscribe-route)
 (def set-timezone      'com.yakread.app.settings/set-timezone)
 (def stripe-webhook    'com.yakread.app.settings/stripe-webhook)
+
+(def advertise         'com.yakread.app.advertise/page-route)
+
+(def admin             'com.yakread.app.admin.dashboard/page-route)
