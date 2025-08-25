@@ -48,7 +48,14 @@
                     (update acc date (fnil + 0) cost)))
                 {}))})
 
+(defresolver ads [{:biff/keys [db now]} _]
+  {:admin/ads (vec (q db
+                      '{:find [ad]
+                        :keys [xt/id]
+                        :where [[ad :ad/user]]}))})
+
 (def module
   {:resolvers [recent-users
                dau
-               revenue]})
+               revenue
+               ads]})

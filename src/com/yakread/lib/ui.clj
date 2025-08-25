@@ -15,6 +15,9 @@
 
 ;;;; Utilities
 
+(defn fmt-cents [cents]
+  (format "$%.2f" (/ cents 100.0)))
+
 (def ^:private chars* (mapv char (concat (range (int \a) (inc (int \z)))
                                          (range (int \A) (inc (int \Z))))))
 
@@ -177,7 +180,7 @@
 
 ;;;; Buttons
 
-(defn button [{:ui/keys [size] type_ :ui/type :as opts} & contents]
+(defn button [{:ui/keys [size icon] type_ :ui/type :as opts} & contents]
   [(if (contains? opts :href) :a :button)
    (dom-opts opts
              '[inter font-medium
@@ -204,6 +207,10 @@
                         px-3 py-2]
                '[text-sm
                  px-3 py-2]))
+   (when icon
+     [:<>
+      (lib.icons/base icon {:class "w-4 h-4"})
+      " "])
    contents])
 
 (defn overflow-button [{:keys [href] :as opts} & contents]
@@ -558,6 +565,18 @@
   [:div {:class '[flex flex-col gap-6
                   max-w-screen-sm]}
    content])
+
+(defn table [headers rows]
+  [:table
+   [:thead.text-left
+    [:tr
+     (for [header headers]
+       [:th header])]]
+   [:tbody
+    (for [row rows]
+      [:tr.even:bg-neut-50
+       (for [cell row]
+         [:td cell])])]])
 
 ;;;; Composites
 

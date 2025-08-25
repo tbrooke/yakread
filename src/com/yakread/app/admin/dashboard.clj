@@ -20,18 +20,6 @@
       (ZonedDateTime/ofInstant (ZoneId/of timezone))
       (.format (java.time.format.DateTimeFormatter/ofPattern fmt))))
 
-(defn table [headers rows]
-  [:table
-   [:thead.text-left
-    [:tr
-     (for [header headers]
-       [:th header])]]
-   [:tbody
-    (for [row rows]
-      [:tr.even:bg-neut-50
-       (for [cell row]
-         [:td cell])])]])
-
 (defget page-content-route "/admin/dashboard/content"
   [{:admin/recent-users
     [:user/email
@@ -43,7 +31,7 @@
      [:.grid.xl:grid-cols-2.gap-8
       (ui/section
        {:title "Recent signups"}
-       (table
+       (ui/table
          ["Email" "Joined"]
          (for [{:user/keys [email joined-at]} (sort-by :user/joined-at #(compare %2 %1) recent-users)]
            [email
@@ -52,12 +40,12 @@
 
       (ui/section
        {:title "Daily metrics"}
-       (table
+       (ui/table
          ["Date" "DAU" "Revenue"]
          (for [date (past-30-days now "America/Denver")]
            [date
             (get dau date 0)
-            (format "$%.2f" (/ (get revenue date 0) 100.0))])))])))
+            (ui/fmt-cents (get revenue date 0))])))])))
 
 (defget page-route "/admin/dashboard"
   [:app.shell/app-shell]
