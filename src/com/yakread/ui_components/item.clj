@@ -81,12 +81,14 @@
                           sm:shadow]
                         (when highlight
                           '[max-sm:border-t-4 sm:border-l-4 border-tealv-500]))}
-   [:.text-neut-600.text-sm.line-clamp-2
+   [:.text-neut-600.text-sm.line-clamp-2.wrap-anywhere
+    {:style {:overflow-wrap "anywhere"}}
     details]
    [:.h-1]
    [:h3 {:class '[font-bold text-xl text-neut-800
                   leading-tight
-                  line-clamp-2]}
+                  line-clamp-2]
+         :style {:overflow-wrap "anywhere"}}
     title]
    [:.h-2]
    [:.flex.gap-3.justify-between

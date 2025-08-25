@@ -1,10 +1,11 @@
 - finish ads
     admin page approvals
     charge
-- migrate the sample
 - more settings
   - export data
   - delete your account
+- announcement post
+- migrate the sample
 
 backlog
 - handle long unbreaking titles (e.g. urls) in for you feed

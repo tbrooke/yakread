@@ -119,7 +119,11 @@
         :digest/subject "item1",
         :digest/ad "ad1",
         :digest/icymi ["item2" "item3"],
-        :digest/discover ["item4" "item5"]}]}
+        :digest/discover ["item4" "item5"]}
+       {:db/doc-type :user,
+        :xt/id "user1",
+        :db/op :update,
+        :user/digest-last-sent :db/now}]}
      {:biff.pipe/current :biff.pipe/queue,
       :biff.pipe.queue/id :work.digest/send-digest,
       :biff.pipe.queue/job
@@ -135,7 +139,7 @@
     :start),
    :result
    {:biff.pipe/next
-    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 10000}
+    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 100000}
      :biff.pipe/drain-queue
      :start*]}}
   _
@@ -147,7 +151,7 @@
     :start),
    :result
    {:biff.pipe/next
-    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 10000}
+    [{:biff.pipe/current :biff.pipe/sleep, :biff.pipe.sleep/ms 100000}
      :biff.pipe/drain-queue
      :start*]}}
   _
