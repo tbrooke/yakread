@@ -103,7 +103,7 @@
                                     '{:find [source item]
                                       :in [[source ...]]
                                       :where [[item :item.email/sub source]]
-                                      :timeout 180000}
+                                      :timeout 240000}
                                     (mapv :sub/source-id email-subs))
                                  (lib.core/group-by-to first #(array-map :xt/id (second %))))
         doc-type->source->items {:sub/email email-source->items

@@ -1,6 +1,3 @@
-- finish ads
-    admin page approvals
-    charge
 - more settings
   - export data
   - delete your account
@@ -8,7 +5,6 @@
 - migrate the sample
 
 backlog
-- handle long unbreaking titles (e.g. urls) in for you feed
 - spam filtering
 - fix bug in juice parsing maybe
 - think about best way to define different kinds of routes again

@@ -49,6 +49,7 @@
                 {}))})
 
 (defresolver ads [{:biff/keys [db now]} _]
+  {::pco/output [{:admin/ads [:xt/id]}]}
   {:admin/ads (vec (q db
                       '{:find [ad]
                         :keys [xt/id]

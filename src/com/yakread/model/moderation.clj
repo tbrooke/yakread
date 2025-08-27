@@ -18,6 +18,7 @@
         liked-items (q db
                        '{:find [item (count usit)]
                          :keys [item/id item.moderation/likes]
+                         :timeout 120000
                          :order-by [[(count usit) :desc]]
                          :where [[usit :user-item/item item]
                                  [usit :user-item/favorited-at]]})
