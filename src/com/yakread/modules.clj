@@ -32,12 +32,14 @@
   [com.yakread.model.source]
   [com.yakread.model.subscription]
   [com.yakread.model.user]
+  [com.yakread.model.user.export]
   [com.yakread.ui-components.digest.html]
   [com.yakread.ui-components.digest.text]
   [com.yakread.ui-components.item]
   [com.yakread.ui-components.item.read]
   [com.yakread.ui-components.shell]
   [com.yakread.work.digest]
+  [com.yakread.work.export]
   [com.yakread.work.materialized-views]
   [com.yakread.work.subscription]
   [com.yakread.work.train]))
@@ -74,12 +76,14 @@
   com.yakread.model.source/module
   com.yakread.model.subscription/module
   com.yakread.model.user/module
+  com.yakread.model.user.export/module
   com.yakread.ui-components.digest.html/module
   com.yakread.ui-components.digest.text/module
   com.yakread.ui-components.item/module
   com.yakread.ui-components.item.read/module
   com.yakread.ui-components.shell/module
   com.yakread.work.digest/module
+  com.yakread.work.export/module
   com.yakread.work.materialized-views/module
   com.yakread.work.subscription/module
   com.yakread.work.train/module])

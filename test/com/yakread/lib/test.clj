@@ -2,7 +2,7 @@
   (:require [clojure.data.generators :as gen]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.pprint :refer [pprint]]
+            [clojure.pprint :as pprint :refer [pprint]]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :as test :refer [is]]
@@ -26,7 +26,9 @@
   (:import [java.time Instant]))
 
 (defn- read-string* [s & [extra-readers]]
-  (edn/read-string {:readers (merge time-literals/tags extra-readers)
+  (edn/read-string {:readers (merge time-literals/tags
+                                    {'biff/file clojure.java.io/file}
+                                    extra-readers)
                     :default (fn [tag value] value)} s))
 
 (defn- find-resources [ext]
@@ -82,6 +84,11 @@
               {:tapped tap-results})
             (select-keys example [:doc])))))
 
+(defn pprint-dispatch [obj]
+  (if (instance? java.io.File obj)
+    (.write *out* (str "#biff/file " (pr-str (.getPath obj))))
+    (clojure.pprint/simple-dispatch obj)))
+
 (defn run-examples! []
   (doseq [f (find-resources "_test.edn")
           :let [f-contents (read-string* (slurp f)
@@ -96,7 +103,8 @@
                 tests (vec (interleave tests (repeat '_)))]]
     (when (not= tests (:tests f-contents))
       (println "Updating tests in" f)
-      (spit f (with-out-str (biff/pprint (assoc f-contents :tests tests)))))))
+      (pprint/with-pprint-dispatch pprint-dispatch
+        (spit f (with-out-str (biff/pprint (assoc f-contents :tests tests))))))))
 
 (defn instant [year & [month & [day & [hour & [minute & [second*]]]]]]
   (Instant/parse (format "%04d-%02d-%02dT%02d:%02d:%02dZ"

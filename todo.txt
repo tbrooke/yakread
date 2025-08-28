@@ -1,5 +1,4 @@
 - more settings
-  - export data
   - delete your account
 - announcement post
 - migrate the sample

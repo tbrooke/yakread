@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [spit])
   (:require
    [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
    [cheshire.core :as cheshire]
    [clj-http.client :as http]
    [clojure.data.generators :as gen]
@@ -58,7 +59,7 @@
                                    :biff.pipe/db-basis (some-> (:biff/db ctx) xt/db-basis)})))))))))))))
 
 (defmacro defpipe [sym & args]
-  `(def ~sym (lib.pipe/make ~@args)))
+  `(def ~sym (make ~@args)))
 
 ;; TODO move into Biff with option
 (defn- replace-db-now [tx]
@@ -97,12 +98,11 @@
                      (assoc ctx :biff.pipe.http/output (-> (http/request input)
                                                            (assoc :url (:url input))
                                                            (dissoc :http-client))))
-   :biff.pipe/email (fn [ctx]
-                      ;; TODO
+   :biff.pipe/email (fn [{:keys [biff/send-email biff.pipe.email/input] :as ctx}]
                       ;; This can be used in cases where we want a generic email interface not tied
                       ;; to a particular provider. For sending digests we need mailersend-specific
                       ;; features, so we use :biff.pipe/http there instead.
-                      ctx)
+                      (assoc ctx :biff.pipe.email/output (send-email ctx input)))
    :biff.pipe/tx (fn [{:biff.pipe.tx/keys [input retry] :as ctx}]
                    (assoc ctx :biff.pipe.tx/output
                           (biff/submit-tx
@@ -138,6 +138,8 @@
    :yakread.pipe/js call-js
    :biff.pipe/s3 (fn [{:keys [biff.pipe.s3/input] :as ctx}]
                    (assoc ctx :biff.pipe.s3/output (lib.s3/request ctx input)))
+   :biff.pipe.s3/presigned-url (fn [{:keys [biff.pipe.s3.presigned-url/input] :as ctx}]
+                                 (assoc ctx :biff.pipe.s3.presigned-url/output (lib.s3/presigned-url ctx input)))
    :biff.pipe/sleep (fn [{:keys [biff.pipe.sleep/ms] :as ctx}]
                       (Thread/sleep ms)
                       ctx)
@@ -148,12 +150,54 @@
    :biff.pipe/spit (fn [{:biff.pipe.spit/keys [file content] :as ctx}]
                      (io/make-parents (io/file file))
                      (clojure.core/spit file content)
-                     ctx)})
+                     ctx)
+   :biff.pipe/write (fn [{:biff.pipe.write/keys [file content] :as ctx}]
+                      (io/make-parents (io/file file))
+                      (with-open [w (io/writer file)]
+                        (if (string? content)
+                          (.write w content)
+                          (doseq [line content]
+                            (.write w line)
+                            (.write line "\n"))))
+                      ctx)
+   :biff.pipe/temp-dir (fn [{:keys [biff.pipe.temp-dir/prefix] :or {prefix "biff"} :as ctx}]
+                         (assoc ctx
+                                :biff.pipe.temp-dir/path
+                                (.toFile (java.nio.file.Files/createTempDirectory prefix (into-array java.nio.file.attribute.FileAttribute [])))))
+   :biff.pipe/delete-files (fn [{:keys [biff.pipe.delete-files/path] :as ctx}]
+                             (run! io/delete-file (reverse (file-seq (io/file path))))
+                             ctx)
+   :biff.pipe/shell (fn [{:keys [biff.pipe.shell/args] :as ctx}]
+                      (assoc ctx :biff.pipe.shell/output (apply shell/sh args)))})
+
+(defn email [input]
+  {:biff.pipe/current :biff.pipe/email
+   :biff.pipe.email/input input})
+
+(defn shell [& args]
+  {:biff.pipe/current :biff.pipe/shell
+   :biff.pipe.shell/args (vec args)})
+
+(defn delete-files [path]
+  {:biff.pipe/current :biff.pipe/delete-files
+   :biff.pipe.delete-files/path path})
 
 (defn spit [file content]
   {:biff.pipe/current :biff.pipe/spit
    :biff.pipe.spit/file file
    :biff.pipe.spit/content content})
+
+(defn write [file content]
+  {:biff.pipe/current :biff.pipe/write
+   :biff.pipe.write/file file
+   :biff.pipe.write/content content})
+
+(defn s3-presigned-url [config-ns k expires-at]
+  {:biff.pipe/current  :biff.pipe.s3/presigned-url
+   :biff.pipe.s3.presigned-url/input {:key (str k)
+                                      :config-ns config-ns
+                                      :method "GET"
+                                      :expires-at expires-at}})
 
 (defn s3 [config-ns k & [body content-type]]
   {:biff.pipe/current  :biff.pipe/s3

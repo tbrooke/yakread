@@ -3,9 +3,9 @@
    [com.yakread.lib.admin :as lib]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.route :as lib.route :refer [defget href]]
+   [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.ui :as ui])
-  (:import [java.time Instant ZonedDateTime ZoneId LocalDate]
-           [java.time.format DateTimeFormatter]))
+  (:import [java.time ZonedDateTime ZoneId]))
 
 (defn past-30-days [now timezone]
   (let [today-zdt (ZonedDateTime/ofInstant now (ZoneId/of timezone))]
@@ -14,11 +14,6 @@
          (mapv #(.toLocalDate %)))))
 
 (declare page-route)
-
-(defn fmt-inst [inst fmt timezone]
-  (-> inst
-      (ZonedDateTime/ofInstant (ZoneId/of timezone))
-      (.format (java.time.format.DateTimeFormatter/ofPattern fmt))))
 
 (defget page-content-route "/admin/dashboard/content"
   [{:admin/recent-users
@@ -36,7 +31,7 @@
          (for [{:user/keys [email joined-at]} (sort-by :user/joined-at #(compare %2 %1) recent-users)]
            [email
             ;; TODO use config for timezone
-            (fmt-inst joined-at "yyyy-MM-dd hh:mm a" "America/Denver")])))
+            (lib.core/fmt-inst joined-at "yyyy-MM-dd hh:mm a" "America/Denver")])))
 
       (ui/section
        {:title "Daily metrics"}

@@ -98,11 +98,37 @@
    :html (rum/render-static-markup rum)
    :text text})
 
+(defn- export [{:keys [biff/base-url]} {:keys [to download-url]}]
+  {:to [{:email to}]
+   :subject "Your data is ready to download"
+   :html (uie/html
+          :logo-on-click base-url
+          :logo-src (str base-url "/img/logo-navbar.png")
+          :title "Yakread export"
+          :hide-unsubscribe true
+          :content
+          [:<>
+           [:div
+            "Your Yakread data has been exported and is ready to download:"]
+           (uie/h-space "32px")
+           (button {:href download-url} "Download your data")
+           (uie/h-space "32px")
+           [:div "This link will expire after 7 days."]
+           (uie/h-space "8px")])
+   :text (str "Your Yakread data has been exported and is ready to download:\n"
+              "\n"
+              download-url "\n"
+              "\n"
+              "This link will expire after 7 days.\n"
+              "\n"
+              uie/address)})
+
 (defn- template [ctx k opts]
   ((case k
      :signin-link signin-link
      :signin-code signin-code
-     :alert alert)
+     :alert alert
+     :export export)
    ctx
    opts))
 

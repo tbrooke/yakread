@@ -213,6 +213,10 @@
       " "])
    contents])
 
+(defn form-button [{:keys [ui/form-opts] :as opts} & content]
+  (biff/form (dom-opts form-opts)
+    (button opts content)))
+
 (defn overflow-button [{:keys [href] :as opts} & contents]
   [(if href :a :button)
    (update opts

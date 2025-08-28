@@ -142,7 +142,7 @@ certbot --nginx
 
 # App dependencies
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-apt-get -y install nodejs
+apt-get -y install nodejs zip
 ufw allow 25
 ufw allow 2525
 

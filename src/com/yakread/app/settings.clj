@@ -7,7 +7,7 @@
    [com.yakread.lib.form :as lib.form]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pipeline :as lib.pipe]
-   [com.yakread.lib.route :as lib.route :refer [defget defpost href]]
+   [com.yakread.lib.route :as lib.route :refer [defget defpost defpost-pathom href]]
    [com.yakread.lib.ui :as ui])
   (:import
    [java.time LocalTime ZoneId]
@@ -187,106 +187,131 @@
     {:status 303
      :headers {"location" (get-in output [:body :url])}}))
 
+(defpost export-data
+  :start
+  (fn [{:keys [session]}]
+    {:biff.pipe/next [(lib.pipe/queue :work.export/export-user-data
+                                      {:user/id (:uid session)})]
+     :status 204}))
+
 (defn time-text [local-time]
   (.format local-time (DateTimeFormatter/ofPattern "h:mm a")))
 
-(defresolver premium [{:user/keys [premium plan cancel-at timezone]}]
-  {::pco/input [(? :user/plan)
-                (? :user/cancel-at)]
-   ::pco/output [::premium]}
+(defresolver main-settings [{:keys [session/user]}]
+  {::pco/input [{(? :session/user) [:xt/id
+                                    :user/email
+                                    :user/digest-days
+                                    :user/send-digest-at
+                                    :user/timezone
+                                    (? :user/use-original-links)]}]}
+  {::main-settings
+   (let [{:user/keys [digest-days send-digest-at timezone use-original-links]} user]
+     (ui/section
+      {}
+      (biff/form
+        {:action (href save-settings)
+         :class '[flex flex-col gap-6]}
+        [:div
+         (ui/input-label {} "Which days would you like to receive the digest email?")
+         (days-checkboxes digest-days)]
+        [:div
+         (ui/input-label {} "What time of day would you like to receive the digest email?")
+         (ui/select {:name :user/send-digest-at
+                     :ui/options (for [i (range 24)
+                                       :let [value (LocalTime/of i 0)]]
+                                   {:label (time-text value) :value (str value)})
+                     :ui/default (str send-digest-at)})]
+        [:div
+         (ui/input-label {} "Your timezone:")
+         (ui/select {:name :user/timezone
+                     :ui/options (for [zone-str (sort (ZoneId/getAvailableZoneIds))]
+                                   {:label zone-str :value zone-str})
+                     :ui/default (str timezone)})]
+
+        [:div
+         (ui/checkbox {:name :user/use-original-links
+                       :ui/label "Open links on the original website:"
+                       :ui/label-position :above
+                       :checked (when use-original-links
+                                  "checked")})]
+
+        [:div (ui/button {:type "submit"} "Save")])))})
+
+(defresolver premium [{:keys [session/user]}]
+  {::pco/input [{(? :session/user) [(? :user/plan)
+                                    (? :user/cancel-at)]}]}
   {::premium
-   (pco/final-value
-    (ui/section
-     {:title "Premium"}
-     [:div
-      (if premium
-        [:<>
-         [:div
-          (if cancel-at
-            [:<> "You're on the premium plan until "
-             (.format (.atZone cancel-at timezone)
-                      (DateTimeFormatter/ofPattern "d MMMM yyyy"))
-             ". After that, you'll be downgraded to the free plan. "]
-            [:<>
-             "You're on the "
-             (case plan
-               :quarter "$30 / 3 months"
-               :annual "$60 / 12 months"
-               "premium")
-             " plan. "])
-          (biff/form
-            {:action (href manage-premium)
-             :hx-boost "false"
-             :class "inline"}
-            [:button.link {:type "submit"} "Manage your subscription"])
-          "."]]
-        [:<>
-         [:div "Support Yakread by upgrading to a premium plan without ads:"]
-         [:.h-6]
-         [:div {:class '[flex flex-col sm:flex-row justify-center gap-4 sm:gap-12 items-center]}
-          (biff/form
-            {:action (href upgrade-premium)
-             :hx-boost "false"
-             :hidden {:plan "quarter"}}
-            (ui/button {:type "submit" :class "!min-w-[150px]"} "$30 / 3 months"))
-          (biff/form
-            {:action (href upgrade-premium)
-             :hx-boost "false"
-             :hidden {:plan "annual"}}
-            (ui/button {:type "submit" :class "!min-w-[150px]"} "$60 / 12 months"))]
-         [:.h-6]])]))})
+   (let [{:user/keys [premium plan cancel-at timezone]} user]
+     (ui/section
+      {:title "Premium"}
+      [:div
+       (if premium
+         [:<>
+          [:div
+           (if cancel-at
+             [:<> "You're on the premium plan until "
+              (.format (.atZone cancel-at timezone)
+                       (DateTimeFormatter/ofPattern "d MMMM yyyy"))
+              ". After that, you'll be downgraded to the free plan. "]
+             [:<>
+              "You're on the "
+              (case plan
+                :quarter "$30 / 3 months"
+                :annual "$60 / 12 months"
+                "premium")
+              " plan. "])
+           (biff/form
+             {:action (href manage-premium)
+              :hx-boost "false"
+              :class "inline"}
+             [:button.link {:type "submit"} "Manage your subscription"])
+           "."]]
+         [:<>
+          [:div "Support Yakread by upgrading to a premium plan without ads:"]
+          [:.h-6]
+          [:div {:class '[flex flex-col sm:flex-row justify-center gap-4 sm:gap-12 items-center]}
+           (biff/form
+             {:action (href upgrade-premium)
+              :hx-boost "false"
+              :hidden {:plan "quarter"}}
+             (ui/button {:type "submit" :class "!min-w-[150px]"} "$30 / 3 months"))
+           (biff/form
+             {:action (href upgrade-premium)
+              :hx-boost "false"
+              :hidden {:plan "annual"}}
+             (ui/button {:type "submit" :class "!min-w-[150px]"} "$60 / 12 months"))]
+          [:.h-6]])]))})
+
+(defresolver account [{:keys [session/user]}]
+  {::pco/input [{(? :session/user) [:user/email
+                                    :user/account-deletable
+                                    (? :user/account-deletable-message)]}]}
+  {::account
+   (let [{:user/keys [account-deletable account-deletable-message]} user]
+     (ui/section
+      {:title "Account"}
+      (ui/button {:hx-post (href export-data)
+                  :_ (str "on htmx:afterRequest alert('Your data is being exported. "
+                          "When it is ready, a download link will be emailed to you.')")
+                  :ui/icon "cloud-arrow-down"
+                  :class '[w-full max-w-40]} "Export data")
+      #_(ui/button {:ui/icon "xmark-solid"
+                  :ui/type :danger
+                  :class ["max-w-40"]} "Delete account")))})
 
 (defget page "/settings"
   [:app.shell/app-shell
-   {(? :session/user) [:xt/id
-                       :user/email
-                       :user/digest-days
-                       :user/send-digest-at
-                       :user/timezone
-                       (? :user/use-original-links)
-                       ::premium]}]
-  (fn [ctx
-       {:keys [app.shell/app-shell
-               session/user]}]
-    (let [{:user/keys [digest-days send-digest-at timezone
-                       use-original-links]
-           ::keys [premium]} user]
-      (app-shell
-       {:title "Settings"}
-       (ui/page-header {:title "Settings"})
-       [:fieldset.disabled:opacity-60
-        (ui/page-well
-         (ui/section
-          {}
-          (biff/form
-            {:action (href save-settings)
-             :class '[flex flex-col gap-6]}
-            [:div
-             (ui/input-label {} "Which days would you like to receive the digest email?")
-             (days-checkboxes digest-days)]
-            [:div
-             (ui/input-label {} "What time of day would you like to receive the digest email?")
-             (ui/select {:name :user/send-digest-at
-                         :ui/options (for [i (range 24)
-                                           :let [value (LocalTime/of i 0)]]
-                                       {:label (time-text value) :value (str value)})
-                         :ui/default (str send-digest-at)})]
-            [:div
-             (ui/input-label {} "Your timezone:")
-             (ui/select {:name :user/timezone
-                         :ui/options (for [zone-str (sort (ZoneId/getAvailableZoneIds))]
-                                       {:label zone-str :value zone-str})
-                         :ui/default (str timezone)})]
-
-            [:div
-             (ui/checkbox {:name :user/use-original-links
-                           :ui/label "Open links on the original website:"
-                           :ui/label-position :above
-                           :checked (when use-original-links
-                                      "checked")})]
-
-            [:div (ui/button {:type "submit"} "Save")]))
-         premium)]))))
+   ::main-settings
+   ::premium
+   ::account]
+  (fn [_ {:keys [app.shell/app-shell] ::keys [main-settings premium account]}]
+    (app-shell
+     {:title "Settings"}
+     (ui/page-header {:title "Settings"})
+     [:fieldset.disabled:opacity-60
+      (ui/page-well main-settings
+                    premium
+                    account)])))
 
 (def unsubscribe-success
   ["/unsubscribed"
@@ -328,11 +353,14 @@
             unsubscribe-success
             click-unsubscribe-route
             ["" {:middleware [lib.mid/wrap-signed-in
-                              [lib.form/wrap-parse-form
-                               {:overrides parser-overrides}]]}
+                              [lib.form/wrap-parse-form {:overrides parser-overrides}]]}
              save-settings
              set-timezone
              manage-premium
-             upgrade-premium]]
+             upgrade-premium
+             export-data
+             ]]
    :api-routes [stripe-webhook]
-   :resolvers [premium]})
+   :resolvers [main-settings
+               premium
+               account]})

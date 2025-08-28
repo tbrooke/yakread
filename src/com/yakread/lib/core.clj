@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.pprint :as pprint]
-   [potemkin.collections :as potemkin.c]))
+   [potemkin.collections :as potemkin.c])
+  (:import [java.time Instant ZonedDateTime ZoneId LocalDate]
+           [java.time.format DateTimeFormatter]))
 
 (defn pred->
   "(if (pred x) (f x) x)"
@@ -110,3 +112,10 @@
           (partition 2 1 xs)))
 
 (def epoch (java.time.Instant/ofEpochMilli 0))
+
+(defn fmt-inst [inst fmt timezone]
+  (-> inst
+      (ZonedDateTime/ofInstant (if (string? timezone)
+                                 (ZoneId/of timezone)
+                                 timezone))
+      (.format (java.time.format.DateTimeFormatter/ofPattern fmt))))

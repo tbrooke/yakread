@@ -151,13 +151,14 @@
    (boolean
     (and payment-method
          (not payment-failed)
-         (<= 500 balance)
          (not amount-pending)
          payment-period-start
-         (biff/elapsed? payment-period-start :now 7 :days)
+         (biff/elapsed? payment-period-start now 7 :days)
          (or (<= 2000 balance)
-             (biff/elapsed? payment-period-start :now 30 :days)
-             paused)))})
+             (and (<= 500 balance)
+                  (biff/elapsed? payment-period-start now 30 :days))
+             (and (<= 50 balance)
+                  paused))))})
 
 (defpipe get-stripe-status
   :start

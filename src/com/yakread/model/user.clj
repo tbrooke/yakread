@@ -4,6 +4,7 @@
    [com.biffweb :as biff]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]
    [com.yakread.lib.core :as lib.core]
+   [com.yakread.lib.ui :as ui]
    [com.yakread.lib.user :as lib.user]))
 
 (defresolver session-user [{:keys [session]} _]
@@ -74,6 +75,27 @@
   (when-some [id (biff/lookup-id db :mv.user/user id)]
     {:user/mv {:xt/id id}}))
 
+(defresolver account-deletable [{:user/keys [ad plan cancel-at]}]
+  {::pco/input [{(? :user/ad) [:ad/balance]}
+                (? :user/plan)
+                (? :user/cancel-at)]
+   ::pco/output [:user/account-deletable
+                 :user/account-deletable-message]}
+  (let [{:ad/keys [balance]} ad]
+    (zipmap [:user/account-deletable :user/account-deletable-message]
+            (cond
+              (and balance (<= 50 balance))
+              [false (str "You have an advertising balance of " (ui/fmt-cents balance) ". Please enable "
+                          "the \"pause\" setting on your ad and ensure you have a valid payment "
+                          "method set. After your account is charged, you may delete your account.")]
+
+              (and plan (not cancel-at))
+              [false (str "You have an active premium subscription. Please cancel your subscription "
+                          "before deleting your account.")]
+
+              :else
+              [true ::pco/unknown-value]))))
+
 (def module {:resolvers [session-user
                          session-anon
                          signed-in
@@ -85,4 +107,5 @@
                          default-send-digest-at
                          default-timezone
                          premium
-                         mv]})
+                         mv
+                         account-deletable]})
