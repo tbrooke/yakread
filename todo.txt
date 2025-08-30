@@ -1,9 +1,5 @@
-- more settings
-  - delete your account
-- announcement post
-- migrate the sample
-
 backlog
+- handle short-form RSS feeds
 - spam filtering
 - fix bug in juice parsing maybe
 - think about best way to define different kinds of routes again
@@ -26,7 +22,6 @@ backlog
 - share target -- make a pwa/app
 - organize resolvers -- group by input entity
 - check all the pages on mobile
-- make sure links in old emails still work
 - pathom errors: use ex-cause instead of monkey patching?
 - better approach to loading indicators/lazy loads
 - deal with large values in lib.pipeline exceptions, lib.test examples

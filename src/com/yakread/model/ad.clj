@@ -7,7 +7,8 @@
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.pipeline :as lib.pipe :refer [defpipe]]
    [com.yakread.routes :as routes]
-   [lambdaisland.uri :as uri]))
+   [lambdaisland.uri :as uri]
+   [taoensso.tufte :refer [p]]))
 
 ;; TODO keep recent-cost updated (or calculate it on the fly if it's fast enough)
 (defresolver effective-bid [{:ad/keys [bid budget recent-cost]}]
@@ -92,34 +93,18 @@
                 {k (id->m (get x id))}))
         xs))
 
-(defresolver payment-period-start [{:keys [biff/db]} ads]
+(defresolver last-clicked [{:keys [biff/db]} ads]
   {::pco/input [:xt/id]
-   ::pco/output [:ad/last-charged
-                 :ad/payment-period-start]
+   ::pco/output [:ad/last-clicked]
    ::pco/batch? true}
-  (let [ad->last-charged (into {} (q db
+  (let [ad->last-clicked (p :ad->last-charged
+                          (into {} (q db
                                      '{:find [ad (max t)]
-                                       :in [[ad ...] charge confirmed]
-                                       :where [[credit :ad.credit/source charge]
-                                               [credit :ad.credit/ad ad]
-                                               [credit :ad.credit/created-at t]
-                                               [credit :ad.credit/charge-status confirmed]]}
-                                     (mapv :xt/id ads)
-                                     :charge
-                                     :confirmed))
-        ad->start (into {} (q db
-                              '{:find [ad (min t)]
-                                :in [[[ad last-charged]]]
-                                :where [[click :ad.click/ad ad]
-                                        [click :ad.click/cost cost]
-                                        [(< 0 cost)]
-                                        [click :ad.click/created-at t]
-                                        [(< last-charged t)]]}
-                              (for [{:keys [xt/id]} ads]
-                                [id (get ad->last-charged id lib.core/epoch)])))]
-    (->> ads
-         (merge-by :xt/id ad->last-charged :ad/last-charged)
-         (merge-by :xt/id ad->start :ad/payment-period-start))))
+                                       :in [[ad ...]]
+                                       :where [[click :ad.click/ad ad]
+                                               [click :ad.click/created-at t]]}
+                                     (mapv :xt/id ads))))]
+    (merge-by :xt/id ad->last-clicked :ad/last-clicked ads)))
 
 (defresolver amount-pending [{:keys [biff/db]} ads]
   {::pco/input [:xt/id]
@@ -136,14 +121,14 @@
                                                        payment-failed
                                                        balance
                                                        amount-pending
-                                                       payment-period-start
-                                                       paused]}]
+                                                       paused
+                                                       last-clicked]}]
   {::pco/input [(? :ad/payment-method)
                 (? :ad/payment-failed)
                 :ad/balance
                 (? :ad/amount-pending)
-                (? :ad/payment-period-start)
                 (? :ad/paused)
+                (? :ad/last-clicked)
                 ;; ensure these are set / user account hasn't been deleted
                 :ad/customer-id
                 {:ad/user [:user/email]}]}
@@ -152,13 +137,9 @@
     (and payment-method
          (not payment-failed)
          (not amount-pending)
-         payment-period-start
-         (biff/elapsed? payment-period-start now 7 :days)
-         (or (<= 2000 balance)
-             (and (<= 500 balance)
-                  (biff/elapsed? payment-period-start now 30 :days))
-             (and (<= 50 balance)
-                  paused))))})
+         last-clicked
+         (not (biff/elapsed? last-clicked now 60 :days))
+         (<= (if paused 50 500) balance)))})
 
 (defpipe get-stripe-status
   :start
@@ -219,9 +200,9 @@
                          state
                          n-clicks
                          host
-                         payment-period-start
                          amount-pending
                          chargeable
                          stripe-status
                          pending-charge
-                         pending-charges]})
+                         pending-charges
+                         last-clicked]})
