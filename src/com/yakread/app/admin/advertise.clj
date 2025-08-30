@@ -1,14 +1,14 @@
 (ns com.yakread.app.admin.advertise
   (:require
-   [com.wsscode.pathom3.connect.operation :refer [?]]
-   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver]]
+   [com.wsscode.pathom3.connect.operation :as pco :refer [defresolver ?]]
    [com.yakread.lib.admin :as lib]
    [com.yakread.lib.icons :as lib.icons]
    [com.yakread.lib.middleware :as lib.mid]
    [com.yakread.lib.pipeline :as pipe]
    [com.yakread.lib.route :as lib.route :refer [defget defpost href]]
    [com.yakread.lib.ui :as ui]
-   [xtdb.api :as xt])
+   [xtdb.api :as xt]
+   [clojure.tools.logging :as log])
   (:import
    [java.time ZonedDateTime]))
 
@@ -31,20 +31,25 @@
 (defpost handle-pending-charges
   :start
   (fn [_]
-    {:biff.pipe/next [(pipe/pathom {} {:admin/pending-charges
-                                       [:xt/id
-                                        :ad.credit/stripe-status
-                                        :ad.credit/amount
-                                        {:ad.credit/ad [:ad/title
-                                                        :ad/customer-id
-                                                        :ad/payment-method
-                                                        {:ad/user [:user/email]}]}]})
+    {:biff.pipe/next [(pipe/pathom {} [{:admin/pending-charges
+                                        [:xt/id
+                                         :ad.credit/stripe-status
+                                         :ad.credit/amount
+                                         {:ad.credit/ad [:xt/id
+                                                         :ad/title
+                                                         :ad/customer-id
+                                                         :ad/payment-method
+                                                         {:ad/user [:user/email]}]}]}])
                       :handle]})
 
   :handle
   (fn [{:keys [biff.pipe.pathom/output biff/secret]}]
-    (let [{new* nil succeeded "succeeded" failed "requires_payment_method"}
+    (let [{new* nil succeeded "succeeded" failed "requires_payment_method"
+           :as charges-by-status}
           (group-by :ad.credit/stripe-status (:admin/pending-charges output))]
+      (log/info "handling pending charges" {:new (count new*)
+                                            :succeeded (count succeeded)
+                                            :faild (count failed)})
       {:status 204
        :headers {"hx-refresh" "true"}
        :biff.pipe/next
@@ -75,7 +80,7 @@
           (pipe/tx [{:db/doc-type :ad.credit
                      :db/op :update
                      :xt/id id
-                     :ad.credit/status :confirmed}
+                     :ad.credit/charge-status :confirmed}
                     {:db/doc-type :ad
                      :db/op :update
                      :xt/id ad-id
@@ -87,7 +92,7 @@
           (pipe/tx [{:db/doc-type :ad.credit
                      :db/op :update
                      :xt/id id
-                     :ad.credit/status :failed}
+                     :ad.credit/charge-status :failed}
                     {:db/doc-type :ad
                      :db/op :update
                      :xt/id ad-id

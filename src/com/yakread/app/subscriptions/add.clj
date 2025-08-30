@@ -3,6 +3,7 @@
    [clojure.data.generators :as gen]
    [com.biffweb :as biff :refer [q]]
    [com.yakread.lib.content :as lib.content]
+   [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.middleware :as lib.middle]
    [com.yakread.lib.pathom :as lib.pathom :refer [?]]
    [com.yakread.lib.route :refer [defget defpost href redirect]]
@@ -26,7 +27,8 @@
           (response true nil)
 
           (or (empty? username)
-              (biff/lookup-id db :user/email-username username))
+              (biff/lookup-id db :user/email-username username)
+              (biff/lookup-id db :deleted-user/email-username-hash (lib.core/sha256 username)))
           (response false (:username params))
 
           :else

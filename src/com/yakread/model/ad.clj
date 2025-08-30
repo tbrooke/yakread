@@ -204,7 +204,7 @@
 
 (defresolver pending-charges [{:keys [biff/db]} _]
   {::pco/output [{:admin/pending-charges [:xt/id]}]}
-  {:ad/pending-charges
+  {:admin/pending-charges
    (vec (q db
            '{:find [charge]
              :keys [xt/id]

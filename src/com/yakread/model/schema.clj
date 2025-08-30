@@ -219,7 +219,11 @@
    :mv.user [:map {:closed true}
              [:xt/id :uuid]
              [:mv.user/user         (r :user)      :uuid]
-             [:mv.user/current-item (?r :item/any) :uuid]]})
+             [:mv.user/current-item (?r :item/any) :uuid]]
+
+   :deleted-user [:map {:closed true}
+                  [:xt/id                            :uuid]
+                  [:deleted-user/email-username-hash :string]]})
 
 (def module
   {:schema schema})

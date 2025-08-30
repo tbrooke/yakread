@@ -24,6 +24,7 @@
                                "checked")})])])
 
 (declare page)
+(declare account-deleted)
 
 (defpost set-timezone
   :start
@@ -190,9 +191,32 @@
 (defpost export-data
   :start
   (fn [{:keys [session]}]
-    {:biff.pipe/next [(lib.pipe/queue :work.export/export-user-data
+    {:biff.pipe/next [(lib.pipe/queue :work.account/export-user-data
                                       {:user/id (:uid session)})]
      :status 204}))
+
+(defpost-pathom delete-account
+  [{:session/user [:xt/id
+                   :user/email
+                   :user/account-deletable
+                   (? :user/account-deletable-message)]}]
+  (fn [{:keys [headers session]} {:keys [session/user]}]
+    (let [{:user/keys [email account-deletable account-deletable-message]} user]
+      (cond
+        (not account-deletable)
+        {:status 400
+         :headers {"hx-redirect" (href page {:error-msg account-deletable-message})}}
+
+        (not= (get headers "hx-prompt") email)
+        {:status 400
+         :headers {"hx-redirect" (href page {:error-msg (str "The email address you entered "
+                                                             "was incorrect.")})}}
+
+        :else
+        {:biff.pipe/next [(lib.pipe/queue :work.account/delete-account {:user/id (:xt/id user)})]
+         :status 204
+         :headers {"hx-redirect" (href account-deleted)}
+         :session {}}))))
 
 (defn time-text [local-time]
   (.format local-time (DateTimeFormatter/ofPattern "h:mm a")))
@@ -295,23 +319,36 @@
                           "When it is ready, a download link will be emailed to you.')")
                   :ui/icon "cloud-arrow-down"
                   :class '[w-full max-w-40]} "Export data")
-      #_(ui/button {:ui/icon "xmark-solid"
-                  :ui/type :danger
-                  :class ["max-w-40"]} "Delete account")))})
+      (ui/button (merge
+                  {:ui/icon "xmark-solid"
+                   :ui/type :danger
+                   :class ["max-w-40"]}
+                  (if account-deletable
+                    {:hx-post (href delete-account)
+                     :hx-prompt "Account deletion is irreversible. To confirm, enter your email address."}
+                    {:_ (str "on click call alert('" account-deletable-message "')")}))
+        "Delete account")))})
 
 (defget page "/settings"
   [:app.shell/app-shell
    ::main-settings
    ::premium
    ::account]
-  (fn [_ {:keys [app.shell/app-shell] ::keys [main-settings premium account]}]
+  (fn [{:keys [params]} {:keys [app.shell/app-shell] ::keys [main-settings premium account]}]
     (app-shell
      {:title "Settings"}
      (ui/page-header {:title "Settings"})
      [:fieldset.disabled:opacity-60
       (ui/page-well main-settings
                     premium
-                    account)])))
+                    account)]
+     (when (:error-msg params)
+       [:div.hidden {:data-error-msg (:error-msg params)
+                     :_ "init call alert(me.getAttribute('data-error-msg')) then remove me"}]))))
+
+(def account-deleted
+  ["/account-deleted"
+   {:get (fn [_] (ui/plain-page {} "Your account has been deleted."))}])
 
 (def unsubscribe-success
   ["/unsubscribed"
@@ -351,6 +388,7 @@
 (def module
   {:routes [page
             unsubscribe-success
+            account-deleted
             click-unsubscribe-route
             ["" {:middleware [lib.mid/wrap-signed-in
                               [lib.form/wrap-parse-form {:overrides parser-overrides}]]}
@@ -359,7 +397,7 @@
              manage-premium
              upgrade-premium
              export-data
-             ]]
+             delete-account]]
    :api-routes [stripe-webhook]
    :resolvers [main-settings
                premium

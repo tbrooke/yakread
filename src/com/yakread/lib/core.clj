@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [clojure.pprint :as pprint]
    [potemkin.collections :as potemkin.c])
-  (:import [java.time Instant ZonedDateTime ZoneId LocalDate]
-           [java.time.format DateTimeFormatter]))
+  (:import [java.time ZonedDateTime ZoneId]
+           [java.security MessageDigest]))
 
 (defn pred->
   "(if (pred x) (f x) x)"
@@ -119,3 +119,8 @@
                                  (ZoneId/of timezone)
                                  timezone))
       (.format (java.time.format.DateTimeFormatter/ofPattern fmt))))
+
+(defn sha256 [s]
+  (let [digest (MessageDigest/getInstance "SHA-256")]
+    (.update digest (.getBytes s "UTF-8"))
+    (format "%064x" (BigInteger. 1 (.digest digest)))))
