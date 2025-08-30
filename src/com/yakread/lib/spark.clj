@@ -284,6 +284,18 @@
 (defresolver item-candidate-ids [{::keys [item-candidates]}]
   {:yakread.model/item-candidate-ids (into #{} (map :xt/id) item-candidates)})
 
+(defresolver all-liked-items [{:keys [biff/db]} _]
+  {::pco/output [{:yakread.model/all-liked-items
+                  [:item/id :item/n-likes]}]}
+  {:yakread.model/all-liked-items
+   (vec (q db
+           '{:find [item (count usit)]
+             :keys [item/id item/n-likes]
+             :timeout 240000
+             :order-by [[(count usit) :desc]]
+             :where [[usit :user-item/item item]
+                     [usit :user-item/favorited-at]]}))})
+
 (def ^:private pathom-env (pci/register [item-candidates
                                          ads
                                          ad-ratings
@@ -291,7 +303,8 @@
                                          item-ratings
                                          spark-model
                                          get-candidates
-                                         item-candidate-ids]))
+                                         item-candidate-ids
+                                         all-liked-items]))
 
 (defn new-model [ctx]
   (log/info "updating model")
@@ -300,7 +313,8 @@
          (process (merge ctx pathom-env {:biff/now (Instant/now)})
                   {}
                   [(? :yakread.model/item-candidate-ids)
-                   (? :yakread.model/get-candidates)])))
+                   (? :yakread.model/get-candidates)
+                   {:yakread.model/all-liked-items [:item/id :item/n-likes]}])))
 
 (defn use-spark [ctx]
   (let [spark (doto (JavaSparkContext. "local[*]" "yakread")

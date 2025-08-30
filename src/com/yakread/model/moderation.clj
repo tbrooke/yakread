@@ -3,8 +3,8 @@
    [com.biffweb :as biff :refer [q]]
    [com.wsscode.pathom3.connect.operation :as pco :refer [? defresolver]]))
 
-(defresolver next-batch [{:keys [biff/db]} _]
-  {::pco/output [{:admin.moderation/next-batch [:item/id :item.moderation/likes]}
+(defresolver next-batch [{:keys [biff/db yakread.model/all-liked-items]} _]
+  {::pco/output [{:admin.moderation/next-batch [:item/id :item/n-likes]}
                  :admin.moderation/remaining
                  :admin.moderation/approved
                  :admin.moderation/blocked
@@ -15,30 +15,23 @@
                           :where [[item :item/doc-type direct]]}
                         :item/direct)
         url->direct-item (into {} (map (juxt :item/url identity)) direct-items)
-        liked-items (q db
-                       '{:find [item (count usit)]
-                         :keys [item/id item.moderation/likes]
-                         :timeout 120000
-                         :order-by [[(count usit) :desc]]
-                         :where [[usit :user-item/item item]
-                                 [usit :user-item/favorited-at]]})
         item->url (into {}
                         (q db
                            '{:find [item url]
                              :in [[item ...]]
                              :where [[item :item/url url]]}
-                           (mapv :item/id liked-items)))
-        direct-item-id->likes (->> liked-items
-                                   (mapv (fn [{:keys [item/id item.moderation/likes]}]
+                           (mapv :item/id all-liked-items)))
+        direct-item-id->likes (->> all-liked-items
+                                   (mapv (fn [{:keys [item/id item/n-likes]}]
                                            (when-some [id (-> id item->url url->direct-item :xt/id)]
-                                             {id likes})))
+                                             {id n-likes})))
                                    (apply merge-with +))
         liked-direct-items (->> (into []
-                                      (comp (map #(assoc % :item.moderation/likes (direct-item-id->likes (:xt/id %))))
-                                            (filter :item.moderation/likes)
+                                      (comp (map #(assoc % :item/n-likes (direct-item-id->likes (:xt/id %))))
+                                            (filter :item/n-likes)
                                             (remove :item.direct/candidate-status))
                                       direct-items)
-                                (sort-by :item.moderation/likes >)
+                                (sort-by :item/n-likes >)
                                 vec)
         statuses (into {} (q db
                              '{:find [status (count item)]

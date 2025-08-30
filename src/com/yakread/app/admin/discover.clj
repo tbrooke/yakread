@@ -35,7 +35,7 @@
    :admin.moderation/ingest-failed
    {:admin.moderation/next-batch
     [:item/id
-     :item.moderation/likes
+     :item/n-likes
      :item/ui-read-more-card]}]
   (fn [ctx {:admin.moderation/keys [next-batch remaining approved blocked ingest-failed]}]
     [:<>
@@ -48,10 +48,10 @@
          :hidden (lib.route/nippy-params {:all-items (mapv :item/id next-batch)})}
         [:div.grid.xl:grid-cols-2.gap-6
          (for [{:item/keys [id ui-read-more-card]
-                :keys [item.moderation/likes]} next-batch]
+                :keys [item/n-likes]} next-batch]
            [:<>
             [:div
-             [:div (str likes) " likes"]
+             [:div (str n-likes) " likes"]
              [:.h-2]
              (ui-read-more-card {:show-author true
                                  :new-tab true})]

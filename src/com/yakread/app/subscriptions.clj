@@ -182,7 +182,7 @@
          (empty-state)
          [:div.grow.flex.flex-col
           (when show-tabs
-            [:.flex.gap-4.mb-6.max-sm:.mx-4
+            [:.flex.gap-4.mb-6.max-sm:mx-4
              (ui/pill {:ui/label "Pinned"
                        :class '[pinned-tab]
                        :data-active (str (= active-tab :pinned))

@@ -63,3 +63,11 @@
    :queues [{:id        :work.train/add-candidate
              :consumer  #'add-candidate!
              :n-threads 1}]})
+
+(comment
+  (time
+   (do
+    (retrain (biff/merge-context @com.yakread/system))
+    :done))
+
+  )
