@@ -33,7 +33,7 @@
   (fn [_]
     {:biff.pipe/next [(pipe/pathom {} [{:admin/pending-charges
                                         [:xt/id
-                                         :ad.credit/stripe-status
+                                         (? :ad.credit/stripe-status)
                                          :ad.credit/amount
                                          {:ad.credit/ad [:xt/id
                                                          :ad/title
