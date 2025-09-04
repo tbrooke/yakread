@@ -100,4 +100,5 @@ Some notable namespaces (good places to start reading if you're interesting in l
 
 Copyright © 2025 Jacob O'Bryant
 
-Distributed under the MIT License.
+Distributed under the source-available [PolyForm](https://polyformproject.org/licenses/) Perimeter
+license, which "permits uses other than those that compete with the software."
