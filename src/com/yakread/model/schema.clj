@@ -22,6 +22,7 @@
           [:user/send-digest-at     ? :time/local-time]
           [:user/timezone           ? :time/zone-id]
           [:user/digest-last-sent   ? :time/instant]
+          [:user/from-the-sample    ? :boolean]
           ;; When the user views an item, when possible, open the original URL in a new tab instead
           ;; of displaying the item within Yakread.
           [:user/use-original-links ? :boolean]
@@ -56,6 +57,7 @@
                 [:item/ingested-at    :time/instant]
                 [:item/title        ? ::string]
                 [:item/url          ? ::string]
+                [:item/redirect-urls ? [:set ::string]]
                 ;; If the content is <= 1000 chars, put it in XT, otherwise, put it in S3
                 [:item/content      ? ::string]
                 [:item/content-key  ? :uuid]

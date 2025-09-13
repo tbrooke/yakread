@@ -66,18 +66,22 @@
     {:digest/subject-item item}))
 
 (defresolver mailersend-payload [{:mailersend/keys [from reply-to]}
-                                 {:keys [user/email]
+                                 {:user/keys [email from-the-sample]
                                   :digest/keys [html
                                                 text
                                                 subject-item]}]
   {::pco/input [:user/email
+                (? :user/from-the-sample)
                 (? :digest/html)
                 (? :digest/text)
                 {(? :digest/subject-item) [:item/id
                                            :item/title]}]
    ::pco/output [:digest/payload]}
   (when html
-    {:digest/payload {:from {:email from :name "Yakread"}
+    {:digest/payload {:from {:email from
+                             :name (if from-the-sample
+                                     "Yakread (formerly The Sample)"
+                                     "Yakread")}
                       :reply_to {:email reply-to :name "Yakread"}
                       :to [{:email email}]
                       :subject (get subject-item :item/title "Your reading digest")

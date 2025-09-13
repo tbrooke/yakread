@@ -250,7 +250,7 @@
                               (q db
                                  '{:find [item (count digest)]
                                    :in [user [item ...]]
-                                   :timeout 240000
+                                   :timeout 999999
                                    :where [[digest :digest/user user]
                                            (or-join [digest item]
                                              [digest :digest/ad item]

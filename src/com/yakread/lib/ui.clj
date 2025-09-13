@@ -152,8 +152,10 @@
                   (case kind
                     :success '[bg-tealv-50
                                border-tealv-100]
-                    :error '[bg-redv-50
-                             border-redv-100]
+                    :info    '[bg-sky-50
+                               border-sky-100]
+                    :error   '[bg-redv-50
+                               border-redv-100]
                     :warning '[bg-yellv-50
                                border-yellv-100]))
    content])

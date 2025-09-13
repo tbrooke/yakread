@@ -96,7 +96,7 @@
                                    '{:find [source item]
                                      :in [[source ...]]
                                      :where [[item :item.feed/feed source]]
-                                     :timeout 120000}
+                                     :timeout 240000}
                                    (mapv :sub/source-id feed-subs))
                                 (lib.core/group-by-to first #(array-map :xt/id (second %))))
         email-source->items (->> (q db

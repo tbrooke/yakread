@@ -8,46 +8,43 @@
    [com.yakread.lib.core :as lib.core]
    [com.yakread.lib.pipeline :as lib.pipe]
    [com.yakread.lib.smtp :as lib.smtp]
-   [rum.core :as rum]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]) 
+  (:import
+   [org.jsoup Jsoup]))
 
-(defn accept? [{:keys [biff/db biff.smtp/message yakread/domain]}]
-  (let [result (and (or (not domain) (= domain (:domain message)))
-                    (some? (biff/lookup-id db :user/email-username (str/lower-case (:username message)))))]
-    (when-not result
-      (log/warn "Rejected incoming email for"
-                (str (str/lower-case (:username message)) "@" (:domain message))))
-    result))
+(defn accept? [_] true)
 
-(defn- extract-html [message]
-  (let [{:keys [content content-type]}
-        (->> (lib.smtp/parts-seq message)
-             (filterv (comp string? :content))
-             (sort-by (fn [{:keys [content content-type]}]
-                        [(str/includes? content-type "html")
-                         (str/includes? content "</div>")
-                         (str/includes? content "<html")
-                         (str/includes? content "<p>")])
-                      #(compare %2 %1))
-             first)]
-    (if-not (str/includes? content-type "text/plain")
-      content
-      (rum/render-static-markup
-       [:html
-        [:body
-         [:div {:style {:padding "1rem"}}
-          (->> (str/split-lines content)
-               (biff/join [:br]))]]]))))
-
+(defn infer-post-url [headers html]
+  (let [jsoup-parsed (Jsoup/parse html)
+        url (some-> (or (some-> (get-in headers ["list-post" 0])
+                                (str/replace #"(^<|>$)" ""))
+                        (some-> (.select jsoup-parsed "a.post-title-link")
+                                first
+                                (.attr "abs:href"))
+                        (some->> (.select jsoup-parsed "a")
+                                 (filter #(re-find #"(?i)read online" (.text %)))
+                                 first
+                                 (#(.attr % "abs:href"))))
+                    (str/replace #"\?.*" ""))]
+    (when-not (some-> url (str/includes? "link.mail.beehiiv.com"))
+      url)))
 
 (def deliver*
   (lib.pipe/make
-   :start (fn [{:keys [biff.smtp/message]}]
-            {:biff.pipe/next [:yakread.pipe/js :end]
-             :biff.pipe/catch :yakread.pipe/js
-             :yakread.pipe.js/fn-name "juice"
-             :yakread.pipe.js/input {:html (extract-html message)}})
-   :end (fn [{:keys [biff.smtp/message biff/db biff.pipe/now]
+   :start (fn [{:keys [biff/db yakread/domain biff.smtp/message]}]
+            (let [result (and (or (not domain) (= domain (:domain message)))
+                              (some? (biff/lookup-id db :user/email-username (str/lower-case (:username message)))))
+                  html (when result
+                         (lib.smtp/extract-html message))]
+              (if-not result
+                (log/warn "Rejected incoming email for"
+                          (str (str/lower-case (:username message)) "@" (:domain message)))
+                {:biff.pipe/next [:yakread.pipe/js :end]
+                 :biff.pipe/catch :yakread.pipe/js
+                 ::url (infer-post-url (:headers message) html)
+                 :yakread.pipe.js/fn-name "juice"
+                 :yakread.pipe.js/input {:html html}})))
+   :end (fn [{:keys [biff.smtp/message biff/db biff.pipe/now ::url]
               {:keys [html]} :yakread.pipe.js/output}]
           (if-not html
             (do
@@ -77,8 +74,7 @@
                                       {:db/doc-type :item/email
                                        :item/ingested-at :db/now
                                        :item/title (:subject message)
-                                       :item/url (some-> (first-header "list-post")
-                                                         (str/replace #"[<>]" ""))
+                                       :item/url url
                                        :item/content-key parsed-content-key
                                        :item/published-at :db/now
                                        :item/excerpt (lib.content/excerpt text)

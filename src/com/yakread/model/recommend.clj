@@ -171,13 +171,15 @@
 
 (defresolver selected-subs [{:user/keys [unread-subscriptions]}]
   {::pco/input [{:user/unread-subscriptions [:xt/id
+                                             :sub/doc-type
                                              {(? :sub/mv) [(? :mv.sub/affinity-low)
                                                            (? :mv.sub/affinity-high)]}
                                              (? :sub/pinned-at)
                                              (? :sub/published-at)]}]
    ::pco/output [{:user/selected-subs [:xt/id
                                        :item/rec-type]}]}
-  (let [new? (fn [sub] (nil? (get-in sub [:sub/mv :mv.sub/affinity-low])))
+  (let [new? (fn [sub] (and (= (:sub/doc-type sub) :sub/email)
+                            (nil? (get-in sub [:sub/mv :mv.sub/affinity-low]))))
         {new-subs true old-subs false} (group-by new? (gen/shuffle unread-subscriptions))
         ;; We'll always show new subs first e.g. so the user will see any confirmation emails.
         new-subs (sort-by :sub/published-at #(compare %2 %1) new-subs)
@@ -474,7 +476,7 @@
                                       :candidate/ad-score
                                       :ad/effective-bid
                                       :ad/approve-state
-                                      :ad/paused
+                                      (? :ad/paused)
                                       {:ad/user [:xt/id
                                                  (? :user/email)]}]}]
    ::pco/output [{:user/ad-rec [:xt/id

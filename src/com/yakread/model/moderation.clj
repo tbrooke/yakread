@@ -26,11 +26,11 @@
                                            (when-some [id (-> id item->url url->direct-item :xt/id)]
                                              {id n-likes})))
                                    (apply merge-with +))
-        liked-direct-items (->> (into []
+        liked-direct-items (->> direct-items
+                                (into []
                                       (comp (map #(assoc % :item/n-likes (direct-item-id->likes (:xt/id %))))
                                             (filter :item/n-likes)
-                                            (remove :item.direct/candidate-status))
-                                      direct-items)
+                                            (remove :item.direct/candidate-status)))
                                 (sort-by :item/n-likes >)
                                 vec)
         statuses (into {} (q db

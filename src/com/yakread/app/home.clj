@@ -292,6 +292,11 @@
          :headers {"location" (str (href routes/for-you) (when query-string "?") query-string)}}
         (ui/base-page
          (assoc ctx :base/head home-head)
+         (when (:thesample params)
+           (ui/banner {:ui/kind :warning}
+                      "The Sample has been shut down and merged into Yakread. "
+                      [:a.underline {:href "https://obryant.dev/p/shutting-down-the-sample/"}
+                       "Read more"] "."))
          [:.bg-neut-75.grow.flex.flex-col.items-center
           navbar
           [:.h-6.sm:h-12.grow.bg-neut-900.w-full]

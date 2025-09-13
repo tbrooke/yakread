@@ -90,7 +90,7 @@
     (instance? MimeBodyPart content)
     (lib.core/some-vals
      {:headers (datafy-headers content)
-      :file-name (.getFileName content)
+      :file-name (biff/catchall (.getFileName content))
       :content (datafy-content (or (biff/catchall (.getContent content)) ""))})
 
     :else
@@ -101,6 +101,17 @@
     {:to to
      :username username
      :domain domain}))
+
+(defn datafy-message [msg]
+  (let [headers (datafy-headers msg)]
+    (lib.core/some-vals
+     {:headers headers
+      :sender (some-> (biff/catchall (.getSender msg)) datafy-address)
+      :from (not-empty (mapv datafy-address (biff/catchall (.getFrom msg))))
+      :reply-to (not-empty (mapv datafy-address (biff/catchall (.getReplyTo msg))))
+      :recipients (not-empty (mapv datafy-address (biff/catchall (.getAllRecipients msg))))
+      :subject (.getSubject msg)
+      :content (some-> (biff/catchall (.getContent msg)) datafy-content not-empty)})))
 
 (defn- deliver-opts [to raw]
   (let [msg (parse raw)
@@ -146,3 +157,24 @@
     (MimeUtility/decodeText s)
     (catch Exception e
       nil)))
+
+(defn extract-html [message]
+  (let [{:keys [content content-type]}
+        (->> (parts-seq message)
+             (filterv (comp string? :content))
+             (sort-by (fn [{:keys [content content-type]}]
+                        [(str/includes? content-type "html")
+                         (str/includes? content "</div>")
+                         (str/includes? content "<html")
+                         (str/includes? content "<p>")])
+                      #(compare %2 %1))
+             first)]
+    (if-not (str/includes? content-type "text/plain")
+      content
+      (rum/render-static-markup
+       [:html
+        [:body
+         [:div {:style {:padding "1rem"}}
+          (->> (str/split-lines content)
+               (biff/join [:br]))]]]))))
+

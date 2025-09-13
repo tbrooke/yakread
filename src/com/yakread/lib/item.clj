@@ -16,8 +16,9 @@
   {:start
    (fn [{:biff/keys [db base-url] :as ctx}]
      (let [url (str/trim (get-url ctx))]
-       (if-some [item-id (biff/lookup-id db :item/url url :item/doc-type :item/direct)]
-         (on-success ctx {:item/id item-id :item/url url})
+       (if-some [item (or (biff/lookup db :item/url url :item/doc-type :item/direct)
+                             (biff/lookup db :item/redirect-urls url :item/doc-type :item/direct))]
+         (on-success ctx {:item/id (:xt/id item) :item/url (:item/url item)})
          {:biff.pipe/next       [:biff.pipe/http :handle-http]
           :biff.pipe.http/input {:url url
                                  :method  :get
@@ -35,12 +36,14 @@
        {:biff.pipe/next [:yakread.pipe/js :handle-readability]
         :biff.pipe/catch :yakread.pipe/js
         ::url url
+        ::final-url (str/replace (or (last (:trace-redirects output)) url)
+                                 #"\?.*" "")
         ::raw-html (:body output)
         :yakread.pipe.js/fn-name "readability"
         :yakread.pipe.js/input {:url url :html (:body output)}}))
 
    :handle-readability
-   (fn [{:keys [::url ::raw-html]
+   (fn [{:keys [::url ::final-url ::raw-html]
          {:keys [content title byline length siteName textContent]} :yakread.pipe.js/output
          :as ctx}]
      (if (empty? content)
@@ -55,7 +58,9 @@
                     :xt/id (gen/uuid)
                     :item/ingested-at :db/now
                     :item/title title
-                    :item/url url
+                    :item/url final-url
+                    :item/redirect-urls (when (not= url final-url)
+                                          #{url})
                     :item/content-key (when-not inline-content (gen/uuid))
                     :item/content (when inline-content content)
                     :item/published-at (some-> published-time lib.content/parse-instant)
