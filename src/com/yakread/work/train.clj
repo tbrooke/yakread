@@ -7,7 +7,9 @@
             [clojure.tools.logging :as log]))
 
 (defn retrain [{:keys [yakread/model] :as ctx}]
-  (reset! model (lib.spark/new-model ctx)))
+  (if model
+    (reset! model (lib.spark/new-model ctx))
+    (log/info "Skipping model retraining - Spark/ML disabled")))
 
 (defpipe add-candidate!
   (lib.item/add-item-pipeline*

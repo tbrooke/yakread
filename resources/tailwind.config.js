@@ -1,6 +1,9 @@
 module.exports = {
   content: [
-    './src/**/*',
+    './src/**/*.clj',
+    './src/**/*.cljs',
+    './resources/**/*.html',
+    './resources/**/*.js',
     './resources/tailwind.css',
     './resources/tailwind.config.js',
   ],

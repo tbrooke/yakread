@@ -147,7 +147,7 @@
   [biff/use-aero-config
    use-error-reporting
    biff/use-xt
-   lib.spark/use-spark
+   ;; lib.spark/use-spark  ; Disabled - collaborative filtering not needed for small scale
    biff/use-queues
    biff/use-tx-listener
    lib.jetty/use-jetty

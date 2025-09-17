@@ -51,14 +51,26 @@
         :extra-paths ["dev" "test"]
         :jvm-opts ["--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"
                    "--add-exports=java.base/sun.security.action=ALL-UNNAMED"
+                   "--add-opens=java.base/java.lang=ALL-UNNAMED"
+                   "--add-opens=java.base/javax.security.auth=ALL-UNNAMED"
+                   "--add-opens=java.base/javax.security.auth.login=ALL-UNNAMED"
                    "-XX:-OmitStackTraceInFastThrow"
                    "-XX:+CrashOnOutOfMemoryError"
+                   "-Dhadoop.home.dir=/opt/hadoop"
+                   "-DHADOOP_HOME=/opt/hadoop"
+                   "-Djava.security.policy=all.policy"
                    "-Dbiff.env.BIFF_PROFILE=dev"]
         :main-opts ["-m" "com.biffweb.task-runner" "tasks/tasks"]}
   :prod {:jvm-opts ["-Xmx6g"
                     "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"
                     "--add-exports=java.base/sun.security.action=ALL-UNNAMED"
+                    "--add-opens=java.base/java.lang=ALL-UNNAMED"
+                    "--add-opens=java.base/javax.security.auth=ALL-UNNAMED"
+                    "--add-opens=java.base/javax.security.auth.login=ALL-UNNAMED"
                     "-XX:-OmitStackTraceInFastThrow"
                     "-XX:+CrashOnOutOfMemoryError"
+                    "-Dhadoop.home.dir=/opt/hadoop"
+                    "-DHADOOP_HOME=/opt/hadoop"
+                    "-Djava.security.policy=all.policy"
                     "-Dbiff.env.BIFF_PROFILE=prod"]
          :main-opts ["-m" "com.yakread"]}}}
