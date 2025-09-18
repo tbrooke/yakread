@@ -6,234 +6,245 @@
 
 Integration of Mt Zion's Alfresco document management system with Yakread, allowing content from the church website folders to be synced and managed within the Yakread interface.
 
-## Current Status: Phase 1 Complete ✅
+## Current Status: Phase 4A - Schema-Driven Pipeline Architecture
 
-**Date**: September 17, 2025  
-**Phase**: API Discovery & Code Generation Complete  
-**Next**: Implementation & Testing  
+**Date**: September 18, 2025  
+**Phase**: Enhanced Schema-Driven Pipeline Design  
+**Status**: Implementation Ready - Malli Integration Needed  
 
-## What Was Accomplished
+## Architecture Evolution
 
-### 1. Alfresco API Discovery
-- **Successfully connected** to Alfresco Mesh server on desktop
-- **Discovered Mt Zion site structure**:
-  - Site ID: `swsdp` 
-  - Site Name: "Sample: Web Site Design Project" (actually Mt Zion)
-  - Document Library ID: `8f2105b4-daaf-4874-9e8a-2152569d109b`
-  - **Website Folder ID**: `21f2687f-7b6c-403a-b268-7f7b6c803a85` ⭐
-  - **Website Subfolders**: Home Page, Worship, Activities, Contact, News, Outreach, Preschool, About
+### Phase 1: Complete ✅ (Sep 17)
+- Basic API discovery and code generation
+- REST API client implementation
+- Admin UI scaffolding
+- Basic folder sync functionality
 
-### 2. Alfresco Server Details
-- **Base URL**: `http://generated-setup-alfresco-1:8080` (internal network only)
-- **Version**: Alfresco Community 25.2.0.0
-- **Repository ID**: `81ef2d03-6e8f-4860-af2d-036e8fe86043`
-- **Authentication**: admin/admin
-- **Challenge**: Internal hostname requires SSH tunnel or port mapping for external access
+### Phase 2: Complete ✅ (Sep 18)
+- Content pointer system implemented
+- Type detection logic via regex pattern matching
+- Component mapping from Alfresco items to UIX components
+- Fake data pipeline for offline development
 
-### 3. Code Artifacts Generated
+### Phase 3: Complete ✅ (Sep 18)
+- Malli schema definitions for Mt Zion content types
+- Structured content schemas (News, Events, Contact, Ministry, etc.)
+- Content validation framework design
+- Page-level content organization schemas
 
-Four major code artifacts were created following Jacob's Yakread patterns:
+### Phase 4A: IN PROGRESS 🔄
+**Enhanced Schema-Driven Pipeline Implementation**
 
-#### A. Alfresco Client Library
-**File**: `src/com/yakread/lib/alfresco.clj`
-- Complete REST API client
-- CMIS protocol support  
-- Error handling and validation
-- High-level integration functions
-- Health checks and connectivity testing
+## Schema-Driven Architecture
 
-**Key Functions**:
-- `get-mtzion-website-structure` - Main integration point
-- `sync-folder-to-yakread` - Convert Alfresco folders to Yakread items
-- `health-check` - Connectivity validation
+### Pipeline Flow:
+1. **Alfresco** stores content with custom properties/aspects
+2. **Yakread** syncs and validates against Malli schemas
+3. **XTDB** stores both raw CMS data + validated data
+4. **UIX/SSR** renders from validated data props
 
-#### B. Admin Routes & UI
-**File**: `src/com/yakread/app/admin/alfresco.clj`
-- Web interface for Alfresco management
-- Dashboard with connection status
-- Manual sync controls
-- Real-time sync results display
-- Follows Yakread's UI patterns
+### Benefits Achieved:
+- ✅ **No guessing** - explicit component types via CMS metadata
+- ✅ **Validation** - Malli ensures data integrity  
+- ✅ **Flexibility** - Same content, different variants/styling
+- ✅ **Performance** - SSR for fast initial loads
+- ✅ **Developer Experience** - Schema-first development
 
-**Routes**:
-- `/admin/alfresco` - Main dashboard
-- `/admin/alfresco/sync-folder/:folder-id` - Sync specific folder
-- `/admin/alfresco/sync-all` - Sync all Mt Zion folders
+## Current Implementation Status
 
-#### C. Test Suite
-**File**: `test/com/yakread/lib/alfresco_test.clj`
-- Follows Jacob's `lib.test/fn-examples` pattern
-- Comprehensive REST and CMIS API tests
-- Integration tests for Yakread compatibility
-- Mock data based on actual Alfresco structure
+### Files Created/Modified:
+1. `src/com/yakread/lib/alfresco.clj` - Enhanced with content pointer system
+2. `src/com/yakread/api/content.clj` - API endpoints for UIX integration
+3. `src/app/schema/mtzion.clj` - Comprehensive Malli schemas
+4. Test fixtures and mock data for offline development
 
-#### D. Test Fixtures
-**File**: `test/com/yakread/lib/alfresco_test/fixtures.edn`
-- Mock responses matching real Alfresco data
-- Configuration examples
-- Expected Yakread item structures
+### Content Pointer System (IMPLEMENTED):
+```clojure
+{:xt/id (random-uuid)
+ :content/type :content.type/image
+ :content/target-page :page/home
+ :content/target-component :uix.component/hero-image
+ :content/alfresco-id "fake-hero-img-123"
+ :content/validated-data {...}  ; ← MISSING INTEGRATION
+ :content/raw-alfresco-data {...}}
+```
 
-## Yakread Integration Points
+### Type Detection Logic (IMPLEMENTED):
+- Regex pattern matching for content type inference
+- File extension analysis
+- Folder context awareness
+- Component mapping rules
 
-### Configuration Required
-Add to `config.edn`:
+### Malli Schema Registry (IMPLEMENTED):
+- BaseContent, NewsComponent, EventComponent schemas
+- ContactComponent, MinistryComponent schemas
+- MediaComponent, DocumentComponent schemas
+- ContentPointer and ComponentMapping schemas
+
+## CRITICAL INTEGRATION GAP 🚨
+
+**Missing Bridge**: Content pointers are created but don't use Malli validation.
+
+**Current Flow**:
+Alfresco Item → Content Pointer → XTDB (raw data only)
+
+**Needed Flow**: 
+Alfresco Item → Content Pointer → **Malli Validation** → XTDB (raw + validated data)
+
+## Immediate Next Steps
+
+### 1. Add Malli Schema Support to Content Pointer System
+**File to modify**: `src/com/yakread/lib/alfresco.clj`
+**Function to enhance**: `create-content-pointer`
+
+Missing functionality:
+- Schema selection based on content type
+- Content validation and coercion
+- Error handling for validation failures
+- Storage of both raw and validated data
+
+### 2. Enhance Alfresco Sync to Read Custom Properties/Aspects
+**Current limitation**: Only reading basic file/folder properties
+**Needed enhancement**: Extract Alfresco aspects and custom properties
+
+### 3. Add Validation Layer in API Endpoints
+**File to modify**: `src/com/yakread/api/content.clj`
+**Enhancement needed**: Serve validated data to UIX components
+
+### 4. Create UIX SSR Integration in Yakread
+**Future phase**: Server-side rendering with validated content
+
+## Technical Challenges Identified
+
+### 1. Schema Selection Logic
+**Problem**: How to automatically determine which Malli schema applies to each Alfresco item?
+
+**Current approach**: Pattern matching with regex (brittle)
+**Needed approach**: Alfresco aspects/properties drive schema selection
+
+### 2. Content Data Extraction
+**Problem**: Content pointers reference Alfresco items but don't store actual content
+
+**Missing functionality**:
+- Image data/URLs
+- Text content extraction
+- Document metadata
+- Media file handling
+
+### 3. Validation Error Handling
+**Problem**: What happens when real Alfresco content doesn't match schemas?
+
+**Needed strategies**:
+- Graceful degradation
+- Content quarantine
+- Admin notifications
+- Schema evolution support
+
+## Mt Zion Website Structure (Discovered)
+
+### Site Details
+- **Site ID**: `swsdp` 
+- **Site Name**: "Sample: Web Site Design Project" (actually Mt Zion)
+- **Document Library ID**: `8f2105b4-daaf-4874-9e8a-2152569d109b`
+- **Website Folder ID**: `21f2687f-7b6c-403a-b268-7f7b6c803a85`
+
+### Page Structure (Maps to Malli Schemas):
+- Home Page → `HomePage` schema
+- Worship → `WorshipPage` schema
+- Activities → Events and Ministry schemas
+- Contact → `ContactPage` schema
+- News → `NewsPage` schema
+- Outreach → Ministry schemas
+- Preschool → Ministry schemas
+- About → Contact and Ministry schemas
+
+## Development Environment
+
+### Network Connectivity: 
+**Status**: Currently offline (SSH ports not open)
+**Development approach**: Using fake data and offline development
+**Testing strategy**: Mock Alfresco responses with real data structures
+
+### Tooling Setup:
+- **ClojureMCP**: Attempted bleeding-edge setup, encountered instability
+- **Current approach**: Hybrid development (VS Code/Calva, NVIM, Claude Desktop)
+- **Testing**: Using existing Yakread patterns with fake data
+
+## Configuration Required
+
+### Yakread config.edn additions:
 ```clojure
 :alfresco/base-url "http://generated-setup-alfresco-1:8080"
 :alfresco/username "admin" 
 :alfresco/password "admin"
 ```
 
-### Module Registration
-Add to `main.clj` modules vector:
+### Module registration in main.clj:
 ```clojure
 com.yakread.app.admin.alfresco/module
+com.yakread.api.content/module
 ```
 
-### Dependencies
-No new dependencies required - uses existing:
-- `clj-http.client` for HTTP requests
-- `clojure.data.json` for JSON handling
-- Existing Biff and XTDB infrastructure
+## Testing Strategy
 
-## Network Connectivity Challenge ⚠️
+### Phase 4A Testing:
+1. **Schema Validation Testing**: Validate fake Alfresco data against Malli schemas
+2. **Content Pointer Creation**: Test enhanced content pointer generation
+3. **API Integration**: Verify content API returns validated data
+4. **UIX Integration**: Test component rendering with validated data
 
-**Problem**: Internal hostname `generated-setup-alfresco-1:8080` not accessible externally
+### Test Data Available:
+- Mock Alfresco responses in `fixtures.edn`
+- Fake content generation functions
+- Sample content pointers for each component type
 
-**Solutions** (choose one):
-1. **SSH Tunnel**: `ssh -L 8080:generated-setup-alfresco-1:8080 user@dev-server`
-2. **Docker Port Mapping**: Add `"8080:8080"` to docker-compose.yml
-3. **Test from internal network**: Run from same network as Alfresco
+## Success Metrics for Phase 4A
 
-## Next Development Phases
+- [ ] Content pointers include validated data alongside raw Alfresco data
+- [ ] Malli schemas successfully validate all test content types
+- [ ] API endpoints serve schema-validated content to UIX
+- [ ] Validation errors handled gracefully with fallback content
+- [ ] Schema registry lookup working for all content types
 
-### Phase 2: XTDB BiTemporal Storage 🎯
-**Goal**: Leverage XTDB's bitemporal capabilities for content versioning
+## Architecture Decisions Made
 
-**Key Concepts**:
-- **Valid Time**: When content existed in Alfresco 
-- **Transaction Time**: When synced to Yakread
-- Historical queries and audit trails
-- Rollback capabilities
+### Schema-First Approach:
+**Decision**: Define Malli schemas before implementing validation logic
+**Rationale**: Ensures consistent data structures across the entire pipeline
 
-**Implementation Areas**:
-- Temporal timestamp management
-- Content version tracking  
-- Sync operation auditing
+### Bitemporal Storage:
+**Decision**: Use XTDB's bitemporal features for content versioning
+**Implementation**: `:xt/valid-from` and `:xt/valid-to` tracking
 
-### Phase 3: UI Components & CSS 🎨
-**Goal**: Reuse Jacob's existing UI components for consistency
+### Content Pointer Abstraction:
+**Decision**: Abstract layer between Alfresco and UIX components
+**Benefits**: Decouples CMS from frontend, enables schema validation
 
-**Approach**:
-- Extend existing `lib.ui` patterns
-- Maintain Yakread design aesthetic
-- Progressive disclosure for complex features
+### Declarative Component Mapping:
+**Decision**: Use data-driven component selection instead of imperative logic
+**Goal**: Make component mapping configurable rather than hardcoded
 
-**Components to Leverage**:
-- Card layouts for folder display
-- Status badges for sync health
-- Form patterns for configuration
-- Button styles for actions
+## Next Session Focus
 
-### Phase 4: ClojureScript UIX Frontend ⚡
-**Goal**: Maximum flexibility with maximum simplicity
+### Immediate Implementation Priority:
+1. **Enhance `create-content-pointer` function** with Malli validation
+2. **Test schema validation** with existing fake data
+3. **Debug and refine** schema selection logic
+4. **Verify API integration** serves validated content
 
-**Features Planned**:
-- Real-time sync status updates
-- Hierarchical folder tree views
-- Time-aware content browsing
-- Search across temporal data
-- Intuitive drag-and-drop organization
+### Code Integration Points:
+- Bridge `app.schema.mtzion` schemas with `lib.alfresco` content pointers
+- Enhance `content-pointer-to-api-format` to serve validated data
+- Add error handling for validation failures
 
-## Development Strategy
-
-### Testing Approach
-1. **Copy-paste generated code** for speed
-2. **Expect issues** (imports, syntax, integration)
-3. **Debug with hybrid approach**:
-   - Claude + MCP REPL for logic issues
-   - Calva/ECA in editor for syntax fixes
-   - Real environment testing
-
-### Implementation Order
-1. ✅ **API Discovery & Modeling** - Complete
-2. 🔄 **Basic Integration** - Copy files, resolve connectivity
-3. 🔄 **Manual Sync Testing** - Verify folder sync works
-4. ⏳ **XTDB Temporal Features** - Add bitemporal storage
-5. ⏳ **UI Enhancement** - Improve frontend experience
-6. ⏳ **Background Sync** - Automated polling/webhooks
-
-## Key Files to Create
-
-When implementing, create these files in Yakread project:
-
-```
-src/com/yakread/lib/alfresco.clj              # API client
-src/com/yakread/app/admin/alfresco.clj         # Routes & UI  
-test/com/yakread/lib/alfresco_test.clj         # Test suite
-test/com/yakread/lib/alfresco_test/fixtures.edn # Test data
-```
-
-## Debug Information
-
-### Known Yakread Patterns (discovered via analysis)
-- Uses `lib.test/fn-examples` for testing
-- HTTP client via `clj-http.client`
-- UI via `lib.ui` namespace  
-- Middleware via `lib.mid`
-- Admin routes under `/admin/*`
-- XTDB for data persistence
-
-### Alfresco Endpoint Examples
-```bash
-# Repository info
-GET /alfresco/api/-default-/public/alfresco/versions/1/repositories/-default-
-
-# Site contents  
-GET /alfresco/api/-default-/public/alfresco/versions/1/sites/swsdp/containers
-
-# Folder children
-GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/21f2687f-7b6c-403a-b268-7f7b6c803a85/children
-
-# CMIS query
-GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/query?q=SELECT%20*%20FROM%20cmis:folder
-```
-
-## Success Metrics
-
-### Phase 2 (Implementation) Success:
-- [ ] Admin dashboard accessible at `/admin/alfresco`
-- [ ] Green "Connected" status badge visible
-- [ ] Mt Zion website folders displayed
-- [ ] Manual sync creates Yakread items
-- [ ] No errors in application logs
-
-### Phase 3+ Success:
-- [ ] Automatic background sync working
-- [ ] Temporal queries returning historical data
-- [ ] UI responsive and intuitive
-- [ ] Search integration functional
-
-## Architecture Decisions
-
-### Why This Approach
-- **Leverages XTDB strengths**: Bitemporal data perfect for content versioning
-- **Follows established patterns**: Consistency with existing Yakread codebase  
-- **Modular design**: Easy to enhance and maintain
-- **Security conscious**: Keeps Alfresco on internal network
-
-### Trade-offs Made
-- **Network complexity**: Internal-only access requires setup
-- **Manual sync initially**: Background automation comes later
-- **REST over native**: Using HTTP rather than direct integration
-
-## Contact Context
-
-This integration was developed through conversation with Claude (Anthropic) on September 17, 2025. The human (Tom Brooke) is working on Mt Zion church website integration with their existing Yakread application.
-
-**Yakread Location**: `/Users/tombrooke/Code/trust-server/mtzion/yakread/`  
-**Alfresco**: Running via Docker on internal development network  
-**Goal**: Seamless content management bridging Alfresco CMS and Yakread's interface
+### Testing Approach:
+- Use existing fake data pipeline for testing
+- Validate against all defined Malli schemas
+- Test component mapping logic with various content types
+- Verify API responses match expected UIX formats
 
 ---
 
-**For Claude/ClaudeCode/ECA**: This context should provide everything needed to continue development. The generated code artifacts are complete and follow established patterns, but will need testing and debugging in the real environment. Focus on connectivity first, then basic sync functionality, then temporal features.
+**For Development Context**: This integration represents a sophisticated content management pipeline that bridges traditional CMS (Alfresco) with modern web development (UIX/React). The schema-driven approach ensures data integrity while maintaining flexibility for church content management needs.
+
+**Key Innovation**: Using Malli schemas as the contract between Alfresco content and UIX components, with XTDB providing bitemporal storage for content versioning and audit trails.

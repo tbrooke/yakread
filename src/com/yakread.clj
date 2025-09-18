@@ -17,6 +17,7 @@
    [com.yakread.lib.pipeline :as lib.pipeline]
    [com.yakread.lib.route :as lib.route :refer [href]]
    [com.yakread.lib.smtp :as lib.smtp]
+   [com.yakread.app.admin.alfresco :as app.admin.alfresco]
    [com.yakread.lib.spark :as lib.spark]
    [com.yakread.lib.ui :as ui]
    [com.yakread.modules :as modules]

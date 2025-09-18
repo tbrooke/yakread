@@ -78,3 +78,8 @@
 
  :biff/alert-email             #biff/env ALERT_EMAIL
  :biff.error-reporting/enabled #profile {:prod true}}
+
+  ;; Alfresco Configuration  
+ :alfresco/base-url #biff/env ALFRESCO_BASE_URL
+ :alfresco/username #biff/env ALFRESCO_USERNAME  
+ :alfresco/password #biff/secret ALFRESCO_PASSWORD

@@ -4,6 +4,7 @@
  (:require
   [com.yakread.app.admin]
   [com.yakread.app.admin.advertise]
+  [com.yakread.app.admin.alfresco]
   [com.yakread.app.admin.dashboard]
   [com.yakread.app.admin.digest]
   [com.yakread.app.admin.discover]
@@ -49,6 +50,7 @@
  modules
  [com.yakread.app.admin/module
   com.yakread.app.admin.advertise/module
+  com.yakread.app.admin.alfresco/module
   com.yakread.app.admin.dashboard/module
   com.yakread.app.admin.digest/module
   com.yakread.app.admin.discover/module
