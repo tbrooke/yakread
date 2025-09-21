@@ -1,0 +1,25 @@
+[{:component-type "hero"
+  :page "home"
+  :display-order 1
+  :title "Welcome to Mount Zion UCC"
+  :subtitle "A welcoming faith community serving since 1979"
+  :call-to-action "Join Us Sunday"
+  :cta-link "/worship"}
+
+ {:component-type "html-card"
+  :page "home"
+  :display-order 2
+  :title "This Week's Message"
+  :html-content "<h2>45th Homecoming Celebration</h2><p>Join us this Sunday as we celebrate our <strong>45th Homecoming</strong>!</p><img src=\"alfresco-node:756e81d1-22ba-4516-ae81-d122baa516c9?size=medium\" alt=\"Church celebration photo\" style=\"width: 100%; max-width: 400px; height: auto; margin: 1rem 0;\"><p>This special service will feature traditional hymns, guest speakers, and fellowship meal.</p>"}
+
+ {:component-type "html-card"
+  :page "home"
+  :display-order 3
+  :title "Image Size Examples"
+  :html-content "<p>Small thumbnail: <img src=\"alfresco-node:756e81d1-22ba-4516-ae81-d122baa516c9?size=small\" alt=\"Small image\" style=\"width: 150px; height: auto; margin: 0.5rem;\"></p><p>Medium image: <img src=\"alfresco-node:756e81d1-22ba-4516-ae81-d122baa516c9?size=medium\" alt=\"Medium image\" style=\"width: 300px; height: auto; margin: 0.5rem;\"></p><p>Large image: <img src=\"alfresco-node:756e81d1-22ba-4516-ae81-d122baa516c9?size=large\" alt=\"Large image\" style=\"width: 600px; height: auto; margin: 0.5rem;\"></p>"}
+
+ {:component-type "announcement"
+  :page "home"
+  :display-order 4
+  :title "Share URL Support"
+  :content "We also support direct Alfresco share URLs! Just paste them into your HTML editor."}]

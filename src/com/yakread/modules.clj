@@ -11,11 +11,13 @@
   [com.yakread.app.admin.infer-email-url]
   [com.yakread.app.admin.monitor]
   [com.yakread.app.advertise]
+  [com.yakread.app.content]
   [com.yakread.app.favorites]
   [com.yakread.app.favorites.add]
   [com.yakread.app.for-you]
   [com.yakread.app.for-you.history]
   [com.yakread.app.home]
+  [com.yakread.app.image-proxy]
   [com.yakread.app.read-later]
   [com.yakread.app.read-later.add]
   [com.yakread.app.settings]
@@ -57,11 +59,13 @@
   com.yakread.app.admin.infer-email-url/module
   com.yakread.app.admin.monitor/module
   com.yakread.app.advertise/module
+  com.yakread.app.content/module
   com.yakread.app.favorites/module
   com.yakread.app.favorites.add/module
   com.yakread.app.for-you/module
   com.yakread.app.for-you.history/module
   com.yakread.app.home/module
+  com.yakread.app.image-proxy/module
   com.yakread.app.read-later/module
   com.yakread.app.read-later.add/module
   com.yakread.app.settings/module

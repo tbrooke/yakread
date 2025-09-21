@@ -1,0 +1,15 @@
+#:alfresco{:Node
+           [:map
+            [:properties [:map]]
+            [:modifiedByUser [:map]]
+            [:createdByUser [:map]]
+            [:nodeType :string]
+            [:isFile :boolean]
+            [:name :string]
+            [:createdAt :string]
+            [:aspectNames [:sequential :any]]
+            [:id :string]
+            [:modifiedAt :string]
+            [:isFolder :boolean]],
+           :NodeList [:map],
+           :Pagination [:map]}

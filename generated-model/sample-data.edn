@@ -1,0 +1,16 @@
+{:node-sample
+ {:properties
+  {:cm:title "Company Home",
+   :cm:description "The company root space",
+   :app:icon "space-icon-default"},
+  :modifiedByUser {:id "System", :displayName "System"},
+  :createdByUser {:id "System", :displayName "System"},
+  :nodeType "cm:folder",
+  :isFile false,
+  :name "Company Home",
+  :createdAt "2025-09-12T01:35:27.773+0000",
+  :aspectNames ["cm:titled" "cm:auditable" "app:uifacets"],
+  :id "7f2c1077-2964-421a-ac10-772964421a00",
+  :modifiedAt "2025-09-12T01:35:31.749+0000",
+  :isFolder true},
+ :children-count 0}

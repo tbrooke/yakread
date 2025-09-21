@@ -12,7 +12,7 @@
 (defn get-alfresco-config
   "Get Alfresco configuration from environment/secrets"
   [ctx]
-  {:base-url (biff/lookup ctx :alfresco/base-url "http://generated-setup-alfresco-1:8080")
+  {:base-url (biff/lookup ctx :alfresco/base-url "http://localhost:8080")
    :username (biff/lookup ctx :alfresco/username "admin")
    :password (biff/lookup ctx :alfresco/password "admin")
    :timeout 30000
@@ -248,7 +248,7 @@
 (comment
   ;; Development testing
   (def test-ctx
-    {:alfresco/base-url "http://generated-setup-alfresco-1:8080"
+    {:alfresco/base-url "http://localhost:8080"
      :alfresco/username "admin" 
      :alfresco/password "admin"})
   

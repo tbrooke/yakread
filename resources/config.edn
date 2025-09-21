@@ -24,10 +24,10 @@
  :biff.xtdb/topology #keyword #or [#profile {:prod #biff/env "PROD_XTDB_TOPOLOGY" :default #biff/env "XTDB_TOPOLOGY"}
                                    "standalone"]
  :biff/domain #biff/env DOMAIN
- :biff/base-url #profile {:prod #join ["https://" #biff/env DOMAIN] :default "http://localhost:8080"}
+ :biff/base-url #profile {:prod #join ["https://" #biff/env DOMAIN] :default "http://localhost:4000"}
  :biff/host #profile {:dev "0.0.0.0" :default "localhost"}
  :biff/jwt-secret #biff/secret JWT_SECRET
- :biff/port 8080
+ :biff/port 4000
 
  :mailersend/api-key  #profile {:prod #biff/secret MAILERSEND_API_KEY}
  :mailersend/from     #biff/env MAILERSEND_FROM

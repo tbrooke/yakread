@@ -43,7 +43,11 @@
         org.slf4j/slf4j-api                 {:mvn/version "2.0.17"}
         org.slf4j/log4j-over-slf4j          {:mvn/version "1.7.36"}
         org.slf4j/jul-to-slf4j              {:mvn/version "1.7.36"}
-        org.slf4j/jcl-over-slf4j            {:mvn/version "1.7.36"}}
+        org.slf4j/jcl-over-slf4j            {:mvn/version "1.7.36"}
+
+        ;; Alfresco integration dependencies
+        clj-http/clj-http                   {:mvn/version "3.12.3"}
+        clj-commons/clj-yaml                {:mvn/version "1.0.27"}}
  :aliases
  {:run {:extra-deps {com.biffweb/tasks {:git/url "https://github.com/jacobobryant/biff",
                                         :git/sha "c53c273c7e1a1773a57f9df6750a7c4448e47052"

@@ -1,0 +1,73 @@
+[{:component-type "hero"
+  :page "home"
+  :layout "hero-page"
+  :display-order 1
+  :title "Welcome to Mount Zion UCC"
+  :subtitle "A welcoming faith community serving since 1979"
+  :call-to-action "Join Us Sunday"
+  :cta-link "/worship"}
+
+ {:component-type "html-card"
+  :page "home"
+  :layout "hero-page"
+  :display-order 2
+  :title "Image Proxy System Test"
+  :html-content "<h2>Testing Image Proxy</h2><p>Testing our new proxy system with an actual Alfresco image:</p><p><img src=\"alfresco-node:756e81d1-22ba-4516-ae81-d122baa516c9?size=medium\" alt=\"Test image from Alfresco\" style=\"max-width: 300px; height: auto; border: 2px solid #ccc; margin: 10px 0;\"></p><p><strong>How it works:</strong></p><ul><li>✅ Proxy authenticates with Alfresco</li><li>✅ Images cached locally for 24 hours</li><li>✅ No authentication required for website visitors</li><li>✅ Automatic rendition processing</li></ul>"}
+
+ {:component-type "html-card"
+  :page "home"
+  :layout "hero-page"
+  :display-order 3
+  :title "System Architecture"
+  :html-content "<h2>Technical Implementation</h2><p>✅ <strong>Rendition Processing:</strong> Function-based image URL generation</p><p>✅ <strong>Malli Schema:</strong> Full rendition support with validation</p><p>✅ <strong>Component Integration:</strong> Automatic HTML processing</p><p>✅ <strong>Size Management:</strong> Small (doclib), Medium (imgpreview), Large, Original</p><p>✅ <strong>URL Structure:</strong> /alfresco/service/api/node/{nodeId}/renditions/{type}/content</p>"}
+
+ {:component-type "announcement"
+  :page "home"
+  :layout "hero-page"
+  :display-order 4
+  :title "Production Ready!"
+  :content "The rendition-based image processing system is complete and ready for Mount Zion UCC content editors. All placeholder formats are supported with automatic optimization through Alfresco's Transform Service."}
+
+ {:component-type "text-card"
+  :page "about"
+  :layout "text-page"
+  :display-order 1
+  :title "Our History"
+  :content "Mount Zion United Church of Christ was established in 1979 as a welcoming congregation committed to serving our community through inclusive worship, social justice, and spiritual growth."}
+
+ {:component-type "text-card"
+  :page "worship"
+  :layout "text-page"
+  :display-order 1
+  :title "Sunday Worship"
+  :content "Join us every Sunday at 10:00 AM for inspiring worship that combines traditional elements with contemporary relevance. Our services feature uplifting music, thoughtful sermons, and a welcoming atmosphere for all ages."}
+
+ {:component-type "event"
+  :page "events"
+  :layout "listing-page"
+  :display-order 1
+  :event-date "2025-09-28"
+  :event-time "6:00 PM"
+  :title "Community Potluck Dinner"
+  :location "Fellowship Hall"
+  :description "Join us for our monthly community potluck dinner. Bring a dish to share and enjoy fellowship with your church family. All are welcome!"}
+
+ {:component-type "event"
+  :page "events"
+  :layout "listing-page"
+  :display-order 2
+  :event-date "2025-10-05"
+  :event-time "10:00 AM"
+  :title "World Communion Sunday"
+  :location "Sanctuary"
+  :description "Special worship service celebrating our connection with Christians around the world. We'll share communion together as one global family."}
+
+ {:component-type "event"
+  :page "events"
+  :layout "listing-page"
+  :display-order 3
+  :event-date "2025-10-12"
+  :event-time "2:00 PM"
+  :title "Fall Festival & Harvest Celebration"
+  :location "Church Grounds"
+  :description "Family-friendly fall festival with games, food, and harvest activities. Pumpkin patch, apple cider, and fun for all ages!"}]

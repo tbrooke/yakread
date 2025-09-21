@@ -2,6 +2,7 @@
   (:require
    [cld.core :as cld]
    [clojure.data.generators :as gen]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.tools.namespace.repl :as tn-repl]
@@ -57,10 +58,14 @@
 
 (def static-pages (apply biff/safe-merge (map :static modules)))
 
-(defn generate-assets! [_]
+(defn generate-assets! [sys]
   (biff/export-rum static-pages "target/resources/public")
   (biff/delete-old-files {:dir "target/resources/public"
-                          :exts [".html"]}))
+                          :exts [".html"]})
+  ;; Copy Tailwind CSS for now - TODO: implement proper compilation
+  (when-let [css-output (:biff.tasks/css-output sys)]
+    (io/make-parents css-output)
+    (io/copy (io/file "resources/tailwind.css") (io/file css-output))))
 
 (defn on-save [sys]
   (biff/add-libs)
