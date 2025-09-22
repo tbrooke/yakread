@@ -112,8 +112,32 @@
 (defn get-node-content
   "Download content of a file node"
   [ctx node-id]
-  (make-request ctx :get (str "/nodes/" node-id "/content")
-                {:as :stream}))
+  (let [base-url (get ctx :alfresco/base-url)
+        username (get ctx :alfresco/username)
+        password (get ctx :alfresco/password)
+        api-base (str base-url "/alfresco/api/-default-/public/alfresco/versions/1")
+        full-url (str api-base "/nodes/" node-id "/content")]
+
+    (log/debug "Fetching content for node:" node-id)
+
+    (try
+      (let [response (http/get full-url
+                               {:basic-auth [username password]
+                                :throw-exceptions false
+                                :as :string})] ; Get as string for text content
+
+        (if (< (:status response) 400)
+          {:success true
+           :status (:status response)
+           :data (:body response)}
+          {:success false
+           :status (:status response)
+           :error (:body response)}))
+
+      (catch Exception e
+        (log/error "Failed to fetch node content:" (.getMessage e))
+        {:success false
+         :error (.getMessage e)}))))
 
 ;; --- CONTENT EXTRACTION ---
 

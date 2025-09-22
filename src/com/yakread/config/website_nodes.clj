@@ -65,6 +65,11 @@
   []
   (vals homepage-component-node-ids))
 
+(defn get-all-component-nodes
+  "Get all component nodes (pages + homepage components) as keyword->node-id map"
+  []
+  (merge page-node-ids homepage-component-node-ids))
+
 ;; --- REVERSE MAPPING ---
 ;; For when we have a node ID and need to know what page/component it represents
 
