@@ -22,6 +22,7 @@
    :outreach    "b0774f12-4ea4-4851-b74f-124ea4f851a7"  ; Outreach folder
    :preschool   "915ea06b-4d65-4d5c-9ea0-6b4d65bd5cba"  ; Preschool folder
    :worship     "2cf1aac5-8577-499e-b1aa-c58577a99ea0"  ; Worship folder
+   :events      "4f6972f5-9d50-4ff3-a972-f59d500ff3f4"  ; Mt Zion Calendar folder in SWSDP site
    })
 
 ;; --- HOMEPAGE COMPONENT FOLDER NODE IDS ---

@@ -247,6 +247,22 @@
    :modified-at (:modified-at alfresco-metadata)
    :content nil}) ; Will be populated when content is fetched
 
+;; --- TAG OPERATIONS ---
+
+(defn get-node-tags
+  "Get tags for a specific node"
+  [ctx node-id]
+  (make-request ctx :get (str "/nodes/" node-id "/tags")))
+
+(defn has-tag?
+  "Check if a node has a specific tag"
+  [ctx node-id tag-name]
+  (let [tags-response (get-node-tags ctx node-id)]
+    (if (:success tags-response)
+      (let [tags (get-in tags-response [:data :list :entries])]
+        (some #(= tag-name (get-in % [:entry :tag])) tags))
+      false)))
+
 ;; --- CONVENIENCE FUNCTIONS ---
 
 (defn get-yakread-content

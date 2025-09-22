@@ -1,0 +1,50 @@
+#:alfresco{:Node
+           [:map
+            [:properties [:map]]
+            [:modifiedByUser [:map]]
+            [:createdByUser [:map]]
+            [:nodeType :string]
+            [:isFile :boolean]
+            [:name :string]
+            [:createdAt :string]
+            [:aspectNames [:sequential :any]]
+            [:id :string]
+            [:modifiedAt :string]
+            [:isFolder :boolean]],
+           :NodeList
+           [:map [:pagination [:map]] [:entries [:sequential :any]]],
+           :Pagination
+           [:map
+            [:count :int]
+            [:hasMoreItems :boolean]
+            [:totalItems :int]
+            [:skipCount :int]
+            [:maxItems :int]],
+           :CalendarList
+           [:map [:pagination [:map]] [:entries [:sequential :any]]],
+           :CalendarEntry
+           [:map
+            [:properties [:map]]
+            [:modifiedByUser [:map]]
+            [:createdByUser [:map]]
+            [:nodeType :string]
+            [:isFile :boolean]
+            [:name :string]
+            [:createdAt :string]
+            [:aspectNames [:sequential :any]]
+            [:id :string]
+            [:modifiedAt :string]
+            [:parentId :string]
+            [:isFolder :boolean]],
+           :CalendarProperties
+           [:map
+            [:ia:fromDate :string]
+            [:ia:toDate :string]
+            [:ia:whatEvent :string]
+            [:ia:descriptionEvent :string]
+            [:ia:isOutlook :boolean]
+            [:ia:whereEvent :string]
+            [:cm:taggable [:sequential :any]]],
+           :TagsList
+           [:map [:pagination [:map]] [:entries [:sequential :any]]],
+           :TagEntry [:map [:tag :string] [:id :string]]}

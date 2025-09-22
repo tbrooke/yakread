@@ -1,0 +1,48 @@
+{:node-sample
+ {:properties
+  {:cm:title "Company Home",
+   :cm:description "The company root space",
+   :app:icon "space-icon-default"},
+  :modifiedByUser {:id "System", :displayName "System"},
+  :createdByUser {:id "System", :displayName "System"},
+  :nodeType "cm:folder",
+  :isFile false,
+  :name "Company Home",
+  :createdAt "2025-09-12T01:35:27.773+0000",
+  :aspectNames ["cm:titled" "cm:auditable" "app:uifacets"],
+  :id "7f2c1077-2964-421a-ac10-772964421a00",
+  :modifiedAt "2025-09-12T01:35:31.749+0000",
+  :isFolder true},
+ :children-count 7,
+ :calendar-count 2,
+ :calendar-sample
+ {:properties
+  {:ia:fromDate "2025-09-28T18:30:00.000+0000",
+   :ia:toDate "2025-09-28T19:30:00.000+0000",
+   :ia:whatEvent "Liberty Commons Worship",
+   :ia:descriptionEvent "Jons us for Worship at Liberty Commons",
+   :ia:isOutlook false,
+   :ia:whereEvent "LIberty Commons",
+   :cm:taggable ["66f4d099-b1b9-41dc-b4d0-99b1b931dc1e"]},
+  :modifiedByUser {:id "tmb", :displayName "Tom Brooke"},
+  :createdByUser {:id "tmb", :displayName "Tom Brooke"},
+  :nodeType "ia:calendarEvent",
+  :isFile true,
+  :name "1758462011749-8540.ics",
+  :createdAt "2025-09-21T13:40:11.752+0000",
+  :aspectNames ["ia:docFoldered" "cm:auditable" "cm:taggable"],
+  :id "04cf1c10-8a1c-4b91-8f1c-108a1c9b913e",
+  :modifiedAt "2025-09-21T13:40:11.752+0000",
+  :parentId "4f6972f5-9d50-4ff3-a972-f59d500ff3f4",
+  :isFolder false},
+ :calendar-properties
+ {:ia:fromDate "2025-09-28T18:30:00.000+0000",
+  :ia:toDate "2025-09-28T19:30:00.000+0000",
+  :ia:whatEvent "Liberty Commons Worship",
+  :ia:descriptionEvent "Jons us for Worship at Liberty Commons",
+  :ia:isOutlook false,
+  :ia:whereEvent "LIberty Commons",
+  :cm:taggable ["66f4d099-b1b9-41dc-b4d0-99b1b931dc1e"]},
+ :sample-tags
+ [{:entry
+   {:tag "publish", :id "66f4d099-b1b9-41dc-b4d0-99b1b931dc1e"}}]}

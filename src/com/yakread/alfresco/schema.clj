@@ -84,12 +84,20 @@
                            (log/warn "Could not load live schemas:" (.getMessage e))
                            {}))
 
-          ;; Merge both schema sources (live schemas take precedence)
-          combined-schemas (merge api-schemas live-schemas)]
+          ;; Load calendar-specific schemas from our enhanced script
+          calendar-schemas (try
+                            (edn/read-string (slurp "generated-model/calendar-schemas.edn"))
+                            (catch Exception e
+                              (log/warn "Could not load calendar schemas:" (.getMessage e))
+                              {}))
+
+          ;; Merge all schema sources (calendar schemas take precedence)
+          combined-schemas (merge api-schemas live-schemas calendar-schemas)]
 
       (log/info "Loaded schemas:"
                 "API-based:" (count api-schemas)
                 "Live-generated:" (count live-schemas)
+                "Calendar-generated:" (count calendar-schemas)
                 "Total:" (count combined-schemas))
       combined-schemas)
 
@@ -319,6 +327,52 @@
                         :content (or (:content/text yakread-content)
                                      (:content/html yakread-content))}))}}))
 
+;; --- CALENDAR EVENT SCHEMAS ---
+
+(def CalendarEventTag
+  "Schema for calendar event tags"
+  [:map
+   [:entry [:map
+            [:tag string?]]]])
+
+(def CalendarEventTagList
+  "Schema for list of calendar event tags"
+  [:map
+   [:list [:map
+           [:entries [:vector CalendarEventTag]]]]])
+
+(def CalendarEventProperties
+  "Schema for Alfresco calendar event properties"
+  [:map
+   [:ia:whatEvent {:optional true} string?]         ; Event title
+   [:ia:descriptionEvent {:optional true} string?] ; Event description
+   [:ia:fromDate {:optional true} string?]         ; Start date/time
+   [:ia:toDate {:optional true} string?]           ; End date/time
+   [:ia:whereEvent {:optional true} string?]       ; Event location
+   [:ia:isOutlook {:optional true} boolean?]       ; Outlook integration flag
+   [:cm:taggable {:optional true} string?]])       ; Taggable aspect
+
+(def CalendarEvent
+  "Schema for validated calendar event with publish tag"
+  [:map
+   [:node-id string?]
+   [:title string?]
+   [:description {:optional true} [:maybe string?]]
+   [:event-date {:optional true} [:maybe string?]]
+   [:event-time {:optional true} [:maybe string?]]
+   [:location {:optional true} [:maybe string?]]
+   [:has-publish-tag boolean?]
+   [:is-upcoming boolean?]
+   [:created-at {:optional true} string?]
+   [:modified-at {:optional true} string?]])
+
+(def PublishedCalendarEvent
+  "Schema for calendar event ready for website display"
+  [:and CalendarEvent
+   [:map
+    [:has-publish-tag [:= true]]     ; Must have publish tag
+    [:is-upcoming [:= true]]]])      ; Must be upcoming
+
 ;; --- SCHEMA REGISTRY ---
 
 (def yakread-alfresco-registry
@@ -334,7 +388,12 @@
     :yakread/Content YakreadContent
     :uix/Content UIXContent
     :uix/PageContent UIXPageContent
-    :image/ProcessingOptions ImageProcessingOptions}
+    :image/ProcessingOptions ImageProcessingOptions
+    :calendar/EventTag CalendarEventTag
+    :calendar/EventTagList CalendarEventTagList
+    :calendar/EventProperties CalendarEventProperties
+    :calendar/Event CalendarEvent
+    :calendar/PublishedEvent PublishedCalendarEvent}
 
    ;; Load API-derived schemas
    (load-alfresco-schemas "2025.09.19-0830")))
@@ -370,6 +429,22 @@
   "Get human-readable validation error"
   [schema data]
   (m/explain schema data))
+
+(defn validate-calendar-event
+  "Validate a calendar event against the schema"
+  [event]
+  (m/validate CalendarEvent event))
+
+(defn validate-published-calendar-event
+  "Validate a calendar event for website publishing"
+  [event]
+  (m/validate PublishedCalendarEvent event))
+
+(defn calendar-event-publishable?
+  "Check if calendar event meets publishing criteria"
+  [event]
+  (and (:has-publish-tag event)
+       (:is-upcoming event)))
 
 ;; Initialize the registry
 (mr/set-default-registry! yakread-alfresco-registry)

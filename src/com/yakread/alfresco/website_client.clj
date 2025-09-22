@@ -1,6 +1,7 @@
 (ns com.yakread.alfresco.website-client
   "Specialized Alfresco client for Mt Zion Web Site content using hardcoded node IDs"
   (:require [com.yakread.alfresco.client :as alfresco]
+            [com.yakread.alfresco.schema :as schema]
             [com.yakread.config.website-nodes :as nodes]
             [clojure.tools.logging :as log]
             [clojure.string :as str]))
@@ -113,6 +114,102 @@
       {:success false
        :page page-keyword
        :error (:error page-result)})))
+
+;; --- CALENDAR/EVENTS OPERATIONS ---
+
+(defn get-calendar-events
+  "Get all calendar events from the events folder with properties"
+  [ctx & [options]]
+  (if-let [events-node-id (nodes/get-page-node-id :events)]
+    (do
+      (log/info "Fetching calendar events from node:" events-node-id)
+      ;; Include properties in the response to get calendar metadata
+      (let [options-with-props (merge {:include "properties,aspectNames"} options)]
+        (alfresco/get-node-children ctx events-node-id options-with-props)))
+    (do
+      (log/error "Events node ID not configured")
+      {:success false :error "Events node ID not configured"})))
+
+(defn extract-event-metadata
+  "Extract event metadata from Alfresco calendar content with tag checking"
+  [ctx node-entry]
+  (let [entry (:entry node-entry)
+        properties (:properties entry)
+        node-id (:id entry)
+
+        ;; Check for publish tag
+        tags-response (alfresco/get-node-tags ctx node-id)
+        has-publish-tag (if (:success tags-response)
+                          (let [tags (get-in tags-response [:data :list :entries])]
+                            (some #(= "publish" (get-in % [:entry :tag])) tags))
+                          false)
+
+        ;; Check if event is upcoming
+        event-date-str (get properties :ia:fromDate)
+        is-upcoming (if event-date-str
+                      (try
+                        (let [event-date (java.time.LocalDate/parse (subs event-date-str 0 10))] ; Take date part only
+                          (not (.isBefore event-date (java.time.LocalDate/now))))
+                        (catch Exception e false))
+                      false)]
+
+    {:node-id node-id
+     :title (or (get properties :ia:whatEvent) (:name entry))
+     :description (get properties :ia:descriptionEvent)
+     :event-date event-date-str
+     :event-time (get properties :ia:toDate)
+     :location (get properties :ia:whereEvent)
+     :has-publish-tag has-publish-tag
+     :is-upcoming is-upcoming
+     :created-at (:createdAt entry)
+     :modified-at (:modifiedAt entry)}))
+
+(defn process-calendar-events-for-website
+  "Process calendar events for website display with publish tag filtering"
+  [ctx & [options]]
+  (log/info "Processing calendar events for website display")
+  (let [events-result (get-calendar-events ctx options)]
+    (log/info "Raw events result success:" (:success events-result))
+    (when (:success events-result)
+      (log/info "Raw events count:" (count (get-in events-result [:data :list :entries]))))
+    (if (:success events-result)
+      (let [entries (get-in events-result [:data :list :entries])
+            processed-events (map (partial extract-event-metadata ctx) entries)
+
+            ;; Filter for valid calendar events only (not folders)
+            event-docs (filter #(not (:isFolder (get (:entry %) {}))) entries)
+
+            ;; Extract metadata for event documents only
+            event-metadata (map (partial extract-event-metadata ctx) event-docs)
+
+            ;; Filter for published events only (with publish tag and upcoming)
+            published-events (filter #(and (:has-publish-tag %)
+                                           (:is-upcoming %))
+                                    event-metadata)
+
+            ;; Validate events against schema
+            valid-published-events (filter #(schema/validate-published-calendar-event %)
+                                          published-events)
+
+            ;; Sort by event date
+            sorted-events (sort-by :event-date valid-published-events)]
+
+        (log/info "Calendar events processed:"
+                  "Total items:" (count entries)
+                  "Event documents:" (count event-docs)
+                  "Published events:" (count published-events)
+                  "Valid published events:" (count valid-published-events))
+
+        {:success true
+         :events-node-id (nodes/get-page-node-id :events)
+         :summary {:total-items (count entries)
+                   :event-documents (count event-docs)
+                   :published-events (count published-events)
+                   :valid-published-events (count valid-published-events)}
+         :events sorted-events})
+
+      {:success false
+       :error (:error events-result)})))
 
 ;; --- CONTENT RETRIEVAL WITH AUTOMATIC COMPONENT MAPPING ---
 
