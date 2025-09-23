@@ -5,7 +5,10 @@
    [com.yakread.lib.ui :as ui]
    [com.yakread.alfresco.website-client :as alfresco-client]
    [com.yakread.alfresco.calendar :as calendar]
-   [clojure.tools.logging :as log]))
+   [clojure.tools.logging :as log]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn]
+   [com.yakread.util.biff-staging :as biffs]))
 
 ;; --- SHARED LAYOUT COMPONENTS ---
 
@@ -35,27 +38,81 @@
     [:div {:style {:padding "2rem"}}
      content]]))
 
+;; --- CONTENT LOADING ---
+
+(defn load-feature1-content
+  "Load Feature 1 content from extracted file"
+  []
+  (try
+    (when (.exists (clojure.java.io/file "mtzuix-feature1-content.edn"))
+      (let [content (clojure.edn/read-string (slurp "mtzuix-feature1-content.edn"))
+            first-item (first content)]
+        (when first-item
+          {:title (:title first-item)
+           :html-content (:html-content first-item)
+           :last-updated (:last-updated first-item)})))
+    (catch Exception e
+      (log/error "Error loading Feature 1 content:" (.getMessage e))
+      nil)))
+
+(defn load-feature2-content
+  "Load Feature 2 content from extracted file"
+  []
+  (try
+    (when (.exists (clojure.java.io/file "mtzuix-feature2-website-content.edn"))
+      (let [content (clojure.edn/read-string (slurp "mtzuix-feature2-website-content.edn"))
+            first-item (first content)]
+        (when first-item
+          {:title (:title first-item)
+           :html-content (:html-content first-item)
+           :has-images (:has-images first-item)
+           :last-updated (:last-updated first-item)})))
+    (catch Exception e
+      (log/error "Error loading Feature 2 content:" (.getMessage e))
+      nil)))
+
 ;; --- ROUTE HANDLERS ---
 
 (defn home-handler
-  "Homepage handler - loads content from Alfresco homepage folder"
+  "Homepage handler - loads real content from Alfresco extractions"
   [ctx]
-  (log/info "Loading homepage content from Alfresco")
+  (log/info "Loading homepage content from extracted Alfresco files")
   (try
-    ;; This will eventually load from Alfresco via alfresco-client
-    ;; For now, provide a clean structure
-    (site-layout ctx "Mount Zion UCC - Home"
-      [:h2 {:style {:font-size "1.875rem" :font-weight "bold" :text-align "center" 
-                    :margin-bottom "1.5rem" :color "#1f2937"}} 
-       "Welcome to Mount Zion UCC"]
-      [:p {:style {:font-size "1.125rem" :text-align "center" 
-                   :margin-bottom "1.5rem" :color "#374151"}} 
-       "A United Church of Christ congregation"]
-      
-      ;; TODO: Replace with actual Alfresco content loading
-      [:div {:class "mtz-content-card"}
-       [:h3 "Coming Soon: Dynamic Content from Alfresco"]
-       [:p "This page will display content from the Alfresco Homepage folder."]])
+    (let [feature1-content (load-feature1-content)
+          feature2-content (load-feature2-content)]
+      (site-layout ctx "Mount Zion UCC - Home"
+        [:h2 {:style {:font-size "1.875rem" :font-weight "bold" :text-align "center" 
+                      :margin-bottom "1.5rem" :color "#1f2937"}} 
+         "Welcome to Mount Zion UCC"]
+        [:p {:style {:font-size "1.125rem" :text-align "center" 
+                     :margin-bottom "1.5rem" :color "#374151"}} 
+         "A United Church of Christ congregation"]
+        
+        ;; Real Alfresco content from Feature 1
+        (if feature1-content
+          [:div {:class "mtz-content-card"}
+           [:h3 (:title feature1-content)]
+           [:div (biffs/unsafe (:html-content feature1-content))]
+           (when (:last-updated feature1-content)
+             [:p {:style {:font-size "0.875rem" :color "#6b7280" :margin-top "1rem"}}
+              "Last updated: " (:last-updated feature1-content)])]
+          
+          ;; Fallback if no content
+          [:div {:class "mtz-content-card"}
+           [:h3 "Welcome"]
+           [:p "Content is being updated. Please check back soon."]])
+        
+        ;; Real Alfresco content from Feature 2
+        (when feature2-content
+          [:div {:class "mtz-content-card" :style {:margin-top "2rem"}}
+           [:h3 (:title feature2-content)]
+           [:div (biffs/unsafe (:html-content feature2-content))]
+           (when (:has-images feature2-content)
+             [:p {:style {:font-size "0.875rem" :color "#6b7280" :margin-top "1rem"}}
+              "📷 Contains images served via proxy"])
+           (when (:last-updated feature2-content)
+             [:p {:style {:font-size "0.875rem" :color "#6b7280" :margin-top "0.5rem"}}
+              "Last updated: " (:last-updated feature2-content)])])))
     
     (catch Exception e
       (log/error "Error loading homepage:" (.getMessage e))

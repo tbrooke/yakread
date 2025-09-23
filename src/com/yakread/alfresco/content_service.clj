@@ -1,148 +1,184 @@
 (ns com.yakread.alfresco.content-service
-  "Service for extracting and processing content from Alfresco folders for Mount Zion UCC"
+  "Live content service for Mount Zion UCC website
+   Connects extracted Alfresco content to the running application"
   (:require
    [clojure.tools.logging :as log]
-   [com.yakread.alfresco.client :as alfresco]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn]
+   [com.yakread.alfresco.content-extractor :as extractor]
    [com.yakread.config.website-nodes :as nodes]))
 
-;; --- CONTENT EXTRACTION ---
+;; --- CONTENT LOADING ---
 
-(defn extract-folder-content
-  "Extract all content from a specific Alfresco folder"
-  [ctx folder-key]
+(defn load-extracted-content
+  "Load previously extracted content from file"
+  [filename]
   (try
-    (log/info "Extracting content from folder:" folder-key)
-    
-    (let [node-id (nodes/get-homepage-component-node-id folder-key)
-          children-response (alfresco/get-node-children ctx node-id)]
-      
-      (if (:success children-response)
-        (let [entries (get-in children-response [:data :list :entries])
-              html-files (filter #(= "text/html" (get-in % [:entry :content :mimeType])) entries)]
-          
-          (log/info "Found" (count entries) "items in" folder-key "folder")
-          (log/info "HTML files:" (count html-files))
-          
-          ;; Process each HTML file
-          (for [html-file html-files]
-            (let [file-entry (:entry html-file)
-                  file-node-id (:id file-entry)
-                  file-name (:name file-entry)
-                  content-response (alfresco/get-node-content ctx file-node-id)]
-              
-              (log/info "Processing file:" file-name)
-              
-              (if (:success content-response)
-                {:success true
-                 :alfresco-node-id file-node-id
-                 :alfresco-name file-name
-                 :alfresco-modified-at (:modifiedAt file-entry)
-                 :alfresco-created-at (:createdAt file-entry)
-                 :alfresco-size (get-in file-entry [:content :sizeInBytes])
-                 :alfresco-mime-type (get-in file-entry [:content :mimeType])
-                 :html-content (:data content-response) ; Updated to use :data from new client
-                 :extracted-at (java.time.Instant/now)}
-                
-                {:success false
-                 :alfresco-node-id file-node-id
-                 :alfresco-name file-name
-                 :error (:error content-response)}))))
-        
-        {:error "Could not access folder" 
-         :folder-key folder-key
-         :details (:error children-response)}))
-    
+    (if (.exists (io/file filename))
+      (let [content (edn/read-string (slurp filename))]
+        (log/info "Loaded content from" filename ":" (count content) "items")
+        content)
+      (do
+        (log/warn "Content file not found:" filename)
+        []))
     (catch Exception e
-      (log/error "Error extracting folder content:" (.getMessage e))
-      {:error (.getMessage e)})))
-
-(defn extract-feature1-content
-  "Extract content from Feature 1 folder - convenience function"
-  [ctx]
-  (extract-folder-content ctx :feature1))
-
-;; --- CONTENT FILTERING ---
-
-(defn filter-html-content
-  "Filter content results to only include successful HTML extractions"
-  [content-results]
-  (filter #(and (:success %) (:html-content %)) content-results))
-
-(defn filter-by-mime-type
-  "Filter content by MIME type"
-  [content-results mime-type]
-  (filter #(= mime-type (:alfresco-mime-type %)) content-results))
-
-;; --- CONTENT VALIDATION ---
-
-(defn validate-content
-  "Validate that extracted content meets requirements"
-  [content-item]
-  (and (:success content-item)
-       (:alfresco-node-id content-item)
-       (:alfresco-name content-item)
-       (:html-content content-item)
-       (not (empty? (:html-content content-item)))))
-
-(defn validate-all-content
-  "Validate a collection of content items"
-  [content-items]
-  (let [valid-items (filter validate-content content-items)
-        total-count (count content-items)
-        valid-count (count valid-items)]
-    
-    (log/info "Content validation:" valid-count "/" total-count "items valid")
-    
-    {:valid-items valid-items
-     :total-count total-count
-     :valid-count valid-count
-     :validation-success (> valid-count 0)}))
-
-;; --- CONVENIENCE FUNCTIONS ---
-
-(defn get-folder-html-content
-  "Get all valid HTML content from a folder"
-  [ctx folder-key]
-  (let [extraction-result (extract-folder-content ctx folder-key)]
-    (if (sequential? extraction-result)
-      (:valid-items (validate-all-content (filter-html-content extraction-result)))
+      (log/error "Failed to load content from" filename ":" (.getMessage e))
       [])))
 
-;; --- HEALTH CHECKS ---
-
-(defn check-folder-access
-  "Check if a folder is accessible and has content"
-  [ctx folder-key]
+(defn extract-and-save-content
+  "Extract content from Alfresco and save to file for the live site"
+  [ctx component-key]
+  (log/info "Extracting content for component:" component-key)
+  
   (try
-    (let [node-id (nodes/get-homepage-component-node-id folder-key)
-          children-response (alfresco/get-node-children ctx node-id)]
+    (let [content-items (extractor/extract-component-content ctx component-key)
+          valid-items (filter #(= :extracted (:status %)) content-items)
+          filename (str "mtzuix-" (name component-key) "-content.edn")]
       
-      (if (:success children-response)
-        (let [entries (get-in children-response [:data :list :entries])]
-          {:accessible true
-           :folder-key folder-key
-           :node-id node-id
-           :item-count (count entries)
-           :timestamp (java.time.Instant/now)})
-        
-        {:accessible false
-         :folder-key folder-key
-         :node-id node-id
-         :error (:error children-response)
-         :timestamp (java.time.Instant/now)}))
+      (if (seq valid-items)
+        (do
+          (spit filename (pr-str valid-items))
+          (log/info "✅ Saved" (count valid-items) "items to" filename)
+          {:success true
+           :items valid-items
+           :filename filename
+           :count (count valid-items)})
+        (do
+          (log/warn "❌ No valid content found for" component-key)
+          {:success false
+           :error "No valid content found"
+           :component component-key})))
     
     (catch Exception e
-      {:accessible false
-       :folder-key folder-key
+      (log/error "❌ Failed to extract content for" component-key ":" (.getMessage e))
+      {:success false
        :error (.getMessage e)
-       :timestamp (java.time.Instant/now)})))
+       :component component-key})))
 
-(defn health-check-all-folders
-  "Check accessibility of all configured folders"
-  [ctx]
-  (let [folder-keys [:feature1] ; Add more folder keys as needed
-        results (map #(check-folder-access ctx %) folder-keys)]
+;; --- LIVE CONTENT RETRIEVAL ---
+
+(defn get-component-content
+  "Get content for a component, extracting fresh if needed"
+  [ctx component-key & [force-refresh]]
+  (let [filename (str "mtzuix-" (name component-key) "-content.edn")
+        existing-content (when-not force-refresh (load-extracted-content filename))]
     
-    {:all-accessible (every? :accessible results)
-     :folder-statuses results
-     :timestamp (java.time.Instant/now)}))
+    (if (and (not force-refresh) (seq existing-content))
+      {:success true
+       :items existing-content
+       :source :cached}
+      
+      ;; Extract fresh content
+      (let [extraction-result (extract-and-save-content ctx component-key)]
+        (if (:success extraction-result)
+          {:success true
+           :items (:items extraction-result)
+           :source :fresh}
+          extraction-result)))))
+
+(defn get-feature1-content
+  "Get Feature 1 content specifically"
+  [ctx & [force-refresh]]
+  (get-component-content ctx :feature1 force-refresh))
+
+;; --- CONTENT FORMATTING FOR UI ---
+
+(defn format-content-for-display
+  "Format extracted content for display in UI components"
+  [content-item]
+  (let [html-content (:content content-item)
+        title (or (:name content-item) "Feature Content")
+        last-updated (:alfresco-modified-at content-item)]
+    
+    {:title title
+     :html-content html-content
+     :last-updated last-updated
+     :source-info {:alfresco-node-id (:alfresco-node-id content-item)
+                   :alfresco-name (:alfresco-name content-item)}}))
+
+(defn get-homepage-feature1-for-display
+  "Get Feature 1 content formatted for homepage display"
+  [ctx & [force-refresh]]
+  (let [content-result (get-feature1-content ctx force-refresh)]
+    (if (:success content-result)
+      (let [items (:items content-result)
+            first-item (first items)]
+        (if first-item
+          {:success true
+           :content (format-content-for-display first-item)
+           :source (:source content-result)}
+          {:success false
+           :error "No content items found"}))
+      content-result)))
+
+;; --- HEALTH AND STATUS ---
+
+(defn check-content-availability
+  "Check what content is available locally and in Alfresco"
+  [ctx]
+  (let [components [:feature1 :feature2 :feature3 :hero] ; Add more as needed
+        results (atom {})]
+    
+    (doseq [component components]
+      (let [filename (str "mtzuix-" (name component) "-content.edn")
+            has-local (and (.exists (io/file filename))
+                          (seq (load-extracted-content filename)))
+            alfresco-check (try
+                             (extractor/check-folder-access ctx component)
+                             (catch Exception e
+                               {:accessible false :error (.getMessage e)}))]
+        
+        (swap! results assoc component
+               {:local-content has-local
+                :alfresco-accessible (:accessible alfresco-check)
+                :alfresco-item-count (:item-count alfresco-check)
+                :filename filename})))
+    
+    @results))
+
+;; --- SIMPLE TEST FUNCTIONS ---
+
+(defn test-feature1-extraction
+  "Simple test function to extract Feature 1 content"
+  [ctx]
+  (log/info "🧪 Testing Feature 1 content extraction...")
+  
+  (let [result (get-homepage-feature1-for-display ctx true)] ; force refresh
+    (if (:success result)
+      (do
+        (log/info "✅ Feature 1 extraction successful!")
+        (log/info "   Title:" (get-in result [:content :title]))
+        (log/info "   Content length:" (count (get-in result [:content :html-content])))
+        (log/info "   Last updated:" (get-in result [:content :last-updated]))
+        (log/info "   Source:" (:source result))
+        result)
+      (do
+        (log/error "❌ Feature 1 extraction failed:" (:error result))
+        result))))
+
+;; --- ALFRESCO CONTEXT CREATION ---
+
+(defn create-alfresco-context
+  "Create Alfresco context from application config or environment"
+  [& [config]]
+  (let [base-config {:alfresco/base-url "http://localhost:8080"
+                     :alfresco/username "admin"
+                     :alfresco/password "admin"}]
+    (merge base-config config)))
+
+;; --- MAIN CONTENT FUNCTIONS FOR ROUTES ---
+
+(defn load-homepage-content
+  "Main function to load content for homepage - used by routes"
+  [ctx]
+  (log/info "Loading homepage content...")
+  
+  (let [alfresco-ctx (create-alfresco-context)
+        feature1-result (get-homepage-feature1-for-display alfresco-ctx)]
+    
+    (if (:success feature1-result)
+      {:feature1 (:content feature1-result)
+       :loaded-from (:source feature1-result)}
+      {:feature1 {:title "Feature 1"
+                  :html-content "<p>Content temporarily unavailable.</p>"
+                  :error (:error feature1-result)}})))

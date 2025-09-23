@@ -16,8 +16,6 @@
   [com.yakread.app.favorites.add]
   [com.yakread.app.for-you]
   [com.yakread.app.for-you.history]
-  [com.yakread.app.home]
-  [com.yakread.app.home-clean]
   [com.yakread.app.image-proxy]
   [com.yakread.app.read-later]
   [com.yakread.app.read-later.add]
@@ -66,8 +64,6 @@
   com.yakread.app.favorites.add/module
   com.yakread.app.for-you/module
   com.yakread.app.for-you.history/module
-  com.yakread.app.home/module
-  com.yakread.app.home-clean/module
   com.yakread.app.image-proxy/module
   com.yakread.app.read-later/module
   com.yakread.app.read-later.add/module
