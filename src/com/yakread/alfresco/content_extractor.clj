@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [com.yakread.alfresco.client :as alfresco]
+   [com.yakread.alfresco.content-processor :as processor]
    [com.yakread.config.website-nodes :as nodes]))
 
 ;; --- CONTENT FILTERING ---
@@ -70,9 +71,17 @@
   [ctx node-metadata]
   (let [content-result (extract-file-content ctx node-metadata)]
     (if (:success content-result)
-      (merge node-metadata content-result
-             {:extracted-at (java.time.Instant/now)
-              :status :extracted})
+      (let [raw-content (:content content-result)
+            processed-content (if (and raw-content 
+                                       (= "text/html" (:content-type content-result)))
+                                (processor/process-html-content raw-content)
+                                raw-content)]
+        (merge node-metadata content-result
+               {:content processed-content
+                :original-content raw-content  ; Keep original for debugging
+                :processed-at (java.time.Instant/now)
+                :extracted-at (java.time.Instant/now)
+                :status :extracted}))
       (merge node-metadata content-result
              {:extracted-at (java.time.Instant/now)
               :status :extraction-failed}))))

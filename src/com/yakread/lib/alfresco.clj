@@ -551,6 +551,10 @@
          :synced-at (biff/now)}))))
 
 (comment
+  ;; Previous comment block content - closing it here
+  )
+
+(comment
   ;; Test with fake data
   (test-content-pointer-creation)
   
@@ -559,5 +563,108 @@
   
   ;; Create fake data for UIX testing
   (def fake-pointers (create-fake-content-pointers :homepage "test-user"))
-  )
+  
+  ;; Test folder path resolution
+  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
+      (find-folder-by-path config "Sites/swsdp/documentLibrary/Web Site/about"))
+  
+  ;; Test node content retrieval
+  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
+      (get-node-content config "some-node-id")))
+
+;; --- FOLDER PATH RESOLUTION ---
+
+(defn find-folder-by-path
+  "Find an Alfresco folder by its full path (e.g., 'Sites/swsdp/documentLibrary/Web Site/about')
+   Returns: {:success boolean :folder map :error string}"
+  [config folder-path]
+  (log/info "Finding folder by path:" folder-path)
+  (try
+    ;; Use CMIS to query by path - this is more reliable than navigating step by step
+    (let [query (str "SELECT * FROM cmis:folder WHERE cmis:path = '/" folder-path "'")
+          response (make-request :get (cmis-browser-url config) config
+                                {:query-params {:cmisaction "query"
+                                              :statement query
+                                              :maxItems 1}})]
+      (cond
+        (= 200 (:status response))
+        (let [parsed (json/parse-string (:body response) true)
+              results (get-in parsed [:objects] [])]
+          (if (seq results)
+            (let [folder-data (first results)
+                  properties (:properties folder-data)]
+              {:success true
+               :folder {:exists? true
+                       :type (:value (get properties :cmis:objectTypeId))
+                       :name (:value (get properties :cmis:name))
+                       :path (:value (get properties :cmis:path))
+                       :node-id (:value (get properties :cmis:objectId))
+                       :created-at (:value (get properties :cmis:creationDate))
+                       :modified-at (:value (get properties :cmis:lastModificationDate))}})
+            {:success false :error "Folder not found at path"}))
+        
+        :else
+        {:success false :error (str "HTTP " (:status response) ": " (:body response))}))
+    
+    (catch Exception e
+      (log/error "Error finding folder by path:" folder-path "Error:" (.getMessage e))
+      {:success false :error (.getMessage e)})))
+
+(defn get-folder-children
+  "Get children of an Alfresco folder by node ID
+   Returns: {:success boolean :children vector :error string}"
+  [config node-id]
+  (log/info "Getting folder children for node:" node-id)
+  (try
+    (let [response (make-request :get (rest-api-url config "nodes" node-id "children") config)]
+      (if (= 200 (:status response))
+        (let [parsed (json/parse-string (:body response) true)
+              entries (get-in parsed [:list :entries] [])]
+          {:success true
+           :children (map (fn [entry]
+                           (let [node (:entry entry)]
+                             {:type (:nodeType node)
+                              :name (:name node)
+                              :node-id (:id node)
+                              :mime-type (get-in node [:content :mimeType])
+                              :created-at (:createdAt node)
+                              :modified-at (:modifiedAt node)})) entries)})
+        {:success false :error (str "HTTP " (:status response) ": " (:body response))}))
+    (catch Exception e
+      (log/error "Error getting folder children:" (.getMessage e))
+      {:success false :error (.getMessage e)})))
+
+(defn find-folder-by-path-with-children
+  "Find folder by path and include its children
+   Returns: {:success boolean :folder map :error string}"
+  [config folder-path]
+  (let [folder-result (find-folder-by-path config folder-path)]
+    (if (:success folder-result)
+      (let [folder (:folder folder-result)
+            node-id (:node-id folder)
+            children-result (get-folder-children config node-id)]
+        (if (:success children-result)
+          {:success true
+           :folder (assoc folder :children (:children children-result))}
+          {:success true
+           :folder (assoc folder :children [])})) ; Continue even if children fetch fails
+      folder-result)))
+
+(comment
+  ;; Test with fake data
+  (test-content-pointer-creation)
+  
+  ;; Test with real Alfresco (when connected)
+  (sync-mtzion-website-to-pointers test-config "user123")
+  
+  ;; Create fake data for UIX testing
+  (def fake-pointers (create-fake-content-pointers :homepage "test-user"))
+  
+  ;; Test folder path resolution
+  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
+      (find-folder-by-path config "Sites/swsdp/documentLibrary/Web Site/about"))
+  
+  ;; Test node content retrieval
+  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
+      (get-node-content config "some-node-id"))
   )

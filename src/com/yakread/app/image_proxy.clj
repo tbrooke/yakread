@@ -10,7 +10,7 @@
 
 (def alfresco-config
   "Alfresco connection configuration"
-  {:base-url "http://admin.mtzcg.com"
+  {:base-url "http://localhost:8080"  ; Use SSH tunnel
    :username "admin"  ; Configure these in your config.edn
    :password "admin"  ; Configure these in your config.edn
    :cache-dir "cache/images"})

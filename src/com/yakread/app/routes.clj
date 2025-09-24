@@ -1,14 +1,27 @@
 (ns com.yakread.app.routes
-  "Clean, focused routes for Mount Zion UCC website powered by Alfresco"
+  "Mount Zion UCC website routes - supports both static and dynamic routing
+   
+   🔄 MIGRATION STATUS: Transitioning to dynamic routes system
+   
+   The routing system is evolving from:
+   • Manual node-ID mapping (current)
+   • Route-driven Alfresco folder resolution (new)
+   
+   Use com.yakread.app.routes-migration to switch between systems."
   (:require
    [com.biffweb :as biff]
    [com.yakread.lib.ui :as ui]
    [com.yakread.alfresco.website-client :as alfresco-client]
    [com.yakread.alfresco.calendar :as calendar]
+   [com.yakread.alfresco.content-processor :as processor]
    [clojure.tools.logging :as log]
    [clojure.java.io :as io]
    [clojure.edn :as edn]
-   [com.yakread.util.biff-staging :as biffs]))
+   [com.yakread.util.biff-staging :as biffs]
+   
+   ;; Migration system imports (temporarily disabled)
+   ;; [com.yakread.app.routes-migration :as migration]
+   ))
 
 ;; --- SHARED LAYOUT COMPONENTS ---
 
@@ -226,9 +239,17 @@
 
 ;; --- MODULE DEFINITION ---
 
-(def module
-  "Routes module for Mount Zion UCC website"
+;; --- STATIC ROUTES (V1) ---
+
+(def static-routes-module
+  "Original static routes module for Mount Zion UCC website"
   {:routes (concat content-routes utility-routes)})
+
+;; --- DYNAMIC MODULE SELECTION ---
+
+(def module
+  "Routes module - using static routes for now"
+  static-routes-module)
 
 ;; --- ROUTE EVOLUTION HELPERS ---
 
