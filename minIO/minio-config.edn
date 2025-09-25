@@ -1,0 +1,15 @@
+;; MinIO Configuration for Yakread
+;; This configuration allows your existing S3 code to work with MinIO
+
+{:yakread.minio/access-key "minioadmin"
+ :yakread.minio/secret-key "minioadmin123"
+ :yakread.minio/origin "http://localhost:9000"
+ :yakread.minio/bucket "yakread-bucket"
+ :yakread.minio/region "us-east-1"  ; MinIO default region
+
+ ;; Biff S3 configuration namespace for MinIO
+ :biff.s3/access-key "minioadmin"
+ :biff.s3/secret-key "minioadmin123"
+ :biff.s3/origin "http://localhost:9000"
+ :biff.s3/bucket "yakread-bucket"
+ :biff.s3/region "us-east-1"}
