@@ -113,6 +113,14 @@
                  #"<img\s+([^>]*?)>" 
                  "<img $1 onerror=\"this.src='/img/placeholder.jpg'; this.onerror=null;\">")))
 
+;; --- HTML ANALYSIS FUNCTIONS ---
+
+(defn has-images?
+  "Check if HTML content contains any images"
+  [html-content]
+  (when html-content
+    (boolean (seq (find-image-urls html-content)))))
+
 ;; --- MAIN PROCESSING FUNCTION ---
 
 (defn process-html-content

@@ -19,8 +19,10 @@
    [clojure.edn :as edn]
    [com.yakread.util.biff-staging :as biffs]
    
-   ;; Migration system imports (temporarily disabled)
-   ;; [com.yakread.app.routes-migration :as migration]
+   Migration system imports (now active)
+   [com.yakread.app.routes-migration :as migration]
+   ;; MinIO content service
+   [com.yakread.alfresco.minio-content-service :as minio-content]
    ))
 
 ;; --- SHARED LAYOUT COMPONENTS ---
@@ -54,32 +56,51 @@
 ;; --- CONTENT LOADING ---
 
 (defn load-feature1-content
-  "Load Feature 1 content from extracted file"
-  []
+  "Load Feature 1 content from MinIO (with fallback to local file)"
+  [ctx]
   (try
-    (when (.exists (clojure.java.io/file "mtzuix-feature1-content.edn"))
-      (let [content (clojure.edn/read-string (slurp "mtzuix-feature1-content.edn"))
-            first-item (first content)]
+    ;; Try loading from MinIO first
+    (if-let [content (minio-content/load-content-for-page ctx "feature1")]
+      (let [first-item (first content)]
         (when first-item
           {:title (:title first-item)
            :html-content (:html-content first-item)
-           :last-updated (:last-updated first-item)})))
+           :last-updated (:last-updated first-item)}))
+      ;; Fallback to local file if MinIO not available
+      (when (.exists (clojure.java.io/file "mtzuix-feature1-content.edn"))
+        (log/info "Using local file fallback for feature1")
+        (let [content (clojure.edn/read-string (slurp "mtzuix-feature1-content.edn"))
+              first-item (first content)]
+          (when first-item
+            {:title (:title first-item)
+             :html-content (:html-content first-item)
+             :last-updated (:last-updated first-item)}))))
     (catch Exception e
       (log/error "Error loading Feature 1 content:" (.getMessage e))
       nil)))
 
 (defn load-feature2-content
-  "Load Feature 2 content from extracted file"
-  []
+  "Load Feature 2 content from MinIO (with fallback to local file)"
+  [ctx]
   (try
-    (when (.exists (clojure.java.io/file "mtzuix-feature2-website-content.edn"))
-      (let [content (clojure.edn/read-string (slurp "mtzuix-feature2-website-content.edn"))
-            first-item (first content)]
+    ;; Try loading from MinIO first
+    (if-let [content (minio-content/load-content-for-page ctx "feature2")]
+      (let [first-item (first content)]
         (when first-item
           {:title (:title first-item)
            :html-content (:html-content first-item)
            :has-images (:has-images first-item)
-           :last-updated (:last-updated first-item)})))
+           :last-updated (:last-updated first-item)}))
+      ;; Fallback to local file if MinIO not available
+      (when (.exists (clojure.java.io/file "mtzuix-feature2-website-content.edn"))
+        (log/info "Using local file fallback for feature2")
+        (let [content (clojure.edn/read-string (slurp "mtzuix-feature2-website-content.edn"))
+              first-item (first content)]
+          (when first-item
+            {:title (:title first-item)
+             :html-content (:html-content first-item)
+             :has-images (:has-images first-item)
+             :last-updated (:last-updated first-item)}))))
     (catch Exception e
       (log/error "Error loading Feature 2 content:" (.getMessage e))
       nil)))
@@ -89,10 +110,10 @@
 (defn home-handler
   "Homepage handler - loads real content from Alfresco extractions"
   [ctx]
-  (log/info "Loading homepage content from extracted Alfresco files")
+  (log/info "Loading homepage content from MinIO/Alfresco files")
   (try
-    (let [feature1-content (load-feature1-content)
-          feature2-content (load-feature2-content)]
+    (let [feature1-content (load-feature1-content ctx)
+          feature2-content (load-feature2-content ctx)]
       (site-layout ctx "Mount Zion UCC - Home"
         [:h2 {:style {:font-size "1.875rem" :font-weight "bold" :text-align "center" 
                       :margin-bottom "1.5rem" :color "#1f2937"}} 
@@ -248,8 +269,8 @@
 ;; --- DYNAMIC MODULE SELECTION ---
 
 (def module
-  "Routes module - using static routes for now"
-  static-routes-module)
+  "Routes module - dynamically switches between static and dynamic"
+  (migration/get-active-routes-module))
 
 ;; --- ROUTE EVOLUTION HELPERS ---
 

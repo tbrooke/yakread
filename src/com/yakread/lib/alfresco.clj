@@ -244,7 +244,6 @@
      :item/alfresco-id (:id folder)
      :item/alfresco-path (:path folder)
      :item/alfresco-type (:type folder)
-
      :item/created-at (if-let [date-str (:created-at folder)]
                         (try (java.time.Instant/parse date-str)
                              (catch Exception _ now))
@@ -354,29 +353,7 @@
        :missing-keys missing-keys
        :message (str "Missing required configuration keys: " (str/join ", " missing-keys))})))
 
-(comment
-  ;; Development and testing
-  (def test-config
-    {:base-url "http://generated-setup-alfresco-1:8080"
-     :username "admin"
-     :password "admin"})
-
-  ;; Test basic connectivity
-  (health-check test-config)
-  (test-mtzion-connectivity test-config)
-  
-  ;; Test site structure
-  (get-mtzion-website-structure test-config)
-  
-  ;; Test CMIS queries
-  (cmis-query test-config "SELECT * FROM cmis:folder WHERE IN_FOLDER('21f2687f-7b6c-403a-b268-7f7b6c803a85')")
-  
-  ;; Test sync
-  (sync-folder-to-yakread test-config "21f2687f-7b6c-403a-b268-7f7b6c803a85" "user123")
-
-
-  ;; Enhanced Alfresco sync functions for content pointer system
-;; Add these functions to your existing com.yakread.lib.alfresco namespace
+;; Enhanced Alfresco sync functions for content pointer system
 
 ;; Content type detection
 (defn detect-content-type
@@ -550,28 +527,6 @@
          :total-content-pointers (reduce + (map #(count (:content-pointers %)) sync-results))
          :synced-at (biff/now)}))))
 
-(comment
-  ;; Previous comment block content - closing it here
-  )
-
-(comment
-  ;; Test with fake data
-  (test-content-pointer-creation)
-  
-  ;; Test with real Alfresco (when connected)
-  (sync-mtzion-website-to-pointers test-config "user123")
-  
-  ;; Create fake data for UIX testing
-  (def fake-pointers (create-fake-content-pointers :homepage "test-user"))
-  
-  ;; Test folder path resolution
-  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
-      (find-folder-by-path config "Sites/swsdp/documentLibrary/Web Site/about"))
-  
-  ;; Test node content retrieval
-  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
-      (get-node-content config "some-node-id")))
-
 ;; --- FOLDER PATH RESOLUTION ---
 
 (defn find-folder-by-path
@@ -651,6 +606,25 @@
       folder-result)))
 
 (comment
+  ;; Development and testing
+  (def test-config
+    {:base-url "http://generated-setup-alfresco-1:8080"
+     :username "admin"
+     :password "admin"})
+
+  ;; Test basic connectivity
+  (health-check test-config)
+  (test-mtzion-connectivity test-config)
+  
+  ;; Test site structure
+  (get-mtzion-website-structure test-config)
+  
+  ;; Test CMIS queries
+  (cmis-query test-config "SELECT * FROM cmis:folder WHERE IN_FOLDER('21f2687f-7b6c-403a-b268-7f7b6c803a85')")
+  
+  ;; Test sync
+  (sync-folder-to-yakread test-config "21f2687f-7b6c-403a-b268-7f7b6c803a85" "user123")
+  
   ;; Test with fake data
   (test-content-pointer-creation)
   
@@ -661,10 +635,10 @@
   (def fake-pointers (create-fake-content-pointers :homepage "test-user"))
   
   ;; Test folder path resolution
-  #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
-      (find-folder-by-path config "Sites/swsdp/documentLibrary/Web Site/about"))
+  (let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
+    (find-folder-by-path config "Sites/swsdp/documentLibrary/Web Site/about"))
   
   ;; Test node content retrieval
   #_(let [config {:base-url "http://localhost:8080" :username "admin" :password "admin"}]
       (get-node-content config "some-node-id"))
-  )
+  ) ; Closing the comment block properly
